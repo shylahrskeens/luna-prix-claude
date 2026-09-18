@@ -231,6 +231,7 @@ export class RaceCore {
           const anchor = this.track.respawn(r.progress.lastCp);
           r.kart.placeAt(anchor.pos, anchor.yaw, 6);
           this.track.ground(r.kart.pos, undefined, r.ground);
+          r.kart.sHint = r.ground.s;
           this.reanchorProgress(r);
         }
         this.onKartEvent(r, e);
@@ -325,13 +326,14 @@ export class RaceCore {
       //  it cannot: there the projection is unambiguous, so a jump there is a
       //  real teleport and worth flagging. Re-anchor quietly off the road,
       //  flag on it.
-      if (r.ground.onBranch !== null || r.ground.outside > 2) {
+      if (r.ground.onBranch !== null || r.ground.outside > 2 || r.ground.reacquired) {
         p.prevU = u;
         return;
       }
       p.integrity.push(
         `Discontinuous progress at t=${this.time.toFixed(2)}s, lap position ${u.toFixed(3)} ` +
-        `(${d.toFixed(3)} laps in one step, branch=${r.ground.onBranch ?? 'none'})`,
+        `(${d.toFixed(3)} laps in one step from ${p.prevU.toFixed(3)}, ` +
+        `${r.ground.outside.toFixed(1)} m off the road)`,
       );
       this.events.push({ kind: 'integrity', racerId: r.id, value: d, text: 'progress jump' });
       p.prevU = u;

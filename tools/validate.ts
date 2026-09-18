@@ -5,6 +5,7 @@
  *  kart can take, respawn anchors in a hole, and gaps no kart can clear.
  */
 import { TRACKS } from '../src/data/tracks/index';
+import { BONUS_EVENTS } from '../src/data/bonus';
 import { TrackRuntime } from '../src/sim/track';
 import { KARTS } from '../src/data/karts';
 import { AXIES } from '../src/data/axies';
@@ -15,10 +16,12 @@ import { GRAVITY } from '../src/sim/kart';
 let problems = 0;
 const warn = (t: string, m: string) => { console.log(`  [WARN] ${t}: ${m}`); problems++; };
 
-for (const def of TRACKS) {
+// Bonus courses are tracks too, and get exactly the same checks.
+const ALL = [...TRACKS, ...BONUS_EVENTS.map((e) => e.track)];
+for (const def of ALL) {
   const track = new TrackRuntime(def);
   const L = track.lapLength;
-  console.log(`\n${def.name} — ${L.toFixed(0)} m, ${def.checkpointCount} checkpoints`);
+  console.log(`\n${def.name} — ${L.toFixed(0)} m, ${def.checkpointCount} checkpoints, ${def.closed === false ? 'open course' : 'circuit'}`);
 
   // ---- 1. proximity of non-adjacent road ----------------------------------
   // Two samples far apart along the track but close in space make the nearest
@@ -43,6 +46,11 @@ for (const def of TRACKS) {
       if (d - need < worst.d - (worst.a ? 0 : 0)) {
         if (d < worst.d) worst = { d, a: pts[i].s, b: pts[j].s };
       }
+      // Two points 300 m apart along a straight are also 300 m apart in space:
+      // there is nothing to confuse. Only road that has doubled back — where
+      // the spatial gap is much smaller than the distance driven between them
+      // — can flip a projection.
+      if (d > arc * 0.72) continue;
       if (d < need * 1.05) {
         warn(def.id, `road at ${pts[i].s.toFixed(0)} m and ${pts[j].s.toFixed(0)} m are ${d.toFixed(1)} m apart (widths sum ${need.toFixed(1)} m) — projection can confuse them`);
         i = pts.length; break;

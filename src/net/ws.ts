@@ -140,7 +140,18 @@ export class WsAdapter implements NetworkAdapter {
     }
     switch (msg.t) {
       case 'hello': this.id = msg.id; break;
-      case 'lobby': for (const f of this.lobbyFns) f(msg.lobby); break;
+      case 'lobby': {
+        // The server does not know which member is us; mark it here so the
+        // lobby UI can highlight the right row and read our own ready state.
+        const lobby = {
+          ...msg.lobby,
+          members: msg.lobby.members.map((m) => ({
+            ...m, isLocal: m.id === this.id, ping: m.id === this.id ? this.ping : m.ping,
+          })),
+        };
+        for (const f of this.lobbyFns) f(lobby);
+        break;
+      }
       case 'start': for (const f of this.startFns) f(msg); break;
       case 'snap': this.snap = msg.snap; break;
       case 'pong': this.ping = Date.now() - msg.sent; break;

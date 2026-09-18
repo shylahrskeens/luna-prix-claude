@@ -55,7 +55,7 @@ const RAMP_SEGS: RouteSeg[] = [
   { t: 'straight', len: 90, w: 26, mark: 'catch' },
 ];
 
-const rampRoute = buildRouteFull(RAMP_SEGS, { width: 16, spacing: 7, start: [0, 200, 0], heading: 0 });
+const rampRoute = buildRouteFull(RAMP_SEGS, { width: 16, spacing: 7, start: [0, 200, 0], heading: 0, closed: false });
 const RM = rampRoute.marks;
 
 export const MEGA_RAMP_TRACK: TrackDefinition = {
@@ -117,28 +117,45 @@ export const MEGA_RAMP_TRACK: TrackDefinition = {
 // ---------------------------------------------------------------------------
 
 const island = (len: number, mark: string): RouteSeg => ({ t: 'straight', len, w: 6.5, mark });
-const hop = (len: number, mark: string, rise = 0): RouteSeg => ({ t: 'straight', len, dy: rise, w: 6.5, mark });
+
+/** One leap: a ramp, then the void in two parts.
+ *
+ *  The first part of the void continues the ramp's slope. There is no road
+ *  there, so the height is invisible — but it is what holds the spline tangent
+ *  up at the lip, and that tangent IS the launch. Round the crest off and the
+ *  kart drops into the water instead of flying over it.
+ */
+const leap = (name: string, rampLen: number, rise: number, voidLen: number, drop: number): RouteSeg[] => [
+  { t: 'straight', len: rampLen, dy: rise, w: 6.5, mark: `ramp${name}` },
+  { t: 'straight', len: 5, dy: (rise / rampLen) * 5, w: 6.5, mark: `gap${name}A` },
+  { t: 'straight', len: voidLen, dy: -drop, w: 6.5, mark: `gap${name}` },
+];
 
 const GAUNTLET_SEGS: RouteSeg[] = [
   island(60, 'start'),
-  hop(14, 'rampA', 3.4), hop(20, 'gapA'), island(46, 'isleA'),
+  ...leap('A', 16, 4.2, 7, 3.0), island(46, 'isleA'),
   { t: 'turn', angle: 38, radius: 34, w: 6.5, mark: 'bendA' },
-  hop(14, 'rampB', 3.4), hop(22, 'gapB'), island(42, 'isleB'),
+  ...leap('B', 16, 4.2, 8, 3.2), island(42, 'isleB'),
   { t: 'turn', angle: -46, radius: 30, w: 6.5, mark: 'bendB' },
-  hop(14, 'rampC', 3.6), hop(24, 'gapC'), island(40, 'isleC'),
+  ...leap('C', 16, 4.4, 9, 3.4), island(40, 'isleC'),
   { t: 'turn', angle: 34, radius: 38, w: 6.5, mark: 'bendC' },
-  hop(15, 'rampD', 3.8), hop(26, 'gapD'), island(44, 'isleD'),
+  ...leap('D', 17, 4.8, 10, 3.6), island(44, 'isleD'),
   { t: 'turn', angle: -30, radius: 40, w: 7, mark: 'bendD' },
   // The final leap, over the big one.
-  hop(18, 'rampE', 5.0), hop(30, 'gapE'), island(90, 'finish'),
+  ...leap('E', 20, 6.0, 13, 4.5), island(90, 'finish'),
 ];
 
-const gRoute = buildRouteFull(GAUNTLET_SEGS, { width: 6.5, spacing: 5, start: [0, 12, 0], heading: 0 });
+const gRoute = buildRouteFull(GAUNTLET_SEGS, { width: 6.5, spacing: 5, start: [0, 12, 0], heading: 0, closed: false });
 const GM = gRoute.marks;
 
 const gapZone = (mark: keyof typeof GM, label: string) => ({
   ...span(GM[mark], 0, 1), gap: true, wall: 'none' as const, shoulder: 2.5, label,
 });
+/** Both halves of a leap's void are one hole. */
+const leapZones = (name: string, label: string) => [
+  gapZone(`gap${name}A` as keyof typeof GM, label),
+  gapZone(`gap${name}` as keyof typeof GM, label),
+];
 
 export const GAUNTLET_TRACK: TrackDefinition = {
   id: 'event-gauntlet',
@@ -156,11 +173,11 @@ export const GAUNTLET_TRACK: TrackDefinition = {
   unlock: { kind: 'podium' },
   zones: [
     { from: 0, to: 1, surface: 'dirt', wall: 'none', shoulder: 2.2 },
-    gapZone('gapA', 'First Leap'),
-    gapZone('gapB', 'Second Leap'),
-    gapZone('gapC', 'Third Leap'),
-    gapZone('gapD', 'Fourth Leap'),
-    gapZone('gapE', 'The Big One'),
+    ...leapZones('A', 'First Leap'),
+    ...leapZones('B', 'Second Leap'),
+    ...leapZones('C', 'Third Leap'),
+    ...leapZones('D', 'Fourth Leap'),
+    ...leapZones('E', 'The Big One'),
     { ...span(GM.start, 0, 1), surface: 'road', wall: 'both', shoulder: 2.5, label: 'Launch Dock' },
     { ...span(GM.finish, 0, 1), surface: 'road', wall: 'both', shoulder: 3, label: 'Finish Dock' },
   ],

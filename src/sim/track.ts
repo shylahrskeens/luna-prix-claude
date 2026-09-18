@@ -272,6 +272,7 @@ export class TrackRuntime {
     out.fwd.x = pr.sample.fwd.x; out.fwd.y = pr.sample.fwd.y; out.fwd.z = pr.sample.fwd.z;
     out.normal.x = pr.sample.up.x; out.normal.y = pr.sample.up.y; out.normal.z = pr.sample.up.z;
     out.covered = zone?.covered ?? false;
+    out.reacquired = pr.reacquired;
     out.onBranch = null;
     out.gap = false;
 
@@ -356,6 +357,7 @@ export class TrackRuntime {
       height: 0, normal: v3(0, 1, 0), surface: 'road', s: 0, u: 0, lat: 0, width: 10,
       outside: 0, onRoad: true, onShoulder: false, outOfBounds: false, wall: false,
       wallSign: 1, gap: false, covered: false, onBranch: null, curvature: 0, fwd: v3(0, 0, 1),
+      reacquired: false,
     };
   }
 
@@ -606,7 +608,7 @@ export class TrackRuntime {
 
 /** Build the ground normal for a banked road, given the spline frame. */
 export function bankedNormal(right: V3, fwd: V3, out: V3 = v3()): V3 {
-  return v3norm(v3cross(right, fwd), out);
+  return v3norm(v3cross(fwd, right), out);
 }
 
 export { v3add, v3sub, lerp };

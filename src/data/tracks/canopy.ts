@@ -29,8 +29,8 @@ const SEGS: RouteSeg[] = [
   // no road here, so the height is invisible — but it holds the spline tangent
   // up at the lip, and that tangent IS the launch. Round the crest off and the
   // kart drops into the water instead of flying over it.
-  { t: 'straight', len: 12, dy: 3.75, w: 14, mark: 'gatorPitA' },
-  { t: 'straight', len: 16, dy: -9, w: 14, mark: 'gatorPitB' },
+  { t: 'straight', len: 10, dy: 3.1, w: 14, mark: 'gatorPitA' },
+  { t: 'straight', len: 12, dy: -8, w: 14, mark: 'gatorPitB' },
   { t: 'straight', len: 34, dy: -2, w: 14, mark: 'gatorLanding' },
   { t: 'turn', angle: 90, radius: 44, bank: 14, w: 12, mark: 'bankedRight' },
   { t: 'straight', len: 65 },

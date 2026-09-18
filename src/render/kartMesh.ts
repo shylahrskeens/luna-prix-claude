@@ -170,7 +170,9 @@ export function buildKart(
     pipe.rotation.x = Math.PI / 2;
     sock.add(pipe);
     const flame = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.85, 6), mats.glow(boostGlow, 0.9));
-    flame.rotation.x = Math.PI / 2;
+    // Point it back down the road: a cone's axis is +Y, and -90 degrees about
+    // X maps that to -Z. The opposite sign fires the flame through the kart.
+    flame.rotation.x = -Math.PI / 2;
     flame.position.z = -0.55;
     flame.visible = false;
     sock.add(flame);

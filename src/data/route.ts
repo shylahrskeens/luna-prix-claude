@@ -38,6 +38,11 @@ export interface RouteOptions {
   width: number;
   /** Control point spacing, metres. */
   spacing?: number;
+  /** A circuit (default) is normalised and closed into a loop. A course — a
+   *  bonus event, a run from A to B — must not be: forcing an open route to
+   *  meet its own start folds the whole thing back onto the origin, and a
+   *  900 metre runway comes out 220 metres long. */
+  closed?: boolean;
 }
 
 export type TrackNodeTuple = [number, number, number, number, number];
@@ -60,10 +65,23 @@ export function buildRouteFull(segs: RouteSeg[], opts: RouteOptions): BuiltRoute
   const spacing = opts.spacing ?? 14;
   const [sx, sy, sz] = opts.start ?? [0, 0, 0];
 
+  //  Turn angles are authored in DEGREES and must be converted explicitly.
+  //
+  //  This used to be implicit: the loop-closing step divided by the sum of the
+  //  turns, and for a circuit authored to sum to exactly 360 that divisor is
+  //  precisely pi/180, so the conversion happened by accident and every closed
+  //  track came out right. An open course has no such sum to normalise
+  //  against, so it took the raw numbers as radians — and a 600 metre runway
+  //  came out 5.7 kilometres long, folded over itself.
+  const DEG = Math.PI / 180;
+  const closed = opts.closed !== false;
   let turnSum = 0;
-  for (const s of segs) if (s.t === 'turn') turnSum += s.angle;
+  for (const s of segs) if (s.t === 'turn') turnSum += s.angle * DEG;
   const sign = turnSum >= 0 ? 1 : -1;
-  const scale = turnSum !== 0 ? (sign * TAU) / turnSum : 1;
+  // A circuit still gets normalised to exactly one revolution, which now
+  // corrects a few tenths of a degree of authoring slop rather than doing the
+  // unit conversion as a side effect.
+  const scale = closed && turnSum !== 0 ? (sign * TAU) / turnSum : 1;
 
   let x = sx, y = sy, z = sz;
   let heading = opts.heading ?? 0;
@@ -94,7 +112,7 @@ export function buildRouteFull(segs: RouteSeg[], opts: RouteOptions): BuiltRoute
         push();
       }
     } else {
-      const angle = seg.angle * scale;
+      const angle = seg.angle * DEG * scale;
       const arc = Math.abs(angle) * seg.radius;
       const steps = Math.max(2, Math.round(arc / spacing));
       const dyStep = (seg.dy ?? 0) / steps;
@@ -116,17 +134,19 @@ export function buildRouteFull(segs: RouteSeg[], opts: RouteOptions): BuiltRoute
     bounds.push({ mark: seg.mark, from: startDist, to: dist });
   }
 
-  // Drop the duplicated closing point, then distribute the closure error.
-  pts.pop();
-  const n = pts.length;
-  const ex = pts[n - 1][0] + (pts[n - 1][0] - pts[n - 2][0]) - sx;
-  const ey = pts[n - 1][1] - sy;
-  const ez = pts[n - 1][2] + (pts[n - 1][2] - pts[n - 2][2]) - sz;
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    pts[i][0] -= ex * t;
-    pts[i][1] -= ey * t;
-    pts[i][2] -= ez * t;
+  if (closed) {
+    // Drop the duplicated closing point, then distribute the closure error.
+    pts.pop();
+    const n = pts.length;
+    const ex = pts[n - 1][0] + (pts[n - 1][0] - pts[n - 2][0]) - sx;
+    const ey = pts[n - 1][1] - sy;
+    const ez = pts[n - 1][2] + (pts[n - 1][2] - pts[n - 2][2]) - sz;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      pts[i][0] -= ex * t;
+      pts[i][1] -= ey * t;
+      pts[i][2] -= ez * t;
+    }
   }
   // Marks must be expressed in the SPLINE's arc length, not the polyline's.
   //
@@ -142,7 +162,7 @@ export function buildRouteFull(segs: RouteSeg[], opts: RouteOptions): BuiltRoute
   const sn: SplineNode[] = pts.map(([x, y, z, w, bankDeg]) => ({
     p: v3(x, y, z), w, bank: (bankDeg * Math.PI) / 180,
   }));
-  const spline = new Spline(sn, true);
+  const spline = new Spline(sn, closed);
   const splineLength = spline.length;
   const total = dist || 1;
 

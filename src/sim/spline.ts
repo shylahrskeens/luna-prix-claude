@@ -48,6 +48,13 @@ export interface ProjectResult {
   outside: number;
   /** Sample at s, reused so callers can avoid a second lookup. */
   sample: SplineSample;
+  /** True when the hint was unusable and a global search ran instead.
+   *
+   *  The arc length that comes back is correct, but it is not continuous with
+   *  the previous one — the hint chain broke and this is the re-acquisition.
+   *  Callers tracking continuous progress must treat it as a re-anchor rather
+   *  than as a racer who teleported. */
+  reacquired: boolean;
 }
 
 const SAMPLE_SPACING = 1.0; // metres between resampled points
@@ -147,10 +154,16 @@ export class Spline {
       const rightFlat = v3norm(v3(fwd.z, 0, -fwd.x));
       const bank = this.banks[i];
       const cb = Math.cos(bank), sb = Math.sin(bank);
-      // Roll the frame about the forward axis by `bank`.
-      const upFlat = v3norm(v3cross(rightFlat, fwd));
+      //  up = fwd x right, NOT right x fwd.
+      //
+      //  With Y up and a right-handed basis, (0,0,1) x (1,0,0) = (0,1,0).
+      //  Reversing the operands gives (0,-1,0) — a surface normal pointing
+      //  into the ground. Every kart was rendered rolled a hundred and eighty
+      //  degrees, every landing was judged against an inverted road, and on a
+      //  low-poly kart that is roughly symmetric it is genuinely hard to see.
+      const upFlat = v3norm(v3cross(fwd, rightFlat));
       const right = v3(rightFlat.x * cb + upFlat.x * sb, rightFlat.y * cb + upFlat.y * sb, rightFlat.z * cb + upFlat.z * sb);
-      const up = v3norm(v3cross(right, fwd));
+      const up = v3norm(v3cross(fwd, right));
       this.fwds.push(fwd);
       this.rights.push(right);
       this.ups.push(up);
@@ -262,6 +275,7 @@ export class Spline {
     const m = this.pts.length;
     let best = -1;
     let bestD2 = Infinity;
+    let reacquired = hintS === undefined;
 
     if (hintS !== undefined) {
       const centre = this.indexAt(hintS);
@@ -282,7 +296,7 @@ export class Spline {
       // failed window's distance means the fallback compares against a value
       // the global minimum can only equal, never beat, so it finds nothing and
       // hands back index -1.
-      if (bestD2 > 90 * 90) { best = -1; bestD2 = Infinity; }
+      if (bestD2 > 90 * 90) { best = -1; bestD2 = Infinity; reacquired = true; }
     }
 
     if (best < 0) {
@@ -323,9 +337,10 @@ export class Spline {
     const s = this.normalizeS(best * this.spacing + clamp(along, -this.spacing, this.spacing));
 
     const r: ProjectResult = out ?? {
-      s: 0, lat: 0, height: 0, w: 0, outside: 0,
+      s: 0, lat: 0, height: 0, w: 0, outside: 0, reacquired: false,
       sample: { s: 0, pos: v3(), fwd: v3(), right: v3(), up: v3(), w: 0, bank: 0, curvature: 0 },
     };
+    r.reacquired = reacquired;
     const sm = this.sample(s, r.sample);
     const dx = p.x - sm.pos.x, dy = p.y - sm.pos.y, dz = p.z - sm.pos.z;
     r.s = s;

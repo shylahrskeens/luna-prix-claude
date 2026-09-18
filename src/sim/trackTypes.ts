@@ -190,4 +190,7 @@ export interface GroundInfo {
   curvature: number;
   /** Forward direction of the road under the kart. */
   fwd: V3;
+  /** The projection had to re-acquire from scratch this frame, so `s` is
+   *  correct but discontinuous with the previous reading. */
+  reacquired: boolean;
 }

@@ -223,7 +223,10 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
       shoulder: z?.shoulder ?? track.def.shoulder,
     };
   };
-  const main = buildRibbon(mainSample, L, true, mainSurface, theme, { verge: 2.2, camber: 0.32, thickness: 1.2 });
+  const main = buildRibbon(
+    mainSample, L, track.def.closed !== false, mainSurface, theme,
+    { verge: 2.2, camber: 0.32, thickness: 1.2 },
+  );
   group.add(new THREE.Mesh(main.road, vertexMat));
   group.add(new THREE.Mesh(main.kerbs, vertexMat));
 

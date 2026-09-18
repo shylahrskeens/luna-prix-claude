@@ -24,6 +24,8 @@ import { buildKart, seatAxie, updateKart, LIVERY, type KartRig } from '../render
 import { ParticleSystem, SpeedLines } from '../render/vfx';
 import { ChaseCamera, COMFORT_CAMERA, DEFAULT_CAMERA } from '../render/chaseCamera';
 import { audio } from '../audio/audio';
+import { reconcile } from '../net/ws';
+import type { LobbyMember, NetworkAdapter } from '../net/adapter';
 import { clamp, clamp01, damp, hashString } from '../core/math';
 import type { Profile } from '../persist/store';
 import type { InputManager } from '../ui/input';
@@ -41,6 +43,15 @@ export interface RaceSetup {
   difficulty: number;
   /** Time trial and bonus events run with no rivals. */
   soloGhost?: boolean;
+  /** Server-run race: the field, in the server's own ids.
+   *
+   *  The client MUST build its racers with the ids the server uses, or every
+   *  snapshot arrives describing racers this client has never heard of and is
+   *  silently discarded — the race looks like it is working right up until you
+   *  notice nobody is ever corrected. */
+  members?: LobbyMember[];
+  /** Which of those members is us. */
+  localId?: string;
 }
 
 export interface RaceViewEvents {
@@ -78,6 +89,15 @@ export class RaceView {
    *  menus and by the capture tooling; never enabled during a real race. */
   autopilot = false;
   private autoDriver: BotDriver | null = null;
+
+  /** When set, the server owns race truth: this client sends inputs, predicts
+   *  locally so steering stays instant, and is corrected from snapshots. */
+  net: NetworkAdapter | null = null;
+  private netTick = 0;
+  private lastSnapT = -1;
+  /** Largest correction applied this race, in metres — surfaced in the HUD as
+   *  connection quality rather than hidden. */
+  worstCorrection = 0;
 
   constructor(
     ctx: RenderContext,
@@ -122,7 +142,7 @@ export class RaceView {
       budget: modeRules.statBudget,
       normalize: modeRules.ranked,
     });
-    const player = this.core.addRacer(profile.playerId, profile.alias, playerLoadout, {
+    const player = this.core.addRacer(setup.localId ?? profile.playerId, profile.alias, playerLoadout, {
       isPlayer: true, colorIndex: 0,
     });
     player.kart.assists = modeRules.assistsAllowed
@@ -131,7 +151,31 @@ export class RaceView {
     this.addRig(player, playerLoadout, null);
 
     // ---- rivals -----------------------------------------------------------
-    if (!setup.soloGhost) {
+    if (setup.members && setup.members.length) {
+      // Server-run field: ids, Axies and karts all come from the server.
+      let color = 1;
+      for (const m of setup.members) {
+        if (m.id === setup.localId) continue;
+        const lo = resolveLoadout(axieById(m.axieId), kartById(m.kartId), profile.parts as LoadoutParts, {
+          playerId: m.id,
+          budget: modeRules.statBudget,
+          normalize: modeRules.ranked,
+        });
+        const racer = this.core.addRacer(m.id, m.name, lo, {
+          isBot: m.isBot, skill: 0.85, colorIndex: color,
+        });
+        // Only bots get a local driver. A remote human's kart is moved by the
+        // server's snapshots; giving it an AI as well would fight them.
+        if (m.isBot) {
+          const p = RIVALS[(color - 1) % RIVALS.length];
+          const bot = new BotDriver(racer, p, this.track, hashString(`${setup.seed}:${m.id}`));
+          bot.difficulty = setup.difficulty;
+          this.bots.set(racer.id, bot);
+        }
+        this.addRig(racer, lo, LIVERY[color % LIVERY.length]);
+        color++;
+      }
+    } else if (!setup.soloGhost) {
       for (let i = 1; i < setup.fieldSize; i++) {
         const p = RIVALS[(i - 1) % RIVALS.length];
         // Rivals get a deterministic but varied pairing from the race seed, so
@@ -232,6 +276,13 @@ export class RaceView {
     core.applyCatchUp();
     core.step(dt, this.inputs);
 
+    if (this.net) {
+      this.netTick++;
+      const mine = this.inputs.get(player?.id ?? '');
+      if (mine) this.net.sendInput(this.netTick, mine);
+      this.applySnapshot(dt);
+    }
+
     for (const e of core.events) this.events.onRaceEvent?.(e);
     for (const r of core.racers) {
       for (const e of r.kart.events) {
@@ -240,6 +291,35 @@ export class RaceView {
       }
     }
     if (core.phase === 'complete') this.events.onComplete?.();
+  }
+
+  /** Fold the latest authoritative snapshot into the predicted race.
+   *
+   *  Remote karts are placed from the server outright — there is nothing local
+   *  worth preserving about them. The local kart is blended, so the steering a
+   *  player feels stays theirs and only the disagreement is corrected.
+   */
+  private applySnapshot(dt: number): void {
+    const snap = this.net?.latestSnapshot();
+    if (!snap || snap.t === this.lastSnapT) return;
+    this.lastSnapT = snap.t;
+    const localId = this.core.player?.id;
+    for (const r of snap.racers) {
+      const racer = this.core.racers.find((x) => x.id === r.id);
+      if (!racer) continue;
+      if (racer.id === localId) {
+        const before = racer.kart.snapshot();
+        const err = Math.hypot(r.s[0] - before[0], r.s[1] - before[1], r.s[2] - before[2]);
+        this.worstCorrection = Math.max(this.worstCorrection, err);
+        racer.kart.applySnapshot(reconcile(before, r.s, dt));
+      } else {
+        racer.kart.applySnapshot(r.s);
+      }
+      // Progress is the server's, always. It is the number that decides the
+      // race, so a client never gets to hold an opinion about it.
+      racer.progress.raw = r.p;
+      racer.progress.position = r.pos;
+    }
   }
 
   private resetKey = 'KeyR';

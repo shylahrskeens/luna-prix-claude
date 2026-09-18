@@ -23,7 +23,8 @@ import type { BonusScore } from '../game/bonusRun';
 
 export type ScreenName =
   | 'home' | 'axie' | 'garage' | 'shop' | 'trackSelect' | 'results'
-  | 'boards' | 'settings' | 'bonusSelect' | 'bonusResults' | 'controls';
+  | 'boards' | 'settings' | 'bonusSelect' | 'bonusResults' | 'controls'
+  | 'multiplayer';
 
 export interface AppApi {
   profile: Profile;
@@ -32,6 +33,18 @@ export interface AppApi {
   back(): void;
   startRace(mode: Mode, trackId: string): void;
   startBonus(eventId: string): void;
+  /** Multiplayer: connect, join, ready up, and race what the server runs. */
+  net: {
+    url: string | null;
+    setUrl(url: string | null): void;
+    status(): string;
+    lobby(): import('../net/adapter').LobbyState | null;
+    connectAndJoin(trackId: string, mode: Mode): Promise<void>;
+    setReady(ready: boolean): void;
+    leave(): void;
+    onChange(fn: () => void): () => void;
+    lastError: string | null;
+  };
   device: Device;
   showcase(on: boolean): void;
   sfx(kind: string, value?: number): void;
@@ -138,6 +151,7 @@ export function homeScreen(app: AppApi): HTMLElement {
           bigButton('Ranked', 'Normalised loadouts. Rating moves.', '', () => app.go('trackSelect', { mode: 'ranked' })),
           bigButton('Time Trial', 'Alone against the clock', '', () => app.go('trackSelect', { mode: 'timeTrial' })),
           bigButton('Bonus Events', 'Mega Ramp and Gator Gauntlet', '', () => app.go('bonusSelect')),
+          bigButton('Multiplayer', app.net.url ? `Server: ${app.net.status()}` : 'Offline — point it at a race server', '', () => app.go('multiplayer')),
         ),
         el('div', { class: 'row' },
           el('button', { class: 'ghost', onClick: () => { app.sfx('uiSelect'); app.go('garage'); } }, 'Garage'),
@@ -714,6 +728,146 @@ export function bonusResultsScreen(app: AppApi, params: Record<string, unknown>)
       ),
     ),
   );
+}
+
+// ---------------------------------------------------------------------------
+// multiplayer
+// ---------------------------------------------------------------------------
+
+export function multiplayerScreen(app: AppApi): HTMLElement {
+  const p = app.profile;
+  const host = el('div', { class: 'body' });
+  let trackId = p.unlockedTracks[p.unlockedTracks.length - 1] ?? 'canopy';
+  let mode: Mode = 'quickRace';
+  let off: (() => void) | null = null;
+
+  const render = () => {
+    const lobby = app.net.lobby();
+    const connected = app.net.url !== null;
+
+    const urlRow = el('div', { class: 'panel' },
+      el('h3', { text: 'Server' }),
+      el('div', { class: 'hint', style: 'margin:6px 0 10px' },
+        'Luna Prix races offline by default. Point it at a race server and the ',
+        'server runs the race: it owns lap counting, checkpoints, loadout ',
+        'validation and the published result. Nothing about that changes how ',
+        'the game plays — it changes where the truth lives.'),
+      el('input', {
+        type: 'text',
+        value: app.net.url ?? '',
+        placeholder: 'ws://localhost:8787',
+        onChange: (e: Event) => {
+          const v = (e.target as HTMLInputElement).value.trim();
+          app.net.setUrl(v || null);
+          app.go('multiplayer');
+        },
+      }),
+      el('div', { class: 'row', style: 'margin-top:10px' },
+        chip('Status', app.net.status(), connected),
+        lobby ? chip('Room', lobby.roomId) : null,
+      ),
+      app.net.lastError
+        ? el('div', { class: 'hint', style: 'margin-top:8px;color:var(--warm)', text: app.net.lastError })
+        : null,
+      !connected
+        ? el('div', { class: 'hint', style: 'margin-top:10px' },
+            'No server configured, so everything here is offline practice against ',
+            'bots on this device — and it is labelled that way wherever it appears. ',
+            'Run ', el('span', { class: 'mono', text: 'npm run server' }), ' and paste the address above.')
+        : null,
+    );
+
+    const setup = el('div', { class: 'panel' },
+      el('h3', { text: 'Race' }),
+      el('div', { class: 'row', style: 'margin-top:10px' },
+        ...TRACKS.filter((t) => p.unlockedTracks.includes(t.id) || !t.unlock).map((t) =>
+          el('button', {
+            class: t.id === trackId ? 'primary' : 'ghost',
+            style: 'padding:8px 12px;min-height:38px;font-size:13px',
+            onClick: () => { trackId = t.id; app.sfx('uiMove'); render(); },
+          }, t.name)),
+      ),
+      el('div', { class: 'row', style: 'margin-top:8px' },
+        ...(['quickRace', 'ranked'] as Mode[]).map((m) =>
+          el('button', {
+            class: m === mode ? 'primary' : 'ghost',
+            style: 'padding:8px 12px;min-height:38px;font-size:13px',
+            onClick: () => { mode = m; app.sfx('uiMove'); render(); },
+          }, MODE_RULES[m].label)),
+      ),
+      el('div', { class: 'row', style: 'margin-top:12px' },
+        el('button', {
+          class: 'primary big',
+          disabled: !connected,
+          onClick: async () => {
+            app.sfx('uiSelect');
+            await app.net.connectAndJoin(trackId, mode);
+            render();
+          },
+        }, lobby ? 'Rejoin' : 'Join a room'),
+        lobby ? el('button', {
+          onClick: () => {
+            const me = lobby.members.find((x) => x.isLocal);
+            app.net.setReady(!me?.ready);
+            app.sfx('uiSelect');
+          },
+        }, lobby.members.find((x) => x.isLocal)?.ready ? 'Not ready' : 'Ready') : null,
+        lobby ? el('button', { class: 'ghost', onClick: () => { app.net.leave(); app.go('multiplayer'); } }, 'Leave') : null,
+      ),
+    );
+
+    const lobbyPanel = lobby
+      ? el('div', { class: 'panel' },
+          el('h3', { text: lobby.countdown !== null ? `Starting in ${lobby.countdown}s` : 'Waiting for the room' }),
+          el('table', { class: 'results', style: 'margin-top:8px' },
+            el('thead', null, el('tr', null,
+              el('th', { text: 'Racer' }), el('th', { text: 'Axie' }),
+              el('th', { text: 'Kart' }), el('th', { class: 'num', text: 'Ping' }),
+              el('th', { text: 'Ready' }),
+            )),
+            el('tbody', null, ...lobby.members.map((m) => el('tr', { class: m.isLocal ? 'me' : '' },
+              el('td', null, m.name, m.isBot ? el('span', { class: 'dnf', text: '  bot' }) : null),
+              el('td', { text: AXIES.find((a) => a.id === m.axieId)?.name ?? '—' }),
+              el('td', { text: KARTS.find((k) => k.id === m.kartId)?.name ?? '—' }),
+              el('td', { class: 'num mono', text: m.ping === null ? '—' : `${m.ping}` }),
+              el('td', { text: m.ready ? 'yes' : '—' }),
+            ))),
+          ),
+          el('div', { class: 'hint', style: 'margin-top:10px', text: `${lobby.members.length}/${lobby.capacity} in the room. Empty grid slots are filled with bots, and bots are labelled.` }),
+        )
+      : null;
+
+    mount(host,
+      el('div', { class: 'col grow scroll' }, urlRow, setup, lobbyPanel),
+      el('div', { class: 'col', style: 'width:min(320px,100%)' },
+        el('div', { class: 'panel' },
+          el('h3', { text: 'What the server owns' }),
+          el('div', { style: 'margin-top:8px' },
+            kv('Race clock', 'server'),
+            kv('Checkpoints and laps', 'server'),
+            kv('Respawn validity', 'server'),
+            kv('Loadout validation', 'server'),
+            kv('Finish order', 'server'),
+            kv('Published result', 'server'),
+            kv('Your steering', 'predicted here'),
+          ),
+          el('div', { class: 'hint', style: 'margin-top:10px', text: 'Your stat block is a claim. The server recomputes it from part ids against its own rules version, and clamps every input on arrival.' }),
+        ),
+      ),
+    );
+  };
+
+  off = app.net.onChange(render);
+  render();
+  const node = el('div', { class: 'screen' }, topbar(app, 'Multiplayer', 'home'), host);
+  // Stop listening when the screen is replaced.
+  const observer = new MutationObserver(() => {
+    if (!node.isConnected) { off?.(); observer.disconnect(); }
+  });
+  queueMicrotask(() => {
+    if (node.parentElement) observer.observe(node.parentElement, { childList: true });
+  });
+  return node;
 }
 
 // ---------------------------------------------------------------------------

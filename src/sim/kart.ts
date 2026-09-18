@@ -595,8 +595,14 @@ export class KartRuntime {
       // the right edge (lat > 0) pushes back along -right.
       const nx = g.lat > 0 ? -g.fwd.z : g.fwd.z;
       const nz = g.lat > 0 ? g.fwd.x : -g.fwd.x;
-      this.pos.x += nx * g.outside;
-      this.pos.z += nz * g.outside;
+      //  Clamp the correction. A barrier nudges a kart back onto the road; it
+      //  does not catapult one that is seventy metres into the scenery back
+      //  across the track in a single step. An unbounded push moves the kart
+      //  far enough that its lap progress jumps, and the race core correctly
+      //  reads that as a teleport and flags an honest racer.
+      const push = Math.min(g.outside, 0.6);
+      this.pos.x += nx * push;
+      this.pos.z += nz * push;
       const into = this.vel.x * -nx + this.vel.z * -nz;
       if (into > 0) {
         const grazing = clamp01(into / Math.max(this.speed, 1));
@@ -646,6 +652,11 @@ export class KartRuntime {
   /** Place the kart after a respawn. Called by the race core, which owns the
    *  checkpoint the kart is entitled to. */
   placeAt(pos: V3, yaw: number, speed = 5): void {
+    //  Drop the projection hint. It still points at wherever this kart was
+    //  when it went off, and the next projection would search a window around
+    //  THAT, land on a point seventy metres from where the kart now is, and
+    //  hand the race core a lap-progress jump it correctly reads as a teleport.
+    this.sHint = undefined;
     this.pos = { ...pos };
     this.yaw = yaw;
     this.pitch = 0;

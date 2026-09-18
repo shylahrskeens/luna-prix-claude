@@ -17,7 +17,7 @@ import { el, mount, clear } from './ui/dom';
 import {
   homeScreen, axieScreen, garageScreen, shopScreen, trackSelectScreen,
   resultsScreen, boardsScreen, settingsScreen, bonusSelectScreen,
-  bonusResultsScreen, pauseOverlay,
+  bonusResultsScreen, multiplayerScreen, pauseOverlay,
   type AppApi, type ScreenName, type ResultsParams, type BonusResultParams,
 } from './ui/screens';
 import { loadProfile, saveProfile, submitRecord, submitBonus, type Profile } from './persist/store';
@@ -26,6 +26,12 @@ import { MODE_RULES, ratingDelta, divisionFor, type Mode } from './data/rules';
 import { trackById, TRACKS } from './data/tracks/index';
 import { bonusById, medalFor } from './data/bonus';
 import { formatTime } from './core/math';
+import { LocalAdapter } from './net/local';
+import { WsAdapter } from './net/ws';
+import { serverUrl, type LobbyMember, type LobbyState, type NetworkAdapter } from './net/adapter';
+import { resolveLoadout, type LoadoutParts } from './sim/loadout';
+import { axieById } from './data/axies';
+import { kartById } from './data/karts';
 
 type Mode_ = Mode;
 
@@ -88,6 +94,7 @@ class App implements AppApi {
       if (document.hidden && this.race && !this.pause) this.togglePause(true);
     });
 
+    this.initNet();
     this.go('home');
     document.getElementById('loading')?.remove();
 
@@ -224,9 +231,121 @@ class App implements AppApi {
       case 'settings': node = settingsScreen(this); break;
       case 'bonusSelect': node = bonusSelectScreen(this); break;
       case 'bonusResults': node = bonusResultsScreen(this, params); break;
+      case 'multiplayer': node = multiplayerScreen(this); break;
       default: node = homeScreen(this); break;
     }
     mount(this.screens, node);
+  }
+
+  // ---- multiplayer -------------------------------------------------------
+
+  private adapter: NetworkAdapter = new LocalAdapter();
+  private netUrl: string | null = null;
+  private netLobby: LobbyState | null = null;
+  private netError: string | null = null;
+  private netFns: (() => void)[] = [];
+  private netOff: (() => void)[] = [];
+  private pendingNetStart = false;
+
+  private initNet(): void {
+    const stored = (() => {
+      try { return localStorage.getItem('lunaprix.server'); } catch { return null; }
+    })();
+    this.netUrl = serverUrl() ?? stored;
+    this.rebuildAdapter();
+  }
+
+  private rebuildAdapter(): void {
+    for (const off of this.netOff) off();
+    this.netOff = [];
+    this.adapter.disconnect();
+    this.adapter = this.netUrl ? new WsAdapter(this.netUrl) : new LocalAdapter();
+    this.netOff.push(this.adapter.onLobby((l) => { this.netLobby = l; this.netChanged(); }));
+    this.netOff.push(this.adapter.onError((m) => { this.netError = m; this.netChanged(); }));
+    this.netOff.push(this.adapter.onStart((info) => this.startNetRace(info)));
+    this.netLobby = null;
+    this.netError = null;
+    this.netChanged();
+  }
+
+  private netChanged(): void {
+    for (const f of this.netFns) f();
+  }
+
+  get net(): AppApi['net'] {
+    return {
+      url: this.netUrl,
+      setUrl: (url: string | null) => {
+        this.netUrl = url;
+        try {
+          if (url) localStorage.setItem('lunaprix.server', url);
+          else localStorage.removeItem('lunaprix.server');
+        } catch { /* storage blocked: the session still works */ }
+        this.rebuildAdapter();
+      },
+      status: () => this.adapter.statusText,
+      lobby: () => this.netLobby,
+      connectAndJoin: async (trackId: string, mode: Mode) => {
+        this.netError = null;
+        const p = this.profile;
+        const lo = resolveLoadout(axieById(p.axieId), kartById(p.kartId), p.parts as LoadoutParts, {
+          playerId: p.playerId,
+          budget: MODE_RULES[mode].statBudget,
+          normalize: MODE_RULES[mode].ranked,
+        });
+        try {
+          await this.adapter.connect();
+          this.netLobby = await this.adapter.joinRoom({
+            trackId, mode, laps: MODE_RULES[mode].laps, name: p.alias, loadout: lo,
+          });
+          this.pendingNetStart = true;
+        } catch (err) {
+          this.netError = `Could not join: ${(err as Error).message}`;
+        }
+        this.netChanged();
+      },
+      setReady: (ready: boolean) => this.adapter.setReady(ready),
+      leave: () => { this.adapter.leaveRoom(); this.netLobby = null; this.pendingNetStart = false; this.netChanged(); },
+      onChange: (fn: () => void) => {
+        this.netFns.push(fn);
+        return () => { this.netFns = this.netFns.filter((f) => f !== fn); };
+      },
+      lastError: this.netError,
+    };
+  }
+
+  /** The server said go. Build the race and hand truth over to it. */
+  private startNetRace(info: { seed: number; startAt: number; members: LobbyMember[] }): void {
+    if (!this.pendingNetStart || !this.netLobby) return;
+    this.pendingNetStart = false;
+    const lobby = this.netLobby;
+    this.endRace();
+    clear(this.screens);
+    this.screens.classList.remove('interactive');
+    this.input.uiCaptured = false;
+    this.showcase(false);
+    audio.menuMusic(false);
+
+    const view = new RaceView(this.ctx, {
+      trackId: lobby.trackId,
+      mode: lobby.mode,
+      laps: lobby.laps,
+      fieldSize: Math.max(2, info.members.length),
+      seed: info.seed,
+      difficulty: 1,
+      members: info.members,
+      localId: (this.adapter as WsAdapter).localId,
+    }, this.profile, this.input, {
+      onRaceEvent: (e) => this.onRaceEvent(e),
+      onComplete: () => this.finishRace(),
+    });
+    view.net = this.adapter;
+    view.setResetKey(this.profile.settings.keybinds.reset);
+    this.race = view;
+    this.hud.prepare(view.track);
+    this.hud.setVisible(true);
+    this.touch.setVisible(isTouchDevice());
+    this.hud.toast('Server race', 1.6);
   }
 
   // ---- race lifecycle ----------------------------------------------------
