@@ -150,8 +150,11 @@ off-road, and any integrity flag.
 
 ## Known limits
 
-- Frame rate has been measured on this machine only. The quality tier steps
-  itself down once if the first three seconds of a race will not hold up.
+- **Frame rate on a GPU is unmeasured.** CPU cost per frame is 0.5 ms median
+  with eight karts and full effects, but the capture environment never presents
+  a frame, so that is a floor and not a frame rate. See
+  `docs/evidence/performance.md`. The quality tier measures its own frame time
+  on the player's hardware and steps down once if it will not hold.
 - The rank ladder and every leaderboard are local to the browser profile. The
   server can publish authoritative results; nothing hosted is running.
 - Axie art is procedural and original. The three drivers are named for the
