@@ -13,14 +13,16 @@ const DT = 1 / 120;
 const trackId = process.argv[2] ?? 'canopy';
 const watchName = process.argv[3] ?? 'Cinder';
 const track = new TrackRuntime(trackById(trackId));
-const core = new RaceCore(track, RaceCore.configFor('quickRace', trackId, 3, 7));
+const seed = Number(process.argv[4] ?? 7);
+const core = new RaceCore(track, RaceCore.configFor('quickRace', trackId, 3, seed));
 const bots: BotDriver[] = [];
 for (let i = 0; i < 8; i++) {
   const lo = resolveLoadout(AXIES[i % 3], KARTS[(i + 1) % 3], defaultParts(), { playerId: `bot${i}`, budget: MODE_RULES.quickRace.statBudget });
   const r = core.addRacer(`bot${i}`, RIVALS[i % RIVALS.length].name, lo, { isBot: true });
-  bots.push(new BotDriver(r, RIVALS[i % RIVALS.length], track, 7 * 31 + i));
+  bots.push(new BotDriver(r, RIVALS[i % RIVALS.length], track, seed * 31 + i));
 }
-const watch = core.racers.find((r) => r.name === watchName)!;
+// Pick the racer that ends up last if no name is given.
+const watch = core.racers.find((r) => r.name === watchName) ?? core.racers[core.racers.length - 1];
 const watchBot = bots.find((b) => b.racer === watch)!;
 const inputs = new Map<string, KartInput>();
 let t = 0;
@@ -30,6 +32,7 @@ let lastLog = -1;
 while (core.phase !== 'complete' && t < 400) {
   inputs.clear();
   for (const b of bots) inputs.set(b.racer.id, b.think(DT, core));
+  core.applyCatchUp();
   core.step(DT, inputs);
   const k = watch.kart;
   const g = watch.ground;

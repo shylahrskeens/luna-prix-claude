@@ -1,0 +1,477 @@
+/** RaceView — the running race: simulation, rendering, effects and audio.
+ *
+ *  The simulation runs on a fixed 120 Hz step inside an accumulator, so the
+ *  physics is frame-rate independent and a race replays identically from the
+ *  same seed and inputs regardless of the machine it runs on. Rendering reads
+ *  the simulation; it never writes to it.
+ */
+import * as THREE from 'three';
+import { TrackRuntime } from '../sim/track';
+import { RaceCore, type RaceConfig, type RaceEvent, type Racer } from '../sim/race';
+import { BotDriver, RIVALS } from '../sim/ai';
+import { resolveLoadout, type LoadoutParts, type ValidatedLoadout } from '../sim/loadout';
+import { NEUTRAL_INPUT, type KartEvent, type KartInput } from '../sim/kart';
+import { MODE_RULES, type Mode } from '../data/rules';
+import { AXIES, axieById } from '../data/axies';
+import { KARTS, kartById } from '../data/karts';
+import { trackById } from '../data/tracks/index';
+import { SURFACE } from '../sim/trackTypes';
+import { RenderContext } from '../render/scene';
+import { buildTrackMesh, animateTrack, type TrackVisual } from '../render/trackMesh';
+import { buildScenery } from '../render/scenery';
+import { buildHazards, updateHazards, type HazardVisual } from '../render/hazardMesh';
+import { buildKart, seatAxie, updateKart, LIVERY, type KartRig } from '../render/kartMesh';
+import { ParticleSystem, SpeedLines } from '../render/vfx';
+import { ChaseCamera, COMFORT_CAMERA, DEFAULT_CAMERA } from '../render/chaseCamera';
+import { audio } from '../audio/audio';
+import { clamp, clamp01, damp, hashString } from '../core/math';
+import type { Profile } from '../persist/store';
+import type { InputManager } from '../ui/input';
+
+const STEP = 1 / 120;
+const MAX_FRAME = 0.25;
+
+export interface RaceSetup {
+  trackId: string;
+  mode: Mode;
+  laps: number;
+  fieldSize: number;
+  seed: number;
+  /** 0.6..1.15 — scales every bot's skill. */
+  difficulty: number;
+  /** Time trial and bonus events run with no rivals. */
+  soloGhost?: boolean;
+}
+
+export interface RaceViewEvents {
+  onRaceEvent?: (e: RaceEvent) => void;
+  onKartEvent?: (racer: Racer, e: KartEvent) => void;
+  onComplete?: () => void;
+}
+
+export class RaceView {
+  readonly ctx: RenderContext;
+  readonly track: TrackRuntime;
+  readonly core: RaceCore;
+  readonly setup: RaceSetup;
+  private bots = new Map<string, BotDriver>();
+  private rigs = new Map<string, KartRig>();
+  private trackVis: TrackVisual;
+  private scenery: THREE.Group;
+  private hazardVis: HazardVisual;
+  private particles: ParticleSystem;
+  private speedLines: SpeedLines;
+  private camera = new ChaseCamera();
+  private accumulator = 0;
+  private inputs = new Map<string, KartInput>();
+  private shake = 0;
+  private lastInput: KartInput = { ...NEUTRAL_INPUT };
+  private respawnFade = new Map<string, number>();
+  private events: RaceViewEvents;
+  private root = new THREE.Group();
+  /** Wall-clock seconds since the view started, for effect phases. */
+  private clock = 0;
+  paused = false;
+  /** Set while the player is watching the post-race camera. */
+  cinematic = false;
+  /** Drives the player's kart with the bot AI. Used by the attract loop on the
+   *  menus and by the capture tooling; never enabled during a real race. */
+  autopilot = false;
+  private autoDriver: BotDriver | null = null;
+
+  constructor(
+    ctx: RenderContext,
+    setup: RaceSetup,
+    profile: Profile,
+    private input: InputManager,
+    events: RaceViewEvents = {},
+  ) {
+    this.ctx = ctx;
+    this.setup = setup;
+    this.events = events;
+
+    const def = trackById(setup.trackId);
+    this.track = new TrackRuntime(def);
+    const cfg: RaceConfig = RaceCore.configFor(setup.mode, setup.trackId, setup.laps, setup.seed);
+    this.core = new RaceCore(this.track, cfg);
+
+    ctx.applyTheme(def.theme);
+    ctx.scene.add(this.root);
+
+    this.trackVis = buildTrackMesh(this.track, ctx.materials);
+    this.root.add(this.trackVis.group);
+    this.scenery = buildScenery(this.track, ctx.materials, ctx.quality.sceneryDensity);
+    this.root.add(this.scenery);
+    this.hazardVis = buildHazards(this.track, ctx.materials);
+    this.root.add(this.hazardVis.group);
+
+    this.particles = new ParticleSystem(ctx.quality.particleBudget);
+    this.root.add(this.particles.mesh);
+    this.speedLines = new SpeedLines();
+    ctx.camera.add(this.speedLines.group);
+    ctx.scene.add(ctx.camera);
+
+    this.camera.settings = profile.settings.comfort ? { ...COMFORT_CAMERA } : { ...DEFAULT_CAMERA };
+
+    // ---- the player -------------------------------------------------------
+    const modeRules = MODE_RULES[setup.mode];
+    const axie = axieById(profile.axieId);
+    const kart = kartById(profile.kartId);
+    const playerLoadout = resolveLoadout(axie, kart, profile.parts as LoadoutParts, {
+      playerId: profile.playerId,
+      budget: modeRules.statBudget,
+      normalize: modeRules.ranked,
+    });
+    const player = this.core.addRacer(profile.playerId, profile.alias, playerLoadout, {
+      isPlayer: true, colorIndex: 0,
+    });
+    player.kart.assists = modeRules.assistsAllowed
+      ? profile.settings.assists
+      : { autoAccel: false, steerAssist: false, recoveryAssist: false };
+    this.addRig(player, playerLoadout, null);
+
+    // ---- rivals -----------------------------------------------------------
+    if (!setup.soloGhost) {
+      for (let i = 1; i < setup.fieldSize; i++) {
+        const p = RIVALS[(i - 1) % RIVALS.length];
+        // Rivals get a deterministic but varied pairing from the race seed, so
+        // a field is never the same three karts in the same three colours.
+        // `>>>` not `>>`: hashString returns a full unsigned 32-bit value, and a
+        // signed shift turns anything above 2^31 negative, which indexes off
+        // the front of the array and hands the resolver an undefined kart.
+        const pick = hashString(`${setup.seed}:${p.name}`);
+        const rAxie = AXIES[pick % AXIES.length];
+        const rKart = KARTS[(pick >>> 3) % KARTS.length];
+        const lo = resolveLoadout(rAxie, rKart, profile.parts as LoadoutParts, {
+          playerId: `bot-${i}`,
+          budget: modeRules.statBudget,
+          normalize: modeRules.ranked,
+        });
+        const racer = this.core.addRacer(`bot-${i}`, p.name, lo, {
+          isBot: true, skill: p.skill, colorIndex: i,
+        });
+        const bot = new BotDriver(racer, p, this.track, hashString(`${setup.seed}:${i}`));
+        bot.difficulty = setup.difficulty;
+        this.bots.set(racer.id, bot);
+        this.addRig(racer, lo, LIVERY[i % LIVERY.length]);
+      }
+    }
+
+    // Place every kart on its grid slot and point the camera at the player.
+    for (const r of this.core.racers) {
+      const slot = this.track.gridSlot(this.core.racers.indexOf(r));
+      r.kart.reset(slot.pos, slot.yaw);
+      r.kart.mode = 'frozen';
+      this.track.ground(r.kart.pos, undefined, r.ground);
+      this.respawnFade.set(r.id, 1);
+    }
+    const p0 = this.core.player!;
+    this.camera.reset(p0.kart.pos.x, p0.kart.pos.y, p0.kart.pos.z, p0.kart.yaw);
+
+    audio.startRace(def.theme.scenery);
+  }
+
+  private addRig(racer: Racer, loadout: ValidatedLoadout, livery: string | null): void {
+    const kart = kartById(loadout.kartId);
+    const rig = buildKart(kart, this.ctx.materials, {
+      parts: loadout.parts,
+      livery: livery ?? undefined,
+    });
+    seatAxie(rig, axieById(loadout.axieId), this.ctx.materials);
+    this.root.add(rig.root);
+    this.rigs.set(racer.id, rig);
+  }
+
+  get player(): Racer {
+    return this.core.player!;
+  }
+
+  /** Advance one rendered frame. */
+  update(dtRaw: number): void {
+    const dt = Math.min(dtRaw, MAX_FRAME);
+    this.clock += dt;
+
+    if (!this.paused) {
+      this.accumulator += dt;
+      let steps = 0;
+      while (this.accumulator >= STEP && steps < 12) {
+        this.simulate(STEP);
+        this.accumulator -= STEP;
+        steps++;
+      }
+      // If we fell far behind (a tab that was backgrounded), drop the debt
+      // rather than spiral: a race must never fast-forward itself.
+      if (this.accumulator > STEP * 12) this.accumulator = 0;
+    }
+
+    this.render(dt);
+  }
+
+  private simulate(dt: number): void {
+    const core = this.core;
+    this.inputs.clear();
+
+    const player = core.player;
+    if (player) {
+      if (this.autopilot && !this.autoDriver) {
+        this.autoDriver = new BotDriver(player, RIVALS[0], this.track, 1234);
+      }
+      const raw = this.cinematic || player.progress.finished
+        ? NEUTRAL_INPUT
+        : this.autopilot && this.autoDriver
+          ? this.autoDriver.think(dt, core)
+          : this.input.read();
+      this.lastInput = raw;
+      this.inputs.set(player.id, raw);
+      if (this.input.isDown(this.resetKey) && player.kart.mode === 'driving') {
+        player.kart.triggerRespawn();
+      }
+    }
+    for (const [id, bot] of this.bots) this.inputs.set(id, bot.think(dt, core));
+
+    core.applyCatchUp();
+    core.step(dt, this.inputs);
+
+    for (const e of core.events) this.events.onRaceEvent?.(e);
+    for (const r of core.racers) {
+      for (const e of r.kart.events) {
+        this.onKartEvent(r, e);
+        this.events.onKartEvent?.(r, e);
+      }
+    }
+    if (core.phase === 'complete') this.events.onComplete?.();
+  }
+
+  private resetKey = 'KeyR';
+  setResetKey(code: string): void {
+    this.resetKey = code;
+  }
+
+  private onKartEvent(r: Racer, e: KartEvent): void {
+    const isPlayer = r.isPlayer;
+    const k = r.kart;
+    const surf = SURFACE[r.ground.surface];
+
+    switch (e.kind) {
+      case 'driftTier':
+        this.particles.emit({
+          x: e.pos.x, y: e.pos.y + 0.2, z: e.pos.z,
+          color: ['#ffffff', '#5fb0ff', '#ffa63d', '#c79bff'][Math.min(3, e.value)],
+          count: 12, speed: 2.6, life: 0.45, size: 0.30, spread: 1.2, gravity: -3,
+        });
+        if (isPlayer) audio.sfx('driftTier', e.value);
+        break;
+      case 'boostStart':
+        this.particles.emit({
+          x: e.pos.x, y: e.pos.y + 0.3, z: e.pos.z,
+          color: '#ffd166', count: 18, speed: 5.5, life: 0.55, size: 0.42, spread: 1.4, grow: 1.4,
+        });
+        if (isPlayer) { audio.sfx('boostStart'); this.shake = Math.max(this.shake, 0.45); }
+        break;
+      case 'padHit': if (isPlayer) audio.sfx('padHit'); break;
+      case 'hop': if (isPlayer) audio.sfx('hop'); break;
+      case 'land':
+        this.particles.emit({
+          x: e.pos.x, y: e.pos.y - 0.2, z: e.pos.z,
+          color: surf.dust, count: 10, speed: 3.2, life: 0.5, size: 0.38, spread: 1.0, grow: 1.6,
+        });
+        if (isPlayer) audio.sfx('land', e.value);
+        break;
+      case 'hardLand':
+        this.particles.emit({
+          x: e.pos.x, y: e.pos.y - 0.2, z: e.pos.z,
+          color: surf.dust, count: 18, speed: 5.0, life: 0.6, size: 0.5, spread: 1.6, grow: 2.0,
+        });
+        if (isPlayer) { audio.sfx('hardLand'); this.shake = Math.max(this.shake, 0.7 * e.value); }
+        break;
+      case 'wallHit':
+        this.particles.emit({
+          x: e.pos.x, y: e.pos.y + 0.3, z: e.pos.z,
+          color: '#ffd7a0', count: Math.round(3 + e.value * 10), speed: 3.4, life: 0.35, size: 0.22, spread: 0.9,
+        });
+        if (isPlayer && e.value > 0.2) { audio.sfx('wallHit', e.value); this.shake = Math.max(this.shake, e.value * 0.6); }
+        break;
+      case 'hazardHit':
+        this.particles.emit({
+          x: e.pos.x, y: e.pos.y + 0.4, z: e.pos.z,
+          color: '#ff7a3d', count: Math.round(4 + e.value * 14), speed: 4.5, life: 0.45, size: 0.34, spread: 1.4, grow: 1.2,
+        });
+        if (isPlayer && e.value > 0.25) {
+          audio.sfx('hazardHit', e.value);
+          this.shake = Math.max(this.shake, e.value * 0.8);
+          audio.axieChirp(1.0, false);
+        }
+        break;
+      case 'spin': if (isPlayer) audio.sfx('spin'); break;
+      case 'trickComplete':
+        this.particles.emit({
+          x: e.pos.x, y: e.pos.y, z: e.pos.z,
+          color: '#c79bff', count: 22, speed: 5.5, life: 0.7, size: 0.34, spread: 2.0, grow: 1.5,
+        });
+        if (isPlayer) { audio.sfx('trickComplete'); audio.axieChirp(1.25, true); }
+        break;
+      case 'trickFail': if (isPlayer) audio.sfx('trickFail'); break;
+      case 'respawnStart':
+        this.particles.emit({
+          x: e.pos.x, y: e.pos.y + 0.5, z: e.pos.z,
+          color: '#9fe3ff', count: 14, speed: 3.0, life: 0.6, size: 0.4, spread: 1.2, grow: 1.4,
+        });
+        if (isPlayer) audio.sfx('respawnStart');
+        this.input.releaseDrift();
+        break;
+      case 'respawnEnd': if (isPlayer) audio.sfx('respawnEnd'); break;
+    }
+    void k;
+  }
+
+  private render(dt: number): void {
+    const core = this.core;
+    const player = core.player!;
+    const pk = player.kart;
+
+    // Continuous trail effects, emitted here rather than in the sim so the
+    // particle rate follows the frame rate instead of the physics rate.
+    for (const r of core.racers) {
+      const k = r.kart;
+      const rig = this.rigs.get(r.id);
+      if (!rig) continue;
+      const near = r.isPlayer || Math.hypot(k.pos.x - pk.pos.x, k.pos.z - pk.pos.z) < 60;
+      if (near && k.grounded && k.mode === 'driving') {
+        const surf = SURFACE[r.ground.surface];
+        const speedFrac = clamp01(k.speed / 30);
+        if (k.drifting && speedFrac > 0.25) {
+          const tierColor = ['#d8d8e0', '#5fb0ff', '#ffa63d', '#c79bff'][Math.min(3, k.driftTier)];
+          for (const anchor of rig.sparkAnchors) {
+            const p = anchor.getWorldPosition(new THREE.Vector3());
+            this.particles.emit({
+              x: p.x, y: p.y, z: p.z, color: tierColor,
+              count: 1, speed: 1.6, life: 0.30, size: 0.16, spread: 0.5, gravity: -2, drag: 3,
+            });
+          }
+        } else if (surf.rough > 0.2 && speedFrac > 0.2) {
+          const p = rig.sparkAnchors[0]?.getWorldPosition(new THREE.Vector3());
+          if (p && Math.random() < surf.rough) {
+            this.particles.emit({
+              x: p.x, y: p.y, z: p.z, color: surf.dust,
+              count: 1, speed: 1.2, life: 0.55, size: 0.28, spread: 0.6, grow: 1.6, drag: 1.6,
+            });
+          }
+        }
+        if (k.boosting) {
+          for (const anchor of [rig.sockets.exhaustL, rig.sockets.exhaustR]) {
+            const p = anchor.getWorldPosition(new THREE.Vector3());
+            this.particles.emit({
+              x: p.x, y: p.y, z: p.z, color: '#ffb23f',
+              count: 1, speed: 1.0, life: 0.28, size: 0.26, spread: 0.3, grow: 1.8, drag: 4,
+            });
+          }
+        }
+      }
+
+      // Respawn dissolve.
+      const fadeTarget = k.mode === 'respawning' ? 0 : 1;
+      const fade = damp(this.respawnFade.get(r.id) ?? 1, fadeTarget, 9, dt);
+      this.respawnFade.set(r.id, fade);
+
+      // How close is the nearest rival, and on which side? The Axie looks.
+      let rivalSide = 0;
+      for (const o of core.racers) {
+        if (o === r) continue;
+        const dx = o.kart.pos.x - k.pos.x;
+        const dz = o.kart.pos.z - k.pos.z;
+        if (Math.hypot(dx, dz) > 9) continue;
+        const side = dx * Math.cos(k.yaw) - dz * Math.sin(k.yaw);
+        const ahead = dx * Math.sin(k.yaw) + dz * Math.cos(k.yaw);
+        if (Math.abs(ahead) > 6) continue;
+        rivalSide = clamp(side / 4, -1, 1);
+      }
+
+      const mood = k.mode === 'finished'
+        ? (r.progress.position <= 3 ? 'win' : 'lose')
+        : 'race';
+
+      updateKart(rig, {
+        dt,
+        x: k.pos.x, y: k.pos.y, z: k.pos.z,
+        yaw: k.yaw, pitch: k.pitch, roll: k.roll,
+        groundY: r.ground.height,
+        speed: k.speed,
+        topSpeed: k.h.topSpeed,
+        steer: k.steerSmoothed,
+        drifting: k.drifting,
+        driftDir: k.driftDir,
+        driftTier: k.driftTier,
+        boosting: k.boosting,
+        grounded: k.grounded,
+        airTime: k.airTime,
+        compression: k.compression,
+        impact: clamp01(k.spinTimer),
+        rivalSide,
+        mood,
+        spinTimer: k.spinTimer,
+        respawnFade: fade,
+      });
+    }
+
+    // ---- camera -----------------------------------------------------------
+    this.shake = Math.max(0, this.shake - dt * 2.4);
+    this.camera.update(this.ctx.camera, {
+      dt,
+      x: pk.pos.x, y: pk.pos.y, z: pk.pos.z, yaw: pk.yaw,
+      speed: pk.speed, topSpeed: pk.h.topSpeed,
+      boosting: pk.boosting, drifting: pk.drifting, driftDir: pk.driftDir,
+      grounded: pk.grounded, airTime: pk.airTime,
+      roadFwdX: player.ground.fwd.x, roadFwdZ: player.ground.fwd.z,
+      shake: this.shake,
+      lookBack: this.lastInput.lookBack,
+    });
+
+    // ---- world ------------------------------------------------------------
+    const countdown = core.phase === 'countdown' ? -core.time : null;
+    animateTrack(this.trackVis, this.clock, countdown);
+    updateHazards(this.hazardVis, core.hazards, Math.max(0, core.time));
+    this.particles.update(dt, this.ctx.camera);
+
+    const speedFrac = clamp01((pk.speed - 18) / 22);
+    this.speedLines.update(
+      this.camera.settings.fovKick * (speedFrac * 0.7 + (pk.boosting ? 0.5 : 0)),
+      dt,
+    );
+
+    this.ctx.followSun(pk.pos.x, pk.pos.y, pk.pos.z);
+
+    // ---- audio ------------------------------------------------------------
+    audio.drive({
+      speed: pk.speed,
+      topSpeed: pk.h.topSpeed,
+      throttle: this.lastInput.throttle,
+      grounded: pk.grounded,
+      surfaceRough: SURFACE[player.ground.surface].rough + (player.ground.outside > 0 ? 0.5 : 0),
+      drifting: pk.drifting,
+      driftTier: pk.driftTier,
+      boosting: pk.boosting,
+      offRoad: player.ground.outside > 0,
+      covered: player.ground.covered,
+    });
+
+    this.ctx.render();
+  }
+
+  /** Swap the camera to a slow orbit for the results screen. */
+  startCinematic(): void {
+    this.cinematic = true;
+  }
+
+  dispose(): void {
+    audio.stopRace();
+    this.ctx.scene.remove(this.root);
+    this.ctx.camera.remove(this.speedLines.group);
+    this.root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.geometry) m.geometry.dispose();
+    });
+    this.root.clear();
+    this.rigs.clear();
+    this.bots.clear();
+  }
+}

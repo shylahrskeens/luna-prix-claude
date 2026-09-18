@@ -131,20 +131,21 @@ export class BotDriver {
     }
 
     if (!onBranchLine) {
-      aim = this.track.racingLine(sNow + look, st.target);
       const sm = this.track.main.sample(sNow + look);
-      // Personality offset plus avoidance.
+      // Personality offset plus avoidance, on top of the racing line — all
+      // three summed and then clamped to the road, so the aim point is always
+      // somewhere the kart can actually be.
       let lateralTarget = p.lineBias * sm.w;
       lateralTarget += this.avoid(core, look);
       st.lateral = damp(st.lateral, lateralTarget, 3.0, dt);
-      aim.x += sm.right.x * st.lateral;
-      aim.y += sm.right.y * st.lateral;
-      aim.z += sm.right.z * st.lateral;
+      const lat = this.track.racingLineLat(sNow + look) + st.lateral;
+      aim = this.track.pointOnRoad(sNow + look, lat, st.target);
 
-      // Off the road: forget the racing line, get back on it.
+      // Off the road: forget the racing line and rejoin. The further out we
+      // are, the further ahead we aim, so the return is a merge, not a hook.
       if (g.outside > 1.5) {
-        const home = this.track.main.pointAt(sNow + 12, 0);
-        aim.x = home.x; aim.y = home.y; aim.z = home.z;
+        const rejoin = clamp(8 + g.outside * 0.9, 8, 34);
+        aim = this.track.pointOnRoad(sNow + rejoin, 0, st.target);
       }
     }
 
@@ -164,7 +165,11 @@ export class BotDriver {
     steer = st.steer;
 
     // ---- throttle and braking --------------------------------------------
-    const maxLat = k.h.grip * (0.72 + skill * 0.34);
+    // Brake for the grip you will HAVE, not the grip you have now. A bot that
+    // plans a corner on full grip and then enters it sideways carries about a
+    // quarter more speed than the slide can hold, and runs wide every time.
+    const gripNow = k.drifting ? (k.h.driftGrip + k.h.grip) * 0.5 : k.h.grip;
+    const maxLat = gripNow * (0.72 + skill * 0.34);
     const corner = this.track.cornerSpeed(sNow, maxLat, k.h.brake * (0.75 + skill * 0.3));
     const targetSpeed = Math.min(corner, k.h.topSpeed * (0.82 + skill * 0.22));
     let throttle = 1;
@@ -187,11 +192,17 @@ export class BotDriver {
     if (gapDist < 62) {
       throttle = 1;
       brake = 0;
-      // Aim down the centre of the runway rather than at the racing line.
-      const centre = this.track.main.pointAt(sNow + Math.max(10, gapDist * 0.6), 0);
-      const cErr = wrapAngle(Math.atan2(centre.x - k.pos.x, centre.z - k.pos.z) - k.yaw);
+      // Aim down the runway, shifted away from any jaws that will be up by the
+      // time we get there. A driver who flies straight into a gator they could
+      // see rising does not look like a driver.
+      const lane = this.gatorLane(core, sNow, gapDist, k.speed);
+      const ahead = Math.max(10, gapDist * 0.6);
+      const sm = this.track.main.sample(sNow + ahead);
+      const aimPt = this.track.main.pointAt(sNow + ahead, lane);
+      const cErr = wrapAngle(Math.atan2(aimPt.x - k.pos.x, aimPt.z - k.pos.z) - k.yaw);
       steer = clamp(cErr * 2.4, -1, 1);
       st.steer = steer;
+      void sm;
     }
 
     this.debug.jumping = jumping;
@@ -247,6 +258,42 @@ export class BotDriver {
     }
 
     return { throttle, brake, steer, drift, lookBack: false };
+  }
+
+  /** Pick a lateral lane through a gap that misses the jaws.
+   *
+   *  Gators are a pure function of the clock, so a driver can work out exactly
+   *  which of them will be out of the water when they arrive and aim between
+   *  them. That is the skill the hazard is asking for, and a bot that cannot
+   *  do it just looks unlucky.
+   */
+  private gatorLane(core: RaceCore, sNow: number, gapDist: number, speed: number): number {
+    const L = this.track.lapLength;
+    const eta = gapDist / Math.max(8, speed);
+    const threats: { lat: number; r: number }[] = [];
+    for (const h of core.hazards) {
+      if (h.def.kind !== 'gator') continue;
+      const def = h.def as Extract<typeof h.def, { kind: 'gator' }>;
+      const ahead = loopDelta(sNow / L, def.s, 1) * L;
+      if (ahead < -6 || ahead > 120) continue;
+      // Where will this one be when we reach it?
+      const arrive = eta + Math.max(0, ahead - gapDist) / Math.max(8, speed);
+      const t = (h.phase + arrive / def.period) % 1;
+      const willBeUp = t > 0.50 && t < 0.86;
+      if (willBeUp) threats.push({ lat: def.lat, r: (def.scale ?? 1) * 2.3 + 2.0 });
+    }
+    if (!threats.length) return 0;
+    // Sample candidate lanes and take the one furthest from every threat.
+    let best = 0;
+    let bestClear = -Infinity;
+    for (let lane = -8; lane <= 8; lane += 0.5) {
+      let clear = Infinity;
+      for (const t of threats) clear = Math.min(clear, Math.abs(lane - t.lat) - t.r);
+      // Prefer the middle when two lanes are equally clear.
+      const score = clear - Math.abs(lane) * 0.05;
+      if (score > bestClear) { bestClear = score; best = lane; }
+    }
+    return best;
   }
 
   /** Steering correction toward the opening of a rotating gate just ahead.

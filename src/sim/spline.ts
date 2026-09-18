@@ -265,7 +265,10 @@ export class Spline {
 
     if (hintS !== undefined) {
       const centre = this.indexAt(hintS);
-      const window = 40;
+      // Wide enough to absorb a slow frame (26 m is 3 km/s at the simulation
+      // step), narrow enough that it can never reach the far leg of a hairpin
+      // and report a fifty-metre teleport.
+      const window = 26;
       for (let k = -window; k <= window; k++) {
         const i = this.closed ? wrap(centre + k, m) : centre + k;
         if (i < 0 || i >= m) continue;

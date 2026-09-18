@@ -69,6 +69,10 @@ export interface BoostPadDef {
  *  clock, so two clients ten thousand kilometres apart agree on the state of
  *  every gator jaw without sending a single packet about it. */
 export type HazardDef =
+  /** `reach` is how far the jaws come ABOVE the water at the top of a bite —
+   *  the only number that decides whether a gator can touch a kart in flight.
+   *  Expressing it as a depth below some other surface made it impossible to
+   *  tell, from the data, whether the hazard could reach anything at all. */
   | { kind: 'gator';   s: number; lat: number; period: number; phase: number; reach: number; scale?: number }
   | { kind: 'gate';    s: number; lat: number; period: number; phase: number; span: number }
   | { kind: 'panel';   s: number; lat: number; period: number; phase: number; w: number; len: number }
@@ -146,6 +150,10 @@ export interface TrackDefinition {
   killY: number;
   /** Default shoulder width when a zone does not override it. */
   shoulder: number;
+  /** A bonus-event course is a run from A to B, not a loop. Open tracks skip
+   *  lap wrapping; everything else — zones, hazards, checkpoints, respawn —
+   *  works identically. */
+  closed?: boolean;
   /** Unlock gate: null means available from the start. */
   unlock: { kind: 'podium' } | { kind: 'rating'; value: number } | null;
   schemaVersion: number;

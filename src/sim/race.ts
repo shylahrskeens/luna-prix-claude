@@ -219,12 +219,22 @@ export class RaceCore {
       const input = r.progress.finished ? NEUTRAL_INPUT : (inputs.get(r.id) ?? NEUTRAL_INPUT);
       this.track.ground(r.kart.pos, r.kart.sHint, r.ground);
       r.kart.step(dt, input, r.ground);
-      if (r.kart.mode === 'respawning' && r.kart.respawnTimer <= 0.0001) {
-        const anchor = this.track.respawn(r.progress.lastCp);
-        r.kart.placeAt(anchor.pos, anchor.yaw, 5);
-        this.reanchorProgress(r);
+      for (const e of r.kart.events) {
+        // Place on the event, not on a state test.
+        //
+        //  The kart flips itself out of `respawning` in the same step that its
+        //  timer expires, so a check for "still respawning and the timer has
+        //  run out" is never true: the kart was never actually moved, it just
+        //  paused where it fell and carried on falling. In a gap that is an
+        //  infinite loop and the end of that racer's race.
+        if (e.kind === 'respawnEnd') {
+          const anchor = this.track.respawn(r.progress.lastCp);
+          r.kart.placeAt(anchor.pos, anchor.yaw, 6);
+          this.track.ground(r.kart.pos, undefined, r.ground);
+          this.reanchorProgress(r);
+        }
+        this.onKartEvent(r, e);
       }
-      for (const e of r.kart.events) this.onKartEvent(r, e);
     }
 
     // ---- contact ---------------------------------------------------------
@@ -281,9 +291,15 @@ export class RaceCore {
     const g = this.track.ground(r.kart.pos, undefined, r.ground);
     const startS = this.track.def.start.s;
     const frac = wrap(g.u - startS, 1);
-    let lapBase = Math.floor(p.raw);
-    // Never let the re-anchor hand a racer progress they did not have.
-    if (lapBase + frac > p.raw) lapBase -= 1;
+    //  Pick the lap the racer is actually on: the one that puts the re-anchored
+    //  progress nearest to where they were. A checkpoint anchor can legitimately
+    //  sit slightly AHEAD of where a kart left the road, so refusing any forward
+    //  movement at all is wrong — it silently subtracts an entire lap and the
+    //  racer never recovers.
+    //
+    //  The integer lap count may never go UP, which is the part that actually
+    //  matters: that is the only way a respawn could gift a lap.
+    const lapBase = Math.min(Math.round(p.raw - frac), Math.floor(p.raw));
     p.raw = lapBase + frac;
     p.prevU = g.u;
   }
@@ -301,14 +317,22 @@ export class RaceCore {
         p.prevU = u;
         return;
       }
-      // A branch rejoining the main line can also legitimately produce a jump
-      // in the PROJECTION while the kart drove a continuous path. Those are
-      // bounded by the branch geometry, so allow a slightly larger step there.
-      if (r.ground.onBranch !== null && Math.abs(d) < MAX_STEP * 4) {
+      // A jump in the PROJECTION is not a jump in the WORLD.
+      //
+      //  Far from the centreline — on a branch, deep in the scenery — the
+      //  nearest point on the track is genuinely ambiguous, and it can flip
+      //  between two places the kart drove between continuously. On the road
+      //  it cannot: there the projection is unambiguous, so a jump there is a
+      //  real teleport and worth flagging. Re-anchor quietly off the road,
+      //  flag on it.
+      if (r.ground.onBranch !== null || r.ground.outside > 2) {
         p.prevU = u;
         return;
       }
-      p.integrity.push(`Discontinuous progress at t=${this.time.toFixed(2)} (${d.toFixed(3)} laps in one step)`);
+      p.integrity.push(
+        `Discontinuous progress at t=${this.time.toFixed(2)}s, lap position ${u.toFixed(3)} ` +
+        `(${d.toFixed(3)} laps in one step, branch=${r.ground.onBranch ?? 'none'})`,
+      );
       this.events.push({ kind: 'integrity', racerId: r.id, value: d, text: 'progress jump' });
       p.prevU = u;
       return;
@@ -448,7 +472,9 @@ export class RaceCore {
             const dist = Math.hypot(dx, dz);
             if (dist < h.radius + k.h.radius && Math.abs(dy) < 3.2
                 && this.canHit(hazardIndex, r.id, 0.9)) {
-              k.hit(0.95, dx / (dist || 1), dz / (dist || 1));
+              // Hard enough to cost the jump, not hard enough to spin a kart
+              // out in mid-air where it has no way to recover.
+              k.hit(k.grounded ? 0.9 : 0.5, dx / (dist || 1), dz / (dist || 1));
             }
             break;
           }
@@ -588,7 +614,7 @@ export class RaceCore {
     const m = MODE_RULES[mode];
     return {
       mode, trackId, laps, seed,
-      countdown: 3.4,
+      countdown: 3.0,
       assistsAllowed: m.assistsAllowed,
       catchUp: m.catchUp,
     };

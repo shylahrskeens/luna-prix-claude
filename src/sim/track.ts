@@ -76,7 +76,7 @@ export class TrackRuntime {
     const nodes: SplineNode[] = def.nodes.map(([x, y, z, w, bankDeg]) => ({
       p: v3(x, y, z), w, bank: (bankDeg * Math.PI) / 180,
     }));
-    this.main = new Spline(nodes, true);
+    this.main = new Spline(nodes, def.closed !== false);
     this.lapLength = this.main.length;
 
     for (const b of def.branches) {
@@ -121,6 +121,8 @@ export class TrackRuntime {
       }
     }
 
+    this.buildGaps(def);
+
     // Checkpoints, evenly spaced from the start line.
     const n = def.checkpointCount;
     for (let i = 0; i < n; i++) {
@@ -137,6 +139,22 @@ export class TrackRuntime {
         const z = this.zoneForU(bu, def.zones);
         if (!z?.gap) break;
         backS -= 4;
+      }
+      // A respawn must leave enough road to build speed for the next jump.
+      //
+      //  Without this, a kart that falls into the gator pit is returned to a
+      //  checkpoint thirty metres from the ramp, launches from a standstill,
+      //  falls in again, and is trapped there for the rest of the race. It is
+      //  the single worst failure a racing game can have, and it is entirely
+      //  invisible until someone actually falls in.
+      const RUNUP = 150;
+      for (let guard = 0; guard < 60; guard++) {
+        const nextGap = this.firstGapWithin(backS, RUNUP, def.zones);
+        if (nextGap === null) break;
+        backS = nextGap - RUNUP;
+        const bu = wrap(backS / this.lapLengthRaw, 1);
+        if (this.zoneForU(bu, def.zones)?.gap) backS -= 20;
+        else break;
       }
       const back = this.main.sample(backS);
       this.checkpoints.push({
@@ -155,6 +173,19 @@ export class TrackRuntime {
   private get lapLengthRaw(): number {
     return this.main.length;
   }
+  /** Arc length of the first gap starting within `within` metres after `from`,
+   *  or null. Construction-time helper: the LUT does not exist yet. */
+  private firstGapWithin(from: number, within: number, zones: ZoneDef[]): number | null {
+    let wasGap = this.zoneForU(wrap(from / this.lapLengthRaw, 1), zones)?.gap === true;
+    for (let d = 2; d <= within; d += 2) {
+      const u = wrap((from + d) / this.lapLengthRaw, 1);
+      const isGap = this.zoneForU(u, zones)?.gap === true;
+      if (isGap && !wasGap) return from + d;
+      wasGap = isGap;
+    }
+    return null;
+  }
+
   /** Zone lookup that does not depend on the LUT, for use during construction. */
   private zoneForU(u: number, zones: ZoneDef[]): ZoneDef | null {
     let found: ZoneDef | null = null;
@@ -166,12 +197,50 @@ export class TrackRuntime {
     return this.zoneLut[clamp(Math.floor(wrap(u, 1) * this.LUT), 0, this.LUT - 1)];
   }
 
+  /** Contiguous gap spans with the world height of what is at the bottom of
+   *  them. The renderer draws water or a chasm there, and any hazard inside a
+   *  gap is anchored to it — otherwise gators float at the height of a
+   *  centreline that only exists to hold the launch tangent. */
+  readonly gaps: { from: number; to: number; floorY: number; lipY: number; width: number }[] = [];
+
+  private buildGaps(def: TrackDefinition): void {
+    const raw = def.zones.filter((z) => z.gap).sort((a, b) => a.from - b.from);
+    for (const z of raw) {
+      const last = this.gaps[this.gaps.length - 1];
+      if (last && Math.abs(z.from - last.to) < 1e-4) { last.to = z.to; continue; }
+      this.gaps.push({ from: z.from, to: z.to, floorY: 0, lipY: 0, width: 0 });
+    }
+    for (const g of this.gaps) {
+      const lip = this.main.sample(g.from * this.lapLength - 2);
+      const land = this.main.sample(g.to * this.lapLength + 4);
+      g.lipY = lip.pos.y;
+      g.width = Math.max(lip.w, land.w);
+      // Six metres, not sixteen. The depth is what decides whether the gators
+      // are a hazard or scenery: a kart that clears the gap comfortably flies
+      // well over the jaws, and one that only just clears it skims through
+      // their reach. Dig the pit deeper and nothing in it can ever touch you.
+      g.floorY = Math.min(lip.pos.y, land.pos.y) - 6;
+    }
+  }
+
+  /** The gap span containing lap position u, if any. */
+  gapAt(u: number): { from: number; to: number; floorY: number; lipY: number; width: number } | null {
+    const w = wrap(u, 1);
+    for (const g of this.gaps) {
+      if (g.from <= g.to ? (w >= g.from && w < g.to) : (w >= g.from || w < g.to)) return g;
+    }
+    return null;
+  }
+
   /** Grid slot `i` (0-based) in world space. */
   gridSlot(i: number): { pos: V3; yaw: number } {
     const g = this.def.start;
     const row = Math.floor(i / 2);
     const col = i % 2 === 0 ? -1 : 1;
-    const s = this.def.start.s * this.lapLength - 8 - row * g.rowGap;
+    // On an open course there is nothing behind the line to grid up on, so the
+    // field starts at the line and runs forward instead.
+    const back = this.main.closed ? -8 - row * g.rowGap : 4 + row * g.rowGap;
+    const s = this.def.start.s * this.lapLength + back;
     const sm = this.main.sample(s);
     const lat = col * g.colGap * 0.5;
     return {
@@ -305,9 +374,10 @@ export class TrackRuntime {
       const s = ('s' in def ? def.s : 0) * this.lapLength;
       const sm = this.main.sample(s);
       const lat = 'lat' in def ? def.lat : 0;
+      const gap = this.gapAt(('s' in def ? def.s : 0));
       const anchor = v3(
         sm.pos.x + sm.right.x * lat,
-        sm.pos.y + sm.right.y * lat,
+        gap ? gap.floorY : sm.pos.y + sm.right.y * lat,
         sm.pos.z + sm.right.z * lat,
       );
       return {
@@ -332,17 +402,34 @@ export class TrackRuntime {
       const d = h.def;
       switch (d.kind) {
         case 'gator': {
-          // Jaws rise out of the water on a fixed cycle. Telegraph occupies the
-          // last 30% of the closed phase so the bite is never a surprise.
+          //  Cycle, in order: submerged, a visible rise, the strike, the sink.
+          //  The rise is the telegraph — the jaws are out of the water and
+          //  climbing for a third of a second before they can touch anything,
+          //  which is what makes a bite a mistake rather than bad luck.
           const t = wrap(time / d.period + d.phase, 1);
           h.phase = t;
-          const bite = t < 0.34 ? Math.sin((t / 0.34) * Math.PI) : 0;
+          const scale = d.scale ?? 1;
+          const body = scale * 2.0;
+          let height: number;   // metres above the water line
+          if (t < 0.52) {
+            height = -body;                                    // submerged
+          } else if (t < 0.70) {
+            const r = (t - 0.52) / 0.18;
+            height = -body + (d.reach + body) * (r * r);       // rising
+          } else if (t < 0.80) {
+            const r = (t - 0.70) / 0.10;
+            height = d.reach - Math.sin(r * Math.PI) * 0.0;    // held at the top
+          } else {
+            const r = (t - 0.80) / 0.20;
+            height = d.reach - (d.reach + body) * (r * r);     // sinking
+          }
           h.pos.x = h.anchor.x;
           h.pos.z = h.anchor.z;
-          h.pos.y = h.anchor.y - d.reach + bite * d.reach * 1.35;
-          h.active = bite > 0.42;
-          h.radius = (d.scale ?? 1) * 2.3;
-          h.telegraph = t > 0.80 ? (t - 0.80) / 0.20 : bite > 0 ? 1 : 0;
+          h.pos.y = h.anchor.y + height;
+          // Only dangerous once it is clear of the water.
+          h.active = height > 0;
+          h.radius = scale * 2.3;
+          h.telegraph = t >= 0.52 && t < 0.70 ? (t - 0.52) / 0.18 : t < 0.52 && t > 0.40 ? (t - 0.40) / 0.12 : 0;
           break;
         }
         case 'gate': {
@@ -426,17 +513,34 @@ export class TrackRuntime {
     return { pos: { ...c.respawnPos }, yaw: c.respawnYaw };
   }
 
-  /** A point on the ideal racing line at lap position u — used by the bots and
-   *  by the ghost/minimap. Shifts to the inside of the coming corner. */
-  racingLine(s: number, out: V3 = v3()): V3 {
+  /** Lateral offset of the ideal racing line at arc length s. Positive is to
+   *  the right; the line moves to the inside of the coming corner. */
+  racingLineLat(s: number): number {
     const sm = this.main.sample(s);
     const ahead = this.main.sample(s + 26);
-    const k = (sm.curvature * 0.55 + ahead.curvature * 0.45);
-    // Positive curvature turns right, so the line moves right (positive lat).
-    const lat = clamp(k * 160, -1, 1) * sm.w * 0.62;
-    out.x = sm.pos.x + sm.right.x * lat;
-    out.y = sm.pos.y + sm.right.y * lat;
-    out.z = sm.pos.z + sm.right.z * lat;
+    const k = sm.curvature * 0.55 + ahead.curvature * 0.45;
+    return clamp(k * 160, -1, 1) * sm.w * 0.62;
+  }
+
+  /** A point on the ideal racing line — used by the bots and the minimap. */
+  racingLine(s: number, out: V3 = v3()): V3 {
+    return this.pointOnRoad(s, this.racingLineLat(s), out);
+  }
+
+  /** A point `lat` metres off the centreline, clamped to stay ON the road.
+   *
+   *  A driver aiming at a point outside the track will drive to it. Stacking a
+   *  racing-line offset, a personality bias and an avoidance nudge can easily
+   *  add up past the edge, and then every bot that gets crowded in a corner
+   *  steers itself into the scenery.
+   */
+  pointOnRoad(s: number, lat: number, out: V3 = v3()): V3 {
+    const sm = this.main.sample(s);
+    const limit = Math.max(0, sm.w - 1.6);
+    const l = clamp(lat, -limit, limit);
+    out.x = sm.pos.x + sm.right.x * l;
+    out.y = sm.pos.y + sm.right.y * l;
+    out.z = sm.pos.z + sm.right.z * l;
     return out;
   }
 

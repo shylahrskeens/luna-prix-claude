@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#0a0c12" />
+  <meta name="description" content="Luna Prix — an Axie kart racer. Three circuits, seven rivals, a rank to climb, and two bonus events." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Luna Prix</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="stage"></canvas>
+    <div id="screens" class="layer active interactive"></div>
+    <div id="loading" class="loading">
+      <div style="font-size:34px;font-weight:800;letter-spacing:-0.03em;background:linear-gradient(95deg,#c79bff,#5fd8e8);-webkit-background-clip:text;background-clip:text;color:transparent">LUNA PRIX</div>
+      <div class="bar"><i></i></div>
+      <div class="hint" id="loading-note">Building Lunacia…</div>
+    </div>
+  </div>
+  <noscript>
+    <div style="padding:40px;color:#eef1f8;font-family:system-ui">Luna Prix needs JavaScript and WebGL.</div>
+  </noscript>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

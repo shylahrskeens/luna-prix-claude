@@ -17,7 +17,7 @@ const SEGS: RouteSeg[] = [
   { t: 'straight', len: 150, w: 13, mark: 'startStraight' },
   { t: 'turn', angle: 65, radius: 72, bank: 5, mark: 't1' },
   { t: 'straight', len: 55 },
-  { t: 'turn', angle: 120, radius: 26, dy: 5, w: 11, mark: 'hairpin' },
+  { t: 'turn', angle: 105, radius: 34, dy: 5, w: 11.5, mark: 'hairpin' },
   { t: 'straight', len: 80, dy: 7, w: 12, mark: 'climb' },
   { t: 'turn', angle: -55, radius: 60, mark: 't3' },
   // The gator pit is authored as four segments so the jump is real geometry:
@@ -43,7 +43,7 @@ const SEGS: RouteSeg[] = [
   { t: 'straight', len: 60 },
   { t: 'turn', angle: 70, radius: 50, dy: 3, mark: 't6' },
   { t: 'straight', len: 70, w: 13 },
-  { t: 'turn', angle: 40, radius: 85, mark: 'finalSweep' },
+  { t: 'turn', angle: 55, radius: 85, mark: 'finalSweep' },
   { t: 'straight', len: 55, w: 13 },
 ];
 
@@ -112,10 +112,10 @@ export const CANOPY: TrackDefinition = {
   hazards: [
     // Four gators on staggered cycles, so the pit never reads the same twice
     // but is always learnable.
-    { kind: 'gator', s: at(M.gatorPitB, 0.02), lat: -6.5, period: 3.1, phase: 0.00, reach: 5.0, scale: 1.1 },
-    { kind: 'gator', s: at(M.gatorPitB, 0.28), lat: 2.0, period: 2.7, phase: 0.38, reach: 5.0, scale: 1.0 },
-    { kind: 'gator', s: at(M.gatorPitB, 0.56), lat: -2.5, period: 3.4, phase: 0.64, reach: 5.0, scale: 1.2 },
-    { kind: 'gator', s: at(M.gatorPitB, 0.82), lat: 7.0, period: 2.9, phase: 0.21, reach: 5.0, scale: 1.0 },
+    { kind: 'gator', s: at(M.gatorPitB, 0.02), lat: -6.5, period: 3.2, phase: 0.00, reach: 12.5, scale: 2.1 },
+    { kind: 'gator', s: at(M.gatorPitB, 0.28), lat: 2.0, period: 2.8, phase: 0.38, reach: 3.0, scale: 1.5 },
+    { kind: 'gator', s: at(M.gatorPitB, 0.56), lat: -2.5, period: 3.5, phase: 0.64, reach: 13.5, scale: 2.3 },
+    { kind: 'gator', s: at(M.gatorPitB, 0.82), lat: 7.0, period: 3.0, phase: 0.21, reach: 3.5, scale: 1.5 },
     // Swinging roots in the tunnel: timing, not damage.
     { kind: 'roller', s: at(M.rootTunnel, 0.18), lat: 0, period: 3.6, phase: 0.0, travel: 6.5, r: 2.0 },
     { kind: 'roller', s: at(M.rootTunnel, 0.58), lat: 0, period: 2.9, phase: 0.5, travel: 7.5, r: 2.0 },

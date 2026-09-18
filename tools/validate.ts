@@ -34,14 +34,16 @@ for (const def of TRACKS) {
   for (let i = 0; i < pts.length; i++) {
     for (let j = i + 1; j < pts.length; j++) {
       const arc = Math.min(Math.abs(pts[i].s - pts[j].s), L - Math.abs(pts[i].s - pts[j].s));
-      if (arc < 70) continue; // adjacent road is supposed to be close
+      // 45 m: below this, two pieces of road are still 'the same corner'.
+      // Above it, they are separate track that must not be confusable.
+      if (arc < 45) continue;
       const d = Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y, pts[i].z - pts[j].z);
       // The danger zone is anything within the two roads' combined half-widths.
       const need = pts[i].w + pts[j].w;
       if (d - need < worst.d - (worst.a ? 0 : 0)) {
         if (d < worst.d) worst = { d, a: pts[i].s, b: pts[j].s };
       }
-      if (d < need * 0.85) {
+      if (d < need * 1.05) {
         warn(def.id, `road at ${pts[i].s.toFixed(0)} m and ${pts[j].s.toFixed(0)} m are ${d.toFixed(1)} m apart (widths sum ${need.toFixed(1)} m) — projection can confuse them`);
         i = pts.length; break;
       }
