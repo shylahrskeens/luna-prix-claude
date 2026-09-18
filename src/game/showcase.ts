@@ -32,13 +32,13 @@ export class Showcase {
     ctx.scene.add(this.root);
 
     const ring = new THREE.Mesh(
-      new THREE.CylinderGeometry(3.4, 3.4, 0.14, 40),
+      new THREE.CylinderGeometry(2.6, 2.6, 0.12, 40),
       ctx.materials.toon('#1a1f2f', { flat: false }),
     );
     ring.position.y = -0.07;
     this.root.add(ring);
     const glow = new THREE.Mesh(
-      new THREE.TorusGeometry(3.42, 0.05, 6, 48),
+      new THREE.TorusGeometry(2.62, 0.04, 6, 48),
       ctx.materials.glow('#c79bff', 0.85),
     );
     glow.rotation.x = Math.PI / 2;
@@ -111,11 +111,15 @@ export class Showcase {
     // The rig root carries the turn, so undo it on the kart's own transform.
     this.rig.root.rotation.y = this.turn;
 
-    // Three-quarter view, slightly above.
+    // Three-quarter view from far enough back that the whole kart sits inside
+    // the clear column the menus leave down the middle of the screen.
     const cam = this.ctx.camera;
-    cam.position.set(4.4, 2.5, 5.2);
-    cam.lookAt(0, 0.85, 0);
-    if (Math.abs(cam.fov - 42) > 0.01) { cam.fov = 42; cam.updateProjectionMatrix(); }
+    const narrow = window.innerWidth < 1100;
+    const dist = narrow ? 7.4 : 9.6;
+    cam.position.set(dist * 0.62, dist * 0.40, dist * 0.78);
+    cam.lookAt(0, narrow ? 0.75 : 0.60, 0);
+    const fov = narrow ? 34 : 26;
+    if (Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix(); }
     this.ctx.sun.position.set(6, 9, 7);
     this.ctx.sun.target.position.set(0, 0.6, 0);
     this.ctx.render();

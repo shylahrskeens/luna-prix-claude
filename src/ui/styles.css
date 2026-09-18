@@ -72,6 +72,44 @@ p { margin: 0 0 10px; line-height: 1.55; color: var(--muted); }
 .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
 
 /* ---------- menu chrome ---------- */
+/* Screens that show the live kart behind them leave a clear column down the
+   middle and drop the background wash there, so the thing being configured is
+   actually visible while you configure it. */
+.screen.showcase {
+  background:
+    radial-gradient(90% 70% at 50% 46%, rgba(199, 155, 255, 0.10), transparent 60%),
+    linear-gradient(90deg, rgba(10, 12, 18, 0.95) 0%, rgba(10, 12, 18, 0.88) 26%,
+      rgba(10, 12, 18, 0.10) 40%, rgba(10, 12, 18, 0.10) 60%,
+      rgba(10, 12, 18, 0.88) 74%, rgba(10, 12, 18, 0.95) 100%);
+}
+.showcase .body { gap: 0; }
+.showcase .stage-gap {
+  flex: 1 1 26%;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  pointer-events: none;
+}
+.stage-gap .caption {
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(10, 12, 18, 0.55);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+@media (max-width: 1100px) {
+  .showcase .stage-gap { display: none; }
+  .screen.showcase { background:
+    radial-gradient(120% 90% at 50% -10%, rgba(199, 155, 255, 0.16), transparent 62%),
+    linear-gradient(180deg, rgba(10, 12, 18, 0.72), rgba(10, 12, 18, 0.95) 55%, rgba(10, 12, 18, 0.98)); }
+}
+
 .screen {
   position: absolute;
   inset: 0;

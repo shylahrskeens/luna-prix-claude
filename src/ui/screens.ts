@@ -224,11 +224,12 @@ export function axieScreen(app: AppApi): HTMLElement {
   };
   render();
 
-  return el('div', { class: 'screen' },
+  return el('div', { class: 'screen showcase' },
     topbar(app, 'Choose your Axie', 'home'),
     el('div', { class: 'body' },
-      el('div', { class: 'col scroll', style: 'width:min(380px,100%)' }, list),
-      el('div', { class: 'col grow scroll' }, detail),
+      el('div', { class: 'col scroll', style: 'width:min(360px,100%);flex:0 0 auto' }, list),
+      el('div', { class: 'stage-gap' }, el('div', { class: 'caption', text: 'drag to turn' })),
+      el('div', { class: 'col scroll', style: 'width:min(380px,100%);flex:0 0 auto' }, detail),
     ),
     el('div', { class: 'row' },
       el('button', { class: 'primary big', onClick: () => { app.sfx('uiSelect'); app.go('garage'); } }, 'To the garage ›'),
@@ -256,7 +257,7 @@ export function garageScreen(app: AppApi): HTMLElement {
     });
 
     // --- kart column ---
-    const kartCol = el('div', { class: 'col scroll', style: 'width:min(330px,100%)' },
+    const kartCol = el('div', { class: 'col scroll', style: 'width:min(320px,100%);flex:0 0 auto' },
       el('h3', { text: 'Chassis' }),
       ...KARTS.map((k) => kartCard(k, k.id === p.kartId, () => {
         p.kartId = k.id;
@@ -268,7 +269,10 @@ export function garageScreen(app: AppApi): HTMLElement {
     );
 
     // --- slots column ---
-    const slotCol = el('div', { class: 'col grow scroll' });
+    // `flex:0 0 auto` so these keep their natural height inside the scrolling
+    // parent. Without it the shared `.col { min-height: 0 }` lets them collapse
+    // into each other.
+    const slotCol = el('div', { class: 'col', style: 'flex:0 0 auto' });
     slotCol.appendChild(el('h3', { text: 'Parts' }));
     for (const slot of SLOTS) {
       const fitted = parts[slot.id];
@@ -327,7 +331,7 @@ export function garageScreen(app: AppApi): HTMLElement {
     ));
 
     // --- stats column ---
-    const statCol = el('div', { class: 'col scroll', style: 'width:min(330px,100%)' });
+    const statCol = el('div', { class: 'col', style: 'flex:0 0 auto' });
     const statHost = el('div');
     statCol.appendChild(statHost);
 
@@ -367,11 +371,17 @@ export function garageScreen(app: AppApi): HTMLElement {
     }
     preview(null, 1);
 
-    mount(host, kartCol, slotCol, statCol);
+    mount(host,
+      kartCol,
+      el('div', { class: 'stage-gap' }, el('div', { class: 'caption', text: 'drag to turn' })),
+      el('div', { class: 'col scroll', style: 'width:min(430px,100%);flex:0 0 auto' },
+        slotCol, statCol,
+      ),
+    );
   };
   render();
 
-  return el('div', { class: 'screen' },
+  return el('div', { class: 'screen showcase' },
     topbar(app, 'Garage', 'home'),
     host,
     el('div', { class: 'row' },
