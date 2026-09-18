@@ -344,7 +344,9 @@ class App implements AppApi {
     this.race = view;
     this.hud.prepare(view.track);
     this.hud.setVisible(true);
-    this.touch.setVisible(isTouchDevice());
+    const touch = isTouchDevice();
+    this.touch.setVisible(touch);
+    this.hud.setTouchLayout(touch);
     this.hud.toast('Server race', 1.6);
   }
 
@@ -379,7 +381,9 @@ class App implements AppApi {
     this.race = view;
     this.hud.prepare(view.track);
     this.hud.setVisible(true);
-    this.touch.setVisible(isTouchDevice());
+    const touch = isTouchDevice();
+    this.touch.setVisible(touch);
+    this.hud.setTouchLayout(touch);
     this.fpsSamples.length = 0;
     this.autoQualityChecked = false;
 
@@ -409,7 +413,9 @@ class App implements AppApi {
     this.bonus = new BonusRun(def, view);
     this.hud.prepare(view.track);
     this.hud.setVisible(true);
-    this.touch.setVisible(isTouchDevice());
+    const touch = isTouchDevice();
+    this.touch.setVisible(touch);
+    this.hud.setTouchLayout(touch);
     this.hud.prompt(def.tagline, 5);
   }
 

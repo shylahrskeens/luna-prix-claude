@@ -304,6 +304,12 @@ export class Hud {
     this.root.classList.toggle('active', on);
   }
 
+  /** Touch controls occupy the bottom of the screen; the HUD gets out of
+   *  their way rather than sitting underneath a thumb. */
+  setTouchLayout(on: boolean): void {
+    this.root.classList.toggle('with-touch', on);
+  }
+
   /** The control card, shown before the first race. */
   static controlCardPanel(device: Device, binds: Record<string, string>): HTMLElement {
     const rows = controlCard(device, binds);

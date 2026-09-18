@@ -273,6 +273,12 @@ export class TrackRuntime {
     out.normal.x = pr.sample.up.x; out.normal.y = pr.sample.up.y; out.normal.z = pr.sample.up.z;
     out.covered = zone?.covered ?? false;
     out.reacquired = pr.reacquired;
+    // Road height a few metres further on, so a kart can tell a crest from a
+    // hill. Cheap: one extra centreline sample, no projection.
+    const AHEAD = 7;
+    const smAhead = this.main.sample(pr.s + AHEAD);
+    out.aheadDistance = AHEAD;
+    out.heightAhead = smAhead.pos.y + smAhead.right.y * pr.lat;
     out.onBranch = null;
     out.gap = false;
 
@@ -357,7 +363,7 @@ export class TrackRuntime {
       height: 0, normal: v3(0, 1, 0), surface: 'road', s: 0, u: 0, lat: 0, width: 10,
       outside: 0, onRoad: true, onShoulder: false, outOfBounds: false, wall: false,
       wallSign: 1, gap: false, covered: false, onBranch: null, curvature: 0, fwd: v3(0, 0, 1),
-      reacquired: false,
+      reacquired: false, heightAhead: 0, aheadDistance: 7,
     };
   }
 

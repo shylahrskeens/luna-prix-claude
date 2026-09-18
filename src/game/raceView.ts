@@ -93,6 +93,7 @@ export class RaceView {
   /** When set, the server owns race truth: this client sends inputs, predicts
    *  locally so steering stays instant, and is corrected from snapshots. */
   net: NetworkAdapter | null = null;
+  private completed = false;
   private netTick = 0;
   private lastSnapT = -1;
   /** Largest correction applied this race, in metres — surfaced in the HUD as
@@ -290,7 +291,13 @@ export class RaceView {
         this.events.onKartEvent?.(r, e);
       }
     }
-    if (core.phase === 'complete') this.events.onComplete?.();
+    // Once, not once per frame. The race sits in `complete` for as long as the
+    // results screen takes to appear, and every one of those frames was paying
+    // out the purse and counting another race.
+    if (core.phase === 'complete' && !this.completed) {
+      this.completed = true;
+      this.events.onComplete?.();
+    }
   }
 
   /** Fold the latest authoritative snapshot into the predicted race.

@@ -413,6 +413,33 @@ label.toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
   .panel { padding: 13px; }
   h1 { font-size: 27px; }
 }
-@media (orientation: portrait) and (max-height: 520px) {
-  .hud-tl, .hud-tr { --hud-scale: 0.85; }
+/* ---------- HUD on a phone ---------- */
+@media (max-width: 620px) {
+  .hud-tl { max-width: 48vw; }
+  .hud-tl .hud-box { padding: 7px 10px; }
+  .pos-big { font-size: 30px; }
+  .lap-big { font-size: 17px; }
+  #minimap { width: 118px; height: 118px; }
+  .hud-tr .hud-box { padding: 6px 9px; }
+  .hud-tr .mono { font-size: 16px !important; }
+  .speed-big { font-size: 26px; }
+  .boost-meter { width: 116px; }
+  .hud-c { top: 4px; }
+  .countdown { font-size: 62px; }
+  /* The teaching prompt is the first thing to go when space is short. */
+  #hud .hud-tl > .hint { display: none; }
+}
+
+/* With touch controls on screen, the speed block has to clear the buttons. */
+#hud.with-touch .hud-br {
+  bottom: calc(210px + var(--safe-bottom));
+  right: calc(12px + var(--safe-right));
+}
+#hud.with-touch .hud-bl { bottom: calc(190px + var(--safe-bottom)); }
+@media (min-width: 900px) {
+  #hud.with-touch .hud-br { bottom: calc(14px + var(--safe-bottom)); }
+}
+
+@media (orientation: portrait) and (max-height: 560px) {
+  .hud-tl, .hud-tr { --hud-scale: 0.82; }
 }

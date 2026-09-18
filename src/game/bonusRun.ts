@@ -45,7 +45,11 @@ export class BonusRun {
   private nearMiss = 0;
   private nearMissActive = new Set<number>();
   private gapsCleared = 0;
-  private lastGapU = -1;
+  /** Index of the gap span the kart is currently over, or -1. */
+  private pendingGap = -1;
+  /** Which spans have already been credited — a leap counts once, however
+   *  many times a respawn walks the kart back over its edge. */
+  private clearedGaps = new Set<number>();
 
   /** Live readout for the HUD while the attempt is running. */
   live = { primary: '0', secondary: '', hint: '' };
@@ -106,7 +110,7 @@ export class BonusRun {
       this.phase = 'run';
       const t = Math.max(0, core.time);
       this.live.primary = `${t.toFixed(2)} s`;
-      this.live.secondary = `${this.gapsCleared}/5 leaps · ${this.resets} resets`;
+      this.live.secondary = `${this.gapsCleared}/${track.gaps.length} leaps · ${this.resets} resets`;
       this.live.hint = this.nearMiss > 0 ? `-${this.nearMiss.toFixed(1)}s near miss` : 'Learn the bite cycles';
 
       // Near misses: close to an open set of jaws without being bitten.
@@ -124,12 +128,18 @@ export class BonusRun {
         }
       }
 
-      // Count the leaps.
-      const zone = track.zoneAt(player.ground.u);
-      if (zone?.gap) this.lastGapU = player.ground.u;
-      else if (this.lastGapU >= 0 && player.ground.u > this.lastGapU + 0.004 && k.grounded) {
-        this.gapsCleared++;
-        this.lastGapU = -1;
+      // Count the leaps, by span rather than by position: a respawn can walk
+      // the kart back and forth across a gap edge several times, and none of
+      // those is a second leap.
+      const gap = track.gapAt(player.ground.u);
+      if (gap) {
+        this.pendingGap = track.gaps.indexOf(gap);
+      } else if (this.pendingGap >= 0 && k.grounded) {
+        if (!this.clearedGaps.has(this.pendingGap)) {
+          this.clearedGaps.add(this.pendingGap);
+          this.gapsCleared = this.clearedGaps.size;
+        }
+        this.pendingGap = -1;
       }
 
       if (player.progress.finished || player.progress.raw >= 0.995) this.finishGauntlet(t);
@@ -177,7 +187,7 @@ export class BonusRun {
       medal: medalFor(this.def, score),
       lines: [
         { label: 'Raw time', value: `${time.toFixed(2)} s` },
-        { label: 'Leaps cleared', value: `${this.gapsCleared}/5`, good: this.gapsCleared >= 5 },
+        { label: 'Leaps cleared', value: `${this.gapsCleared}/${this.view.track.gaps.length}`, good: this.gapsCleared >= this.view.track.gaps.length },
         { label: 'Resets', value: this.resets > 0 ? `${this.resets} (+${penalty.toFixed(0)} s)` : 'None', good: this.resets === 0 },
         { label: 'Near misses', value: bonus > 0 ? `-${bonus.toFixed(1)} s` : 'None', good: bonus > 0 },
       ],

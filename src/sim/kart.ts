@@ -307,9 +307,18 @@ export class KartRuntime {
     if (g.gap) {
       this.grounded = false;
     } else if (wasGrounded) {
-      // Tolerance keeps the kart from chattering off every small crest, but is
-      // small enough that a real ramp still throws it.
-      this.grounded = above <= 0.22;
+      //  A crest launches a kart when the road falls away faster than gravity
+      //  can pull it down. Project the kart forward ballistically and compare
+      //  where it would be with where the road will be: if it would be above
+      //  the road, it is already flying.
+      //
+      //  Without this a kart is welded to the surface and simply drives down
+      //  the far side of every jump in the game, however steep.
+      const vf = Math.max(4, Math.abs(this.forwardSpeed));
+      const t = g.aheadDistance / vf;
+      const ballistic = this.pos.y + this.vel.y * t - 0.5 * GRAVITY * t * t;
+      const roadAhead = g.heightAhead + this.rideHeight;
+      this.grounded = above <= 0.22 && ballistic <= roadAhead + 0.12;
     } else {
       this.grounded = above <= 0.06 && this.vel.y <= 0.5;
     }

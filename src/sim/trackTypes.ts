@@ -193,4 +193,10 @@ export interface GroundInfo {
   /** The projection had to re-acquire from scratch this frame, so `s` is
    *  correct but discontinuous with the previous reading. */
   reacquired: boolean;
+  /** Road height a short distance further along, at the same lateral offset.
+   *  A kart uses it to work out whether the road is falling away faster than
+   *  gravity — which is the only way it can ever leave a crest. */
+  heightAhead: number;
+  /** How far ahead `heightAhead` was sampled, in metres. */
+  aheadDistance: number;
 }

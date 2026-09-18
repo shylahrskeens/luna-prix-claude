@@ -300,7 +300,7 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
     for (let i = 0; i <= steps; i++) {
       const s = (gap.from * L - margin) + ((span + margin * 2) * i) / steps;
       const sm = track.main.sample(s);
-      const half = sm.w + 10;
+      const half = sm.w + 13;
       const base = (floorPos.length / 3);
       for (const side of [-1, 1] as const) {
         floorPos.push(
@@ -349,6 +349,49 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
     wg.setIndex(wallIdx);
     wg.computeVertexNormals();
     group.add(new THREE.Mesh(wg, mats.toon(gapPalette.wall)));
+
+    // A gap has to be legible from the approach, not from the lip.
+    //
+    //  A six metre drop seen from a chase camera three metres up is invisible
+    //  until you are already committed to it. Striped gantries either side of
+    //  the lip, and a chevron board across the far bank, put the hole on
+    //  screen a full two seconds before it matters — which is the difference
+    //  between a risk and an ambush.
+    const lipSm = track.main.sample(gap.from * L - 3);
+    const warnMat = mats.glow('#ffd166', 0.95);
+    const stripeMat = mats.toon('#2b2f3a');
+    for (const side of [-1, 1] as const) {
+      const lat = side * (lipSm.w + 2.4);
+      const base = new THREE.Vector3(
+        lipSm.pos.x + lipSm.right.x * lat,
+        lipSm.pos.y,
+        lipSm.pos.z + lipSm.right.z * lat,
+      );
+      const mast = new THREE.Mesh(new THREE.BoxGeometry(0.5, 7.5, 0.5), stripeMat);
+      mast.position.copy(base).setY(base.y + 3.75);
+      group.add(mast);
+      for (let b = 0; b < 4; b++) {
+        const band = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.7, 0.62), warnMat);
+        band.position.copy(base).setY(base.y + 1.1 + b * 1.8);
+        group.add(band);
+      }
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.46, 8, 6), warnMat);
+      lamp.position.copy(base).setY(base.y + 7.9);
+      group.add(lamp);
+    }
+    // Chevron board on the far bank: the thing you are aiming at.
+    const landSm = track.main.sample(gap.to * L + 6);
+    for (let c = -1; c <= 1; c++) {
+      const chev = new THREE.Mesh(new THREE.ConeGeometry(1.5, 2.2, 3), warnMat);
+      const lat = c * 4.2;
+      chev.position.set(
+        landSm.pos.x + landSm.right.x * lat,
+        landSm.pos.y + 3.2,
+        landSm.pos.z + landSm.right.z * lat,
+      );
+      chev.rotation.set(Math.PI, Math.atan2(landSm.fwd.x, landSm.fwd.z), 0);
+      group.add(chev);
+    }
 
     // Distance markers along the far bank, so the leap has a scale.
     const markerMat = mats.glow('#ffffff', 0.75);
