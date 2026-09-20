@@ -151,7 +151,9 @@ screen lists the same bindings, and they are rebindable in settings.
 **Touch** — a thumb stick and pedals appear on a touch screen; the HUD scales
 with the device.
 
-**Gamepad** — not supported in this build.
+**Gamepad** — supported. Left stick or the d-pad steers, right trigger or A
+accelerates, left trigger or B brakes, the shoulder buttons or X drift, Y looks
+back. The HUD switches its prompts to the pad as soon as one is used.
 
 **Where it runs.** Any browser with WebGL2: tested in Chrome on macOS at
 1512x796 and at a 400px-wide phone layout. It needs no install, no wallet and
