@@ -58,10 +58,12 @@ bigger drift payout, grip on loose surfaces, a faster recovery, a longer
 boost.
 
 That means an Axie fetched from a wallet needs no mapping layer. Its parts go
-in, its driving comes out. The three drivers here are named for the models in
-the official Axie 3D starter toolkit so the real meshes and rigs drop into the
-same definitions; their specific parts and colours are demo data, and the data
-says so.
+in, its driving comes out. One of the three drivers, **Pomodoro**, shares a
+name with a mascot in the official Axie 3D asset pack; Buba and Puffy are names
+authored for this build. Their specific parts and colours are demo data, and
+the data says so. Swapping in the official rigged meshes is a change of one
+file, `src/render/axieMesh.ts`, because everything else reads the definition
+rather than the model.
 
 The rest follows the same principle. Kart parts are versioned content resolved
 into a validated loadout before a race starts, so a future wallet-backed
@@ -97,7 +99,9 @@ What it will not do is make racing worse to make ownership matter more.
 
 - **Runs now**, in a browser, from a static directory. No install, no backend,
   no wallet.
-- **674 KB total, 186 KB gzipped**, three.js included.
+- **728 KB total, 202 KB gzipped**, three.js included. (Measured from
+  `npm run build` on 20 Sep 2026: 493 KB three.js, 219 KB game, 13 KB CSS,
+  2 KB HTML.)
 - **No third-party assets.** Models, tracks, effects and audio are generated.
 - **The simulation is pure** — no renderer, DOM or transport dependency. That
   is what lets the server run the same code and lets a full eight-kart race be

@@ -37,7 +37,7 @@ The Axie model in this build follows the real data shape:
 | The class base stat table | The real one |
 | The +3-per-part rule and which stat each class governs | The real one |
 | The six part types | The real ones |
-| The three drivers' names — Buba, Puffy, Pomodoro | Named for the three models in the official Axie 3D starter toolkit, so the real meshes and rigs drop into the same `AxieDefinition` |
+| The three drivers' names — Buba, Puffy, Pomodoro | **Pomodoro** shares a name with a mascot in the official Axie 3D asset pack. **Buba and Puffy do not** — they are names authored for this build. No mesh from that pack is used or shipped. |
 | Their classes, specific parts, colours and bios | **Demo data authored for this build.** Not fetched, not on-chain, and not a claim about any real Axie. |
 
 `AxieDefinition.source` is `'mock-local'` on all three, in the data itself.

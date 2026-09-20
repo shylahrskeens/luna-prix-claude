@@ -157,9 +157,11 @@ off-road, and any integrity flag.
   on the player's hardware and steps down once if it will not hold.
 - The rank ladder and every leaderboard are local to the browser profile. The
   server can publish authoritative results; nothing hosted is running.
-- Axie art is procedural and original. The three drivers are named for the
-  models in the official Axie 3D starter toolkit so the real meshes drop into
-  the same definitions; their classes, parts and colours are demo data.
+- Axie art is procedural and original. Of the three drivers, **Pomodoro**
+  shares a name with a mascot in the official Axie 3D asset pack; Buba and
+  Puffy do not and are names authored for this build. Their classes, parts and
+  colours are demo data. The official pack is a drop-in path for the meshes,
+  not something this build ships or depends on.
 
 ## Credits and licences
 
