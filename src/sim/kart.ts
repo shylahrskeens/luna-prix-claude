@@ -26,11 +26,14 @@ export interface KartInput {
   steer: number;
   drift: boolean;
   lookBack: boolean;
+  /** The class special. Edge-triggered by the race, not the kart. */
+  special: boolean;
 }
-export const NEUTRAL_INPUT: KartInput = { throttle: 0, brake: 0, steer: 0, drift: false, lookBack: false };
+export const NEUTRAL_INPUT: KartInput = { throttle: 0, brake: 0, steer: 0, drift: false, lookBack: false, special: false };
 
 export type KartEventKind =
   | 'hop' | 'driftStart' | 'driftTier' | 'driftEnd' | 'boostStart' | 'boostEnd'
+  | 'slowed' | 'shield' | 'shieldHit' | 'jammed' | 'special'
   | 'land' | 'hardLand' | 'wallHit' | 'hazardHit' | 'respawnStart' | 'respawnEnd'
   | 'trickStart' | 'trickComplete' | 'trickFail' | 'padHit' | 'offroad' | 'onroad'
   | 'wrongWay' | 'spin';
@@ -85,7 +88,7 @@ export class KartRuntime {
 
   boostTime = 0;
   boostTier = 0;
-  boostSource: 'drift' | 'pad' | 'start' | 'trick' | 'ring' = 'drift';
+  boostSource: 'drift' | 'pad' | 'start' | 'trick' | 'ring' | 'special' = 'drift';
 
   /** Externally supplied slipstream strength, 0..1 (set by the race core). */
   draft = 0;
@@ -93,6 +96,14 @@ export class KartRuntime {
   catchUp = 1;
 
   spinTimer = 0;
+  // ---- what another racer's special did to this kart -----------------------
+  /** Seconds left of a speed penalty, and how hard it bites. */
+  slowTimer = 0;
+  slowFactor = 1;
+  /** Seconds left of immunity to hits and to other karts' specials. */
+  shieldTimer = 0;
+  /** Seconds left with the boost jammed. */
+  noBoostTimer = 0;
   respawnTimer = 0;
   offRoadTimer = 0;
   stuckTimer = 0;
@@ -174,7 +185,26 @@ export class KartRuntime {
     this.mode = 'frozen';
   }
 
+  /** Hold this kart back for a moment. `factor` is a multiplier on top speed. */
+  applySlow(factor: number, seconds: number): void {
+    if (this.shieldTimer > 0) return;
+    this.slowFactor = Math.min(this.slowFactor, factor);
+    this.slowTimer = Math.max(this.slowTimer, seconds);
+    this.emit('slowed', 1 - factor);
+  }
+  applyShield(seconds: number): void {
+    this.shieldTimer = Math.max(this.shieldTimer, seconds);
+    this.emit('shield', seconds);
+  }
+  applyNoBoost(seconds: number): void {
+    if (this.shieldTimer > 0) return;
+    this.noBoostTimer = Math.max(this.noBoostTimer, seconds);
+    this.boostTime = 0;
+    this.emit('jammed', seconds);
+  }
+
   startBoost(tier: number, source: KartRuntime['boostSource']): void {
+    if (this.noBoostTimer > 0 && source !== 'special') return;
     const dur = this.h.boostDuration * (tier === 1 ? 1.0 : tier === 2 ? 1.55 : 2.2);
     // Refresh rather than stack: a pad taken mid-boost extends it, it does not
     // double it. Keeps the boost state legible and uncapped stacking out.
@@ -192,6 +222,7 @@ export class KartRuntime {
 
   /** Hazard or heavy contact: lose control briefly. */
   hit(strength: number, dirX: number, dirZ: number): void {
+    if (this.shieldTimer > 0) { this.emit('shieldHit', strength); return; }
     const absorbed = 1 - this.h.knockResist;
     const f = strength * absorbed;
     if (f < 0.12) return;
@@ -256,6 +287,9 @@ export class KartRuntime {
     }
     if (this.assists.autoAccel && this.mode === 'driving') input.throttle = Math.max(input.throttle, 1);
 
+    if (this.slowTimer > 0) { this.slowTimer -= dt; if (this.slowTimer <= 0) this.slowFactor = 1; }
+    if (this.shieldTimer > 0) this.shieldTimer -= dt;
+    if (this.noBoostTimer > 0) this.noBoostTimer -= dt;
     const spun = this.spinTimer > 0;
     if (spun) {
       this.spinTimer -= dt;
@@ -356,6 +390,7 @@ export class KartRuntime {
       }
     }
 
+    if (this.slowTimer > 0) speedMul *= this.slowFactor;   // somebody's special has hold of us
     if (this.grounded) this.stepGround(dt, input, g, gripMul, speedMul, dragAdd, spun);
     else this.stepAir(dt, input);
 

@@ -95,10 +95,10 @@ export class BotDriver {
     if (k.mode === 'frozen') {
       // Hold the launch. Better drivers time it tighter.
       const hold = -core.time < (0.30 + (1 - skill) * 0.55);
-      return { throttle: hold ? 1 : 0, brake: 0, steer: 0, drift: false, lookBack: false };
+      return { throttle: hold ? 1 : 0, brake: 0, steer: 0, drift: false, lookBack: false, special: false };
     }
     if (k.mode === 'finished' || k.mode === 'respawning') {
-      return { throttle: 1, brake: 0, steer: 0, drift: false, lookBack: false };
+      return { throttle: 1, brake: 0, steer: 0, drift: false, lookBack: false, special: false };
     }
 
     const speed = k.speed;
@@ -257,7 +257,16 @@ export class BotDriver {
       if (Math.abs(gateShift) > 0.45) { throttle = Math.min(throttle, 0.7); brake = 0; }
     }
 
-    return { throttle, brake, steer, drift, lookBack: false };
+    // Rivals use their special too, or it is not a mechanic, it is a toy: fire
+    // when it is charged and there is somebody worth firing it at.
+    const charged = this.racer.special >= 1;
+    const near = charged && core.racers.some((o) => {
+      if (o === this.racer || o.progress.finished) return false;
+      const dx = o.kart.pos.x - k.pos.x, dz = o.kart.pos.z - k.pos.z;
+      return dx * dx + dz * dz < 55 * 55;
+    });
+    const special = near && st.rng.next() < 0.012;   // this runs every frame: roughly one shot a second once charged
+    return { throttle, brake, steer, drift, lookBack: false, special };
   }
 
   /** Pick a lateral lane through a gap that misses the jaws.

@@ -33,7 +33,7 @@ import type { InputManager } from '../ui/input';
 const STEP = 1 / 120;
 /** Extra simulation steps per frame once the player is done, so the field
  *  finishes for real in about a second of wall time instead of being guessed. */
-const FINISH_FAST_FORWARD = 14;
+const FINISH_FAST_FORWARD = 24;
 const MAX_FRAME = 0.25;
 
 export interface RaceSetup {

@@ -11,6 +11,7 @@ import { DRIFT_TIERS, TIER_COLOR } from '../sim/kart';
 import type { RaceCore, Racer } from '../sim/race';
 import type { TrackRuntime } from '../sim/track';
 import { controlCard, type Device } from './input';
+import { SPECIALS } from '../data/specials';
 
 export interface HudOptions {
   hudScale: number;
@@ -27,6 +28,8 @@ export class Hud {
   private speedEl: HTMLElement;
   private boostFill: HTMLElement;
   private boostLabel: HTMLElement;
+  private specialFill: HTMLElement;
+  private specialLabel: HTMLElement;
   private centre: HTMLElement;
   private warnEl: HTMLElement;
   private sectorEl: HTMLElement;
@@ -51,6 +54,8 @@ export class Hud {
     this.speedEl = el('div', { class: 'speed-big' });
     this.boostFill = el('div', { class: 'boost-fill' });
     this.boostLabel = el('div', { class: 'hint', style: 'margin-top:4px' });
+    this.specialFill = el('div', { class: 'special-fill' });
+    this.specialLabel = el('div', { class: 'hint', style: 'margin-top:3px' });
     this.centre = el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:9vh;text-align:center' });
     this.warnEl = el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:10px' });
     this.sectorEl = el('div', { class: 'hint', style: 'letter-spacing:0.12em;text-transform:uppercase' });
@@ -64,6 +69,7 @@ export class Hud {
       this.boostFill,
       el('div', { class: 'boost-ticks' }, el('i'), el('i'), el('i')),
     );
+    const special = el('div', { class: 'special-meter' }, this.specialFill);
 
     this.root = el('div', { id: 'hud', class: 'layer' },
       el('div', { class: 'hud-tl' },
@@ -84,6 +90,8 @@ export class Hud {
           this.speedEl,
           el('div', { style: 'margin-top:8px' }, boost),
           this.boostLabel,
+          el('div', { style: 'margin-top:8px' }, special),
+          this.specialLabel,
         ),
       ),
       el('div', { class: 'hud-c' }, this.centre, this.warnEl),
@@ -225,6 +233,17 @@ export class Hud {
         : 'DRIFT TO CHARGE';
       this.boostLabel.style.color = k.driftTier > 0 ? TIER_COLOR[k.driftTier] : 'var(--muted)';
     }
+
+    // The class special: what it is, and whether it is ready.
+    const sp = SPECIALS[player.loadout.axieClass];
+    const charge = clamp01(player.special);
+    this.specialFill.style.width = `${charge * 100}%`;
+    const ready = charge >= 1;
+    this.specialFill.style.background = ready ? 'var(--good, #5fd8e8)' : 'rgba(199,155,255,.75)';
+    this.specialLabel.textContent = ready
+      ? `${sp.name.toUpperCase()} READY — ${(binds.special || 'KeyE').replace(/^Key/, '')}`
+      : `${sp.name.toUpperCase()} ${Math.round(charge * 100)}%`;
+    this.specialLabel.style.color = ready ? 'var(--good, #5fd8e8)' : 'var(--muted)';
 
     this.sectorEl.textContent = core.track.zoneAt(player.ground.u)?.label ?? core.track.def.name;
 

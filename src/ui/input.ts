@@ -11,6 +11,8 @@ import type { Settings } from '../persist/store';
 export type Device = 'keyboard' | 'gamepad' | 'touch';
 
 export interface TouchState {
+  /** The class special button. */
+  special: boolean;
   /** -1..1 from the virtual stick. */
   steer: number;
   accel: boolean;
@@ -23,7 +25,7 @@ export class InputManager {
   private keys = new Set<string>();
   private settings: Settings;
   device: Device = 'keyboard';
-  touch: TouchState = { steer: 0, accel: false, brake: false, drift: false, lookBack: false };
+  touch: TouchState = { steer: 0, accel: false, brake: false, drift: false, lookBack: false, special: false };
   /** Raised once per press, consumed by the UI. */
   private pressed = new Set<string>();
   private driftToggleState = false;
@@ -168,7 +170,8 @@ export class InputManager {
     //  always self-consistent, which is exactly why 21 clean test races never
     //  caught this. Only a human looking at a screen could.
     steer = clamp(-steer * s.steerSensitivity * (s.invertSteering ? -1 : 1), -1, 1);
-    return { throttle: clamp01(throttle), brake: clamp01(brake), steer, drift, lookBack };
+    const special = this.keys.has(this.bind('special')) || this.keys.has('KeyE') || this.touch.special || !!pad?.buttons[4]?.pressed;
+    return { throttle: clamp01(throttle), brake: clamp01(brake), steer, drift, lookBack, special };
   }
 
   /** Release a held drift toggle, e.g. on respawn. */
@@ -197,6 +200,7 @@ export function controlCard(device: Device, binds: Record<string, string>): { ke
       { key: 'RB / LB / X', label: 'Hop, then hold to drift' },
       { key: 'RB in the air', label: 'Trick' },
       { key: 'Y', label: 'Look back' },
+      { key: 'LB', label: 'Your class special' },
     ];
   }
   if (device === 'touch') {
@@ -206,6 +210,7 @@ export function controlCard(device: Device, binds: Record<string, string>): { ke
       { key: 'BRAKE', label: 'Brake and reverse' },
       { key: 'DRIFT', label: 'Hop, then hold to drift' },
       { key: 'DRIFT airborne', label: 'Trick' },
+      { key: 'SPECIAL', label: 'Your class special' },
     ];
   }
   //  The arrow keys drive the kart alongside whatever is bound, always. The
@@ -225,6 +230,7 @@ export function controlCard(device: Device, binds: Record<string, string>): { ke
     { key: `${both('left')} / ${both('right')}`, label: 'Steer' },
     { key: both('drift'), label: 'Hop, then hold to drift' },
     { key: `${pretty(binds.drift)} in the air`, label: 'Trick' },
+    { key: pretty(binds.special ?? 'KeyE'), label: 'Your class special' },
     { key: pretty(binds.lookBack), label: 'Look back' },
     { key: pretty(binds.reset), label: 'Reset to the track' },
   ];

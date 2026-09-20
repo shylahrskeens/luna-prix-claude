@@ -15,6 +15,7 @@ import { KartRuntime, resolveKartContact, type KartEvent, type KartInput, NEUTRA
 import type { GroundInfo } from './trackTypes';
 import type { ValidatedLoadout } from './loadout';
 import { MODE_RULES, RULES_VERSION, type Mode } from '../data/rules';
+import { SPECIALS, SPECIAL_COST } from '../data/specials';
 
 /** Largest believable lap-fraction advance in one simulation step. At 120 Hz
  *  and 45 m/s on the shortest track this is ~0.0004, so 0.02 is a 50x margin
@@ -56,6 +57,12 @@ export interface Racer {
   ground: GroundInfo;
   progress: RacerProgress;
   loadout: ValidatedLoadout;
+  /** Class-special charge, 0..1. Drifting fills it; firing empties it. */
+  special: number;
+  /** Edge detection for the special button. */
+  specialHeld: boolean;
+  /** Drift seconds already paid into the meter. */
+  driftPaid: number;
   /** Bot skill 0..1; unused for humans. */
   skill: number;
   /** Livery tint index for the renderer. */
@@ -106,7 +113,7 @@ export interface RaceResult {
 }
 
 export interface RaceEvent {
-  kind: 'lap' | 'finish' | 'overtake' | 'checkpoint' | 'countdown' | 'go' | 'lastLap' | 'integrity';
+  kind: 'lap' | 'finish' | 'overtake' | 'checkpoint' | 'countdown' | 'go' | 'lastLap' | 'integrity' | 'special';
   racerId: string;
   value: number;
   text?: string;
@@ -159,6 +166,7 @@ export class RaceCore {
       isPlayer: opts.isPlayer ?? false,
       isBot: opts.isBot ?? false,
       kart, ground, loadout,
+      special: 0, specialHeld: false, driftPaid: 0,
       skill: opts.skill ?? 0.7,
       colorIndex: opts.colorIndex ?? this.racers.length,
       progress: {
@@ -226,6 +234,17 @@ export class RaceCore {
     // ---- per-racer simulation -------------------------------------------
     for (const r of this.racers) {
       const input = r.progress.finished ? NEUTRAL_INPUT : (inputs.get(r.id) ?? NEUTRAL_INPUT);
+      // The special charges off the thing the game is already about. Drifting
+      // pays a boost and fills the meter; what you do with the meter is yours.
+      if (r.kart.driftSeconds > r.driftPaid) {
+        r.special = Math.min(1, r.special + (r.kart.driftSeconds - r.driftPaid) * 0.34);
+        r.driftPaid = r.kart.driftSeconds;
+      }
+      if (input.special && !r.specialHeld && r.special >= SPECIAL_COST
+          && r.kart.mode === 'driving' && !r.progress.finished && this.phase !== 'countdown') {
+        this.fireSpecial(r);
+      }
+      r.specialHeld = !!input.special;
       this.track.ground(r.kart.pos, r.kart.sHint, r.ground);
       r.kart.step(dt, input, r.ground);
       for (const e of r.kart.events) {
@@ -410,6 +429,61 @@ export class RaceCore {
     const remaining = Math.max(0, this.cfg.laps - p.raw);
     const perLap = this.time / done;
     return this.time + remaining * perLap;
+  }
+
+  /** The Axie's class special. Everything it does is deterministic and reads
+   *  only race state, so the server resolves the same move from the same class. */
+  private fireSpecial(r: Racer): void {
+    const sp = SPECIALS[r.loadout.axieClass];
+    r.special = 0;
+    const me = r.kart;
+    const fwdX = Math.sin(me.yaw), fwdZ = Math.cos(me.yaw);
+    const rel = this.racers
+      .filter((o) => o !== r && !o.progress.finished)
+      .map((o) => {
+        const dx = o.kart.pos.x - me.pos.x, dz = o.kart.pos.z - me.pos.z;
+        const dist = Math.max(0.001, Math.hypot(dx, dz));
+        return { o, nx: dx / dist, nz: dz / dist, dist, ahead: dx * fwdX + dz * fwdZ };
+      })
+      .sort((a, b) => a.dist - b.dist);
+    const inFront = rel.find((x) => x.ahead > 0 && x.dist < sp.range);
+
+    switch (sp.kind) {
+      case 'ram':
+        for (const t of rel) if (t.dist < sp.range && t.ahead > -3) t.o.kart.hit(0.9, t.nx, t.nz);
+        me.startBoost(1, 'special');
+        break;
+      case 'wake':
+        for (const t of rel) if (t.dist < sp.range && t.ahead < 0) {
+          t.o.kart.applySlow(0.72, sp.duration);
+          t.o.kart.hit(0.34, t.nx, t.nz);
+        }
+        break;
+      case 'root':
+        if (inFront) inFront.o.kart.applySlow(0.45, sp.duration);
+        break;
+      case 'gust':
+        for (const t of rel.slice(0, 3)) if (t.dist < sp.range) t.o.kart.hit(0.6, -t.nz, t.nx);
+        break;
+      case 'sting':
+        if (inFront) { inFront.o.kart.applyNoBoost(sp.duration); inFront.o.kart.applySlow(0.82, sp.duration); }
+        break;
+      case 'shell':
+        me.applyShield(sp.duration);
+        break;
+      case 'overdrive':
+        me.startBoost(3, 'special');
+        me.boostTime = Math.max(me.boostTime, sp.duration);
+        break;
+      case 'draft':
+        me.draft = 1;
+        me.startBoost(1, 'special');
+        break;
+      case 'hex':
+        if (inFront) inFront.o.kart.applyNoBoost(sp.duration);
+        break;
+    }
+    this.events.push({ kind: 'special', racerId: r.id, value: 0 });
   }
 
   private finishRacer(r: Racer, timedOut: boolean, atTime?: number): void {

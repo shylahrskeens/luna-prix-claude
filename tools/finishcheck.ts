@@ -42,7 +42,7 @@ function run(trackId: string, seed: number, skipAfter: number | null) {
     core.step(DT, inputs);
     frames++;
     if (core.phase === 'finishing' && core.racers[0].progress.finished) {
-      for (let k = 0; k < (core.hurry ? 140 : 14) && core.phase === 'finishing'; k++) {
+      for (let k = 0; k < (core.hurry ? 240 : 24) && core.phase === 'finishing'; k++) {
         inputs.clear();
         for (let i = 0; i < bots.length; i++) {
           const r = core.racers[i];
