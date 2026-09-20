@@ -13,6 +13,9 @@ import type { KartEvent } from '../sim/kart';
 import type { Racer } from '../sim/race';
 import { clamp01 } from '../core/math';
 
+/** What one threaded hoop is worth on the Mega Ramp, in metres. */
+const RING_METRES = 12;
+
 export type BonusPhase = 'countdown' | 'run' | 'flight' | 'scored' | 'failed';
 
 export interface BonusScore {
@@ -109,7 +112,7 @@ export class BonusRun {
         this.phase = 'run';
         this.live.primary = `${Math.round(k.speed * 3.6)} km/h`;
         this.live.secondary = 'Speed at the lip is the whole score';
-        this.live.hint = k.boosting ? 'BOOSTING' : 'Take all three pads';
+        this.live.hint = k.boosting ? 'BOOSTING' : 'Take all five pads';
         if (!k.grounded && player.ground.s > rampEnd - 6) {
           this.launched = true;
           this.launchS = player.ground.s;
@@ -118,10 +121,20 @@ export class BonusRun {
       } else if (!k.grounded) {
         this.phase = 'flight';
         this.peakHeight = Math.max(this.peakHeight, k.pos.y);
-        const dist = Math.max(0, player.ground.s - this.launchS);
+        this.scoreRings(core.hazards, k);
+        const dist = Math.max(0, player.ground.s - this.launchS) + this.ringsHit.size * RING_METRES;
+        const medals = this.def.medals;
+        const next = dist < medals.bronze ? ['BRONZE', medals.bronze] as const
+          : dist < medals.silver ? ['SILVER', medals.silver] as const
+          : dist < medals.gold ? ['GOLD', medals.gold] as const
+          : null;
         this.live.primary = `${dist.toFixed(1)} m`;
-        this.live.secondary = `air ${k.airTime.toFixed(1)}s`;
-        this.live.hint = k.trickActive ? 'TRICK — LAND IT FLAT' : 'Level the kart for the landing';
+        this.live.secondary = this.ringsHit.size
+          ? `${this.ringsHit.size}/4 hoops · +${this.ringsHit.size * RING_METRES} m · air ${k.airTime.toFixed(1)}s`
+          : `air ${k.airTime.toFixed(1)}s · hoops are worth ${RING_METRES} m each`;
+        this.live.hint = k.trickActive ? 'TRICK — LAND IT FLAT'
+          : next ? `${(next[1] - dist).toFixed(0)} m to ${next[0]}`
+          : 'PAST GOLD — LAND IT';
         if (Math.abs(player.ground.lat) > player.ground.width + 6) this.outsideCorridor = true;
       } else if (this.phase === 'flight') {
         this.finishRamp(player.ground.s - this.launchS);
@@ -342,7 +355,7 @@ export class BonusRun {
   }
 
   private finishRamp(distance: number): void {
-    const d = Math.max(0, distance);
+    const d = Math.max(0, distance) + this.ringsHit.size * RING_METRES;
     const trickMult = 1 + Math.min(0.25, this.tricks * 0.08);
     const score = d * this.landingQuality * trickMult;
     if (this.outsideCorridor) {

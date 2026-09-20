@@ -38,20 +38,20 @@ export interface BonusEventDefinition {
 // Mega Ramp — the hero event.
 //
 // A long runway, one launch-angle decision, and a landing slope that falls away
-// at 28 degrees so distance scales with how much speed you carried into the
-// lip. Everything about the geometry is chosen so a competent run lands between
-// 60 and 150 metres, which makes the distance markers readable and the gap
-// between a bronze and a gold something a player can feel.
+// so distance scales with how much speed you carried into the lip. The runway,
+// the kicker and the hill were all lengthened so the jump reads as a jump: a
+// competent run now lands between roughly 100 and 240 metres, and there are
+// hoops down the flight path worth real metres if you can steer to them.
 // ---------------------------------------------------------------------------
 
 const RAMP_SEGS: RouteSeg[] = [
   { t: 'straight', len: 90, w: 16, mark: 'stage' },
-  { t: 'straight', len: 230, w: 15, mark: 'runway' },
-  { t: 'straight', len: 46, dy: 16, w: 13, mark: 'ramp' },
+  { t: 'straight', len: 320, w: 15, mark: 'runway' },
+  { t: 'straight', len: 64, dy: 27, w: 13, mark: 'ramp' },
   // The landing hill. It starts at the lip and drops steeply, so a kart that
   // launches harder simply flies further down it.
-  { t: 'straight', len: 330, dy: -175, w: 26, mark: 'landing' },
-  { t: 'straight', len: 120, dy: -18, w: 26, mark: 'runout' },
+  { t: 'straight', len: 470, dy: -260, w: 30, mark: 'landing' },
+  { t: 'straight', len: 150, dy: -22, w: 30, mark: 'runout' },
   { t: 'straight', len: 90, w: 26, mark: 'catch' },
 ];
 
@@ -82,13 +82,24 @@ export const MEGA_RAMP_TRACK: TrackDefinition = {
     { ...span(RM.catch, 0, 1), surface: 'grass', wall: 'both', shoulder: 9, label: 'Catch' },
   ],
   boostPads: [
-    // The risky line: a pad you can only take flat out and straight.
-    { s: at(RM.runway, 0.30), lat: 0, len: 22, w: 7 },
-    { s: at(RM.runway, 0.62), lat: 0, len: 22, w: 7 },
-    { s: at(RM.runway, 0.88), lat: 0, len: 22, w: 6 },
+    // The risky line: pads you can only take flat out and straight. Five of
+    // them now, and the last two are narrow, so a greedy run is a committed one.
+    { s: at(RM.runway, 0.18), lat: 0, len: 24, w: 8 },
+    { s: at(RM.runway, 0.38), lat: 0, len: 24, w: 7 },
+    { s: at(RM.runway, 0.56), lat: 0, len: 24, w: 7 },
+    { s: at(RM.runway, 0.74), lat: 0, len: 22, w: 6 },
+    { s: at(RM.runway, 0.90), lat: 0, len: 22, w: 5.5 },
   ],
   branches: [],
-  hazards: [],
+  hazards: [
+    // Hoops down the flight path. They sit where the arc actually goes, rise
+    // with it and then fall, and each is worth metres — so the line you pick
+    // off the lip is a real decision rather than "hold accelerate".
+    { kind: 'ring', s: at(RM.landing, 0.10), lat: 0, h: 15, r: 7.5 },
+    { kind: 'ring', s: at(RM.landing, 0.24), lat: -4, h: 19, r: 7.0 },
+    { kind: 'ring', s: at(RM.landing, 0.40), lat: 4, h: 16, r: 6.5 },
+    { kind: 'ring', s: at(RM.landing, 0.58), lat: 0, h: 10, r: 6.0 },
+  ],
   theme: {
     sky: ['#4f8fd6', '#ffd2a0'],
     fog: '#cddcee',
@@ -342,14 +353,15 @@ export const BONUS_EVENTS: BonusEventDefinition[] = [
     name: 'Mega Ramp',
     tagline: 'Build speed, pick your line, stick the landing.',
     brief:
-      'Three boost pads down the runway and one decision: how straight are you willing to run to take all three. ' +
+      'Five boost pads down a long runway and one decision: how straight are you willing to run to take them all. ' +
       'At the lip, pitch the kart with accelerate and brake, roll it level with steering, and land flat on the hill. ' +
+      'Four hoops hang down the flight path and each one you thread is worth twelve metres. ' +
       'A clean landing keeps your distance. A trick on the way down multiplies it. A bad landing costs you a third of it.',
     kind: 'megaRamp',
     track: MEGA_RAMP_TRACK,
     higherIsBetter: true,
     unit: 'm',
-    medals: { bronze: 72, silver: 104, gold: 132 },
+    medals: { bronze: 110, silver: 165, gold: 215 },
     timeLimit: 45,
     unlock: null,
   },
