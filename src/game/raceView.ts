@@ -94,6 +94,9 @@ export class RaceView {
    *  locally so steering stays instant, and is corrected from snapshots. */
   net: NetworkAdapter | null = null;
   private completed = false;
+  /** Set by a click or tap while the finishing tail runs. */
+  skipRequested = false;
+  private tailArmed = false;
   private netTick = 0;
   private lastSnapT = -1;
   /** Largest correction applied this race, in metres — surfaced in the HUD as
@@ -270,6 +273,12 @@ export class RaceView {
       this.inputs.set(player.id, raw);
       if (this.input.isDown(this.resetKey) && player.kart.mode === 'driving') {
         player.kart.triggerRespawn();
+      }
+      // Crossed the line: the tail exists so you see yourself finish, not so
+      // you sit and watch. A fresh key or a tap ends it now.
+      if (core.canSkipTail) {
+        if (!this.tailArmed) { this.tailArmed = true; this.skipRequested = false; this.input.consumeAnyPress(); }
+        else if (this.input.consumeAnyPress() || this.skipRequested) core.skipTail();
       }
     }
     for (const [id, bot] of this.bots) this.inputs.set(id, bot.think(dt, core));

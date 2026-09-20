@@ -74,6 +74,9 @@ class App implements AppApi {
     app.appendChild(this.hud.root);
     app.appendChild(this.touch.root);
 
+    // A tap also ends the end-of-race tail. Consumed every frame so a click
+    // from earlier in the race cannot skip it the moment it starts.
+    window.addEventListener('pointerdown', () => { this.pointerPressed = true; });
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250));
     this.resize();
@@ -434,7 +437,10 @@ class App implements AppApi {
     }
     if (e.kind === 'lastLap') this.hud.toast('FINAL LAP', 1.8, 'var(--warm)');
     if (e.kind === 'checkpoint' && e.value >= 0) audio.sfx('checkpoint');
-    if (e.kind === 'finish') { audio.sfx('finish'); }
+    if (e.kind === 'finish') {
+      audio.sfx('finish');
+      this.hud.toast('FINISHED — press anything for the results', 2.6, 'var(--good)');
+    }
   }
 
   private finishRace(): void {
@@ -576,6 +582,7 @@ class App implements AppApi {
   }
 
   private fpsMeter = 0;
+  private pointerPressed = false;
 
   /** Advance the game by `seconds` of simulated frames, without waiting on the
    *  display. Used by the screenshot and smoke-test tooling, which runs in a
@@ -629,6 +636,8 @@ class App implements AppApi {
 
     if (this.race) {
       if (this.input.consumePress(this.profile.settings.keybinds.pause)) this.togglePause();
+      if (this.race.core.canSkipTail && this.pointerPressed) this.race.skipRequested = true;
+      this.pointerPressed = false;
       if (!this.pause) {
         this.race.update(dt);
         this.hud.update(

@@ -125,6 +125,10 @@ export class RaceCore {
   events: RaceEvent[] = [];
   /** Set when every racer has finished or the finish timer expires. */
   finishTimeout = 0;
+  /** True while the tail is running and the player may cut it short. */
+  get canSkipTail(): boolean { return this.phase === 'finishing'; }
+  /** End the tail now — the player has seen enough of other people's races. */
+  skipTail(): void { if (this.phase === 'finishing') this.finishTimeout = 0; }
 
   constructor(track: TrackRuntime, cfg: RaceConfig) {
     this.track = track;
@@ -263,8 +267,17 @@ export class RaceCore {
     } else if (this.phase === 'finishing') {
       this.finishTimeout -= dt;
       if (this.finishTimeout <= 0 || this.racers.every((r) => r.progress.finished)) {
-        for (const r of this.racers) {
-          if (!r.progress.finished) this.finishRacer(r, true);
+        // Whoever is still out there is placed on the pace they were actually
+        // running, in the order the player last saw them. Marking them DNF
+        // would hand the player every place behind them, which is a lie.
+        const rest = this.racers
+          .filter((r) => !r.progress.finished)
+          .sort((a, b) => b.progress.raw - a.progress.raw);
+        let last = Math.max(0, ...this.racers.map((r) => (r.progress.finished ? r.progress.finishTime : 0)));
+        for (const r of rest) {
+          const projected = Math.max(last + 0.25, this.projectedFinish(r));
+          last = projected;
+          this.finishRacer(r, false, projected);
         }
         this.phase = 'complete';
       }
@@ -379,20 +392,34 @@ export class RaceCore {
     void dt;
   }
 
-  private finishRacer(r: Racer, timedOut: boolean): void {
+  /** What the clock would have read had this racer kept the pace they were on. */
+  private projectedFinish(r: Racer): number {
+    const p = r.progress;
+    const done = Math.max(0.05, p.raw);
+    const remaining = Math.max(0, this.cfg.laps - p.raw);
+    const perLap = this.time / done;
+    return this.time + remaining * perLap;
+  }
+
+  private finishRacer(r: Racer, timedOut: boolean, atTime?: number): void {
     const p = r.progress;
     if (p.finished) return;
     p.finished = true;
-    p.finishTime = timedOut ? this.time + 30 : this.time;
+    p.finishTime = timedOut ? this.time + 30 : (atTime ?? this.time);
     r.kart.mode = 'finished';
     if (timedOut) p.dnf = true;
     const place = this.racers.filter((x) => x.progress.finished).length;
     this.events.push({ kind: 'finish', racerId: r.id, value: place });
-    if (this.phase === 'racing' && r.isPlayer) {
-      // Once the player is done the race gets a short tail so the field
-      // finishes on screen rather than freezing mid-corner.
+    if (r.isPlayer && this.phase !== 'complete') {
+      // Once the player is done the race gets a SHORT tail — long enough to
+      // watch yourself cross and the next car come in, not long enough to feel
+      // stuck. Anyone still out is placed on their own pace when it ends.
+      //
+      //  This used to require `phase === 'racing'`, so finishing anywhere but
+      //  first left the 45s leader tail running and the player sat with no
+      //  control for up to three quarters of a minute. Measured at 28s.
       this.phase = 'finishing';
-      this.finishTimeout = 20;
+      this.finishTimeout = Math.min(this.finishTimeout > 0 ? this.finishTimeout : Infinity, 4);
     } else if (this.phase === 'racing' && place === 1) {
       this.phase = 'finishing';
       this.finishTimeout = 45;

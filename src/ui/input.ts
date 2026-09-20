@@ -68,6 +68,15 @@ export class InputManager {
   clearPresses(): void {
     this.pressed.clear();
   }
+  /** A key pressed since the last frame — not one already held. Used to cut the
+   *  end-of-race tail short without inventing a dedicated key (holding the
+   *  throttle over the line must not skip it). */
+  consumeAnyPress(): boolean {
+    if (this.pressed.size === 0) return false;
+    this.pressed.clear();
+    return true;
+  }
+
   isDown(code: string): boolean {
     return this.keys.has(code);
   }
