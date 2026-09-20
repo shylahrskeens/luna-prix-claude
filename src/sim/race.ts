@@ -129,8 +129,11 @@ export class RaceCore {
   private hardStop = Infinity;
   /** True while the tail is running and the player may cut it short. */
   get canSkipTail(): boolean { return this.phase === 'finishing'; }
-  /** End the tail now — the player has seen enough of other people's races. */
-  skipTail(): void { if (this.phase === 'finishing') this.finishTimeout = 0; }
+  /** Set when the player has asked to get on with it: the view runs the rest of
+   *  the field much faster. It does NOT cut the race off — truncating it wrote
+   *  the whole field off as DNF, so a win could read "seven did not finish". */
+  hurry = false;
+  skipTail(): void { if (this.phase === 'finishing') this.hurry = true; }
 
   constructor(track: TrackRuntime, cfg: RaceConfig) {
     this.track = track;
@@ -430,7 +433,7 @@ export class RaceCore {
       //  first left the 45s leader tail running and the player sat with no
       //  control for up to three quarters of a minute. Measured at 28s.
       this.phase = 'finishing';
-      this.finishTimeout = Math.min(this.finishTimeout > 0 ? this.finishTimeout : Infinity, 4);
+      this.finishTimeout = Math.min(this.finishTimeout > 0 ? this.finishTimeout : Infinity, 60);
     } else if (this.phase === 'racing' && place === 1) {
       this.phase = 'finishing';
       this.finishTimeout = 45;

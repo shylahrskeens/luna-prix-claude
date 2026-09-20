@@ -31,6 +31,9 @@ import type { Profile } from '../persist/store';
 import type { InputManager } from '../ui/input';
 
 const STEP = 1 / 120;
+/** Extra simulation steps per frame once the player is done, so the field
+ *  finishes for real in about a second of wall time instead of being guessed. */
+const FINISH_FAST_FORWARD = 14;
 const MAX_FRAME = 0.25;
 
 export interface RaceSetup {
@@ -94,6 +97,7 @@ export class RaceView {
    *  locally so steering stays instant, and is corrected from snapshots. */
   net: NetworkAdapter | null = null;
   private completed = false;
+
   /** Set by a click or tap while the finishing tail runs. */
   skipRequested = false;
   private tailArmed = false;
@@ -285,6 +289,19 @@ export class RaceView {
 
     core.applyCatchUp();
     core.step(dt, this.inputs);
+
+    // The flag is out and the player is parked. Run the rest of the field at
+    // speed so the results table holds real finishing times: at a 4s tail the
+    // stragglers were written off, and a win on Ruin read "seven DNF".
+    if (core.phase === 'finishing' && core.player?.progress.finished) {
+      const ff = core.hurry ? FINISH_FAST_FORWARD * 10 : FINISH_FAST_FORWARD;
+      for (let i = 0; i < ff && core.phase === 'finishing'; i++) {
+        this.inputs.clear();
+        for (const [id, bot] of this.bots) this.inputs.set(id, bot.think(dt, core));
+        core.applyCatchUp();
+        core.step(dt, this.inputs);
+      }
+    }
 
     if (this.net) {
       this.netTick++;

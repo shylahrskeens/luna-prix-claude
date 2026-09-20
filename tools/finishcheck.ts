@@ -31,7 +31,7 @@ function run(trackId: string, seed: number, skipAfter: number | null) {
     bots.push(new BotDriver(r, RIVALS[i % RIVALS.length], track, seed * 31 + i));
   }
   const inputs = new Map<string, KartInput>();
-  let playerDone = -1, completeAt = -1, skipped = false;
+  let playerDone = -1, completeAt = -1, skipped = false, frames = 0, framesAtDone = -1;
   for (let step = 0; step < 120 * 400 && core.phase !== 'complete'; step++) {
     inputs.clear();
     for (let i = 0; i < bots.length; i++) {
@@ -40,12 +40,25 @@ function run(trackId: string, seed: number, skipAfter: number | null) {
     }
     core.applyCatchUp();
     core.step(DT, inputs);
-    if (playerDone < 0 && core.racers[0].progress.finished) playerDone = core.time;
+    frames++;
+    if (core.phase === 'finishing' && core.racers[0].progress.finished) {
+      for (let k = 0; k < (core.hurry ? 140 : 14) && core.phase === 'finishing'; k++) {
+        inputs.clear();
+        for (let i = 0; i < bots.length; i++) {
+          const r = core.racers[i];
+          inputs.set(r.id, r.progress.finished ? NEUTRAL : bots[i].think(DT, core));
+        }
+        core.applyCatchUp();
+        core.step(DT, inputs);
+      }
+    }
+    if (playerDone < 0 && core.racers[0].progress.finished) { playerDone = core.time; framesAtDone = frames; }
     if (playerDone >= 0 && skipAfter != null && !skipped && core.time - playerDone >= skipAfter) { core.skipTail(); skipped = true; }
     if (core.phase === 'complete' && completeAt < 0) completeAt = core.time;
   }
   const res = core.buildResult();
   const tail = completeAt - playerDone;
+  const wall = (frames - framesAtDone) / 120;   // frames the player actually sits through
   const dnf = res.entries.filter((e) => e.dnf).length;
   const order = res.entries.map((e) => `${e.finish}:${e.isPlayer ? 'YOU' : e.name.slice(0, 6)}${e.dnf ? '(DNF)' : ''}`).join(' ');
   const times = res.entries.map((e) => e.totalTime);
@@ -53,10 +66,10 @@ function run(trackId: string, seed: number, skipAfter: number | null) {
   console.log(
     `${trackId.padEnd(11)} seed ${String(seed).padStart(2)}  ${skipAfter == null ? 'tail runs ' : 'skip@' + skipAfter + 's  '}` +
     `player ${playerDone.toFixed(1)}s -> complete ${completeAt.toFixed(1)}s  tail ${tail.toFixed(2)}s  ` +
-    `dnf ${dnf}  times ascending ${monotonic}  ${order}`,
+    `dnf ${dnf}  wait ${wall.toFixed(2)}s  times ascending ${monotonic}  ${order}`,
   );
   const playerDnf = !!res.entries.find((e) => e.isPlayer)?.dnf;
-  return { tail, dnf, monotonic, playerDnf, complete: core.phase === 'complete' };
+  return { tail, dnf, monotonic, playerDnf, wall, complete: core.phase === 'complete' };
 }
 
 let bad = 0;
@@ -71,8 +84,9 @@ for (const t of ['canopy', 'ruin', 'cloudforge']) {
       if (r.playerDnf) { console.log('  !! the player crossed the line and was marked DNF'); bad++; }
       if (!r.monotonic) { console.log('  !! finish times are not in finishing order'); bad++; }
     }
-    if (a.tail > 6) { console.log(`  !! tail ${a.tail.toFixed(1)}s is too long`); bad++; }
-    if (b.tail > 1.2) { console.log(`  !! skip did not cut the tail (${b.tail.toFixed(2)}s)`); bad++; }
+    if (a.wall > 3) { console.log(`  !! the player waits ${a.wall.toFixed(1)}s after finishing`); bad++; }
+    if (b.wall > 1) { console.log(`  !! skip did not cut the wait (${b.wall.toFixed(2)}s)`); bad++; }
+    if (a.dnf > 2) { console.log(`  !! ${a.dnf} racers written off as DNF`); bad++; }
   }
 }
 console.log(bad === 0 ? '\nFINISH OK' : `\n${bad} PROBLEMS`);

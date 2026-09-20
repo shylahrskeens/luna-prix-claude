@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --port 4173",
     "server": "npm run build:server && node server/index.mjs",
-    "test": "node --test test/*.test.mjs",
+    "test": "npm run check",
     "build:server": "esbuild server/sim-entry.ts --bundle --platform=node --format=esm --outfile=server/sim.mjs --log-level=error",
     "check:geometry": "esbuild tools/validate.ts --bundle --platform=node --format=esm --outfile=.tmp/validate.mjs --log-level=error && node .tmp/validate.mjs",
     "check:races": "esbuild tools/headless.ts --bundle --platform=node --format=esm --outfile=.tmp/headless.mjs --log-level=error && node .tmp/headless.mjs \"\" 3,7,11,19,23,31,37",

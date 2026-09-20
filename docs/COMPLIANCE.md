@@ -72,11 +72,15 @@ rather than carried over from this document.
   budget, so no purchase is an automatic win.
 - Ranked disables assists and sets catch-up to zero. The mode screen says so
   before you choose it.
-- Bots have no hidden speed and no dynamic difficulty. A bot is a skill number
-  and a personality, and it drives with the same inputs and the same physics a
-  player does.
-- A result carrying an integrity flag is held back rather than published, both
-  offline and on the server.
+- A bot is a skill number and a personality, and it drives with the same inputs
+  and the same physics a player does. It is **not** given hidden speed, and its
+  skill does not change with your rating. It does get rubber-banding outside
+  ranked: `applyCatchUp` raises a trailing **bot's** catch-up, never the
+  player's, by 0.35 in Quick Race and 0.25 in Grand Prix. **Ranked sets it to
+  zero** (`MODE_RULES.ranked.catchUp`), as does Time Trial.
+- A result carrying an integrity flag is quarantined in the race record, and the
+  server refuses it. The offline profile still stores the lap for your own
+  records; it is not published anywhere.
 
 ## Data and privacy
 
