@@ -4,3 +4,7 @@ dist
 *.log
 server/sim.mjs
 .tmp
+
+# downloaded third-party assets, kept out of the repo
+assets-incoming/
+.tmp/
