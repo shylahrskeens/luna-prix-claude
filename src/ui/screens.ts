@@ -1173,7 +1173,6 @@ export function pauseOverlay(app: AppApi, onResume: () => void, onRestart: () =>
       el('div', { style: 'margin-top:14px;display:flex;flex-direction:column;gap:8px' },
         el('button', { class: 'primary big', onClick: () => { app.sfx('uiSelect'); onResume(); } }, 'Resume'),
         el('button', { onClick: () => { app.sfx('uiSelect'); onRestart(); } }, 'Restart'),
-        el('button', { onClick: () => { app.sfx('uiSelect'); app.go('settings'); } }, 'Settings'),
         el('button', { class: 'ghost', onClick: () => { app.sfx('uiBack'); onQuit(); } }, 'Quit to menu'),
       ),
       el('div', { class: 'divider' }),

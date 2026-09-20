@@ -453,20 +453,26 @@ class App implements AppApi {
 
     // ---- rewards ---------------------------------------------------------
     const purse = [150, 110, 80, 60, 45, 35, 28, 20];
-    const coins = me.dnf ? 10 : purse[Math.min(purse.length - 1, me.finish - 1)];
+    // A time trial is a field of one, so "finished 1st" means nothing: paying the
+    // winner's purse there handed out a 100% win rate and unlocked a podium track
+    // without ever passing a rival.
+    const contested = result.entries.length > 1;
+    const coins = me.dnf ? 10 : contested ? purse[Math.min(purse.length - 1, me.finish - 1)] : 40;
     p.coins += coins;
     p.races++;
-    if (me.finish === 1) p.wins++;
-    if (me.finish <= 3) p.podiums++;
+    if (contested && me.finish === 1) p.wins++;
+    if (contested && me.finish <= 3) p.podiums++;
 
     let delta = 0;
     let promoted: string | null = null;
     if (rules.ranked && me.integrity.length === 0 && !me.dnf) {
       const before = divisionFor(p.rating).name;
+      const ratingBefore = p.rating;
       delta = ratingDelta(p.rating, me.finish, result.entries.length);
       p.rating = Math.max(0, p.rating + delta);
       const after = divisionFor(p.rating).name;
-      if (after !== before && p.rating > 0) promoted = after;
+      // Only upwards. This used to announce "Promoted to Scrap" after a demotion.
+      if (after !== before && p.rating > ratingBefore) promoted = after;
     }
 
     const improved = submitRecord(p, result.trackId, me.bestLap, me.dnf ? 0 : me.totalTime, me.axieId, me.kartId);
@@ -475,7 +481,7 @@ class App implements AppApi {
     const unlocked: string[] = [];
     for (const t of TRACKS) {
       if (p.unlockedTracks.includes(t.id) || !t.unlock) continue;
-      const ok = t.unlock.kind === 'podium' ? me.finish <= 3 : p.rating >= t.unlock.value;
+      const ok = t.unlock.kind === 'podium' ? (contested && me.finish <= 3) : p.rating >= t.unlock.value;
       if (ok) { p.unlockedTracks.push(t.id); unlocked.push(t.name); }
     }
     this.save();
@@ -492,7 +498,7 @@ class App implements AppApi {
 
   private finishBonus(): void {
     const run = this.bonus;
-    const view = this.race;
+    const view = this.race;   // captured so the navigation timer below can check it is still the live one
     if (!run || !view || !run.result) return;
     const p = this.profile;
     const def = run.def;
@@ -507,7 +513,9 @@ class App implements AppApi {
     const params: BonusResultParams = { eventId: def.id, score, isBest, coins };
     this.bonus = null;
     window.setTimeout(() => {
-      this.go('bonusResults', params as unknown as Record<string, unknown>);
+      // Quit to the menu inside this window and the timer used to throw the
+      // player back onto a bonus-results screen from Home.
+      if (this.race === view) this.go('bonusResults', params as unknown as Record<string, unknown>);
     }, 1400);
     void medalFor;
   }
@@ -617,16 +625,18 @@ class App implements AppApi {
   }
 
   private frameErrors = 0;
+  private bailedOut = false;
   private onFrameError(err: Error): void {
     this.frameErrors++;
     console.error('[Luna Prix] frame error', err);
     if (this.frameErrors === 1) {
       this.hud.toast('Something went wrong — returning to the menu', 3);
     }
-    if (this.frameErrors >= 3) {
+    if (this.frameErrors >= 3 && !this.bailedOut) {
       // Repeated failures mean the race state is not recoverable. Bail out to
-      // the menu rather than stuttering forever.
-      this.frameErrors = 0;
+      // the menu ONCE — resetting the counter here used to rebuild the home
+      // screen about twenty times a second with no way out.
+      this.bailedOut = true;
       try { this.go('home'); } catch { /* last resort: leave the menu alone */ }
     }
   }

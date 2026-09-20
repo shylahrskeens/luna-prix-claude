@@ -125,6 +125,8 @@ export class RaceCore {
   events: RaceEvent[] = [];
   /** Set when every racer has finished or the finish timer expires. */
   finishTimeout = 0;
+  /** No race runs past this, however badly it is going. Set from the leader's time. */
+  private hardStop = Infinity;
   /** True while the tail is running and the player may cut it short. */
   get canSkipTail(): boolean { return this.phase === 'finishing'; }
   /** End the tail now — the player has seen enough of other people's races. */
@@ -267,6 +269,12 @@ export class RaceCore {
     } else if (this.phase === 'finishing') {
       this.finishTimeout -= dt;
       if (this.finishTimeout <= 0 || this.racers.every((r) => r.progress.finished)) {
+        // Never take the flag away from a human who is still driving. The
+        // leader's tail used to guillotine a slow player at 45 seconds and hand
+        // them a DNF on their own first race. Keep waiting, up to a hard stop
+        // so a wedged kart cannot hold the race open for ever.
+        const human = this.racers.find((r) => r.isPlayer && !r.progress.finished);
+        if (human && this.time < this.hardStop) { this.finishTimeout = 10; return; }
         // Whoever is still out there is placed on the pace they were actually
         // running, in the order the player last saw them. Marking them DNF
         // would hand the player every place behind them, which is a lie.
@@ -277,7 +285,7 @@ export class RaceCore {
         for (const r of rest) {
           const projected = Math.max(last + 0.25, this.projectedFinish(r));
           last = projected;
-          this.finishRacer(r, false, projected);
+          this.finishRacer(r, true, projected);
         }
         this.phase = 'complete';
       }
@@ -405,10 +413,13 @@ export class RaceCore {
     const p = r.progress;
     if (p.finished) return;
     p.finished = true;
-    p.finishTime = timedOut ? this.time + 30 : (atTime ?? this.time);
+    // A projected time orders the table; `dnf` keeps it from being shown or saved
+    // as a real result.
+    p.finishTime = atTime ?? (timedOut ? this.time + 30 : this.time);
     r.kart.mode = 'finished';
     if (timedOut) p.dnf = true;
     const place = this.racers.filter((x) => x.progress.finished).length;
+    if (place === 1) this.hardStop = this.time * 2.5 + 60;
     this.events.push({ kind: 'finish', racerId: r.id, value: place });
     if (r.isPlayer && this.phase !== 'complete') {
       // Once the player is done the race gets a SHORT tail — long enough to

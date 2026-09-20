@@ -247,12 +247,16 @@ export function submitRecord(
 ): { lap: boolean; total: boolean } {
   let rec = p.records.find((r) => r.trackId === trackId && r.rulesVersion === RULES_VERSION);
   if (!rec) {
-    rec = { trackId, rulesVersion: RULES_VERSION, bestLap: Infinity, bestTotal: Infinity, axieId, kartId, at: Date.now() };
+    // 0 means "nothing set yet". Infinity survives in memory but JSON.stringify
+    // writes it as null, and `41.2 < null` is false, so that track's best lap
+    // could never be set again.
+    rec = { trackId, rulesVersion: RULES_VERSION, bestLap: 0, bestTotal: 0, axieId, kartId, at: Date.now() };
     p.records.push(rec);
   }
+  const unset = (v: number) => !(v > 0) || !isFinite(v);
   const out = { lap: false, total: false };
-  if (bestLap > 0 && bestLap < rec.bestLap) { rec.bestLap = bestLap; rec.axieId = axieId; rec.kartId = kartId; out.lap = true; }
-  if (total > 0 && total < rec.bestTotal) { rec.bestTotal = total; out.total = true; }
+  if (bestLap > 0 && (unset(rec.bestLap) || bestLap < rec.bestLap)) { rec.bestLap = bestLap; rec.axieId = axieId; rec.kartId = kartId; out.lap = true; }
+  if (total > 0 && (unset(rec.bestTotal) || total < rec.bestTotal)) { rec.bestTotal = total; out.total = true; }
   if (out.lap || out.total) rec.at = Date.now();
   return out;
 }

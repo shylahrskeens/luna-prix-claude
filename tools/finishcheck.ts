@@ -55,7 +55,8 @@ function run(trackId: string, seed: number, skipAfter: number | null) {
     `player ${playerDone.toFixed(1)}s -> complete ${completeAt.toFixed(1)}s  tail ${tail.toFixed(2)}s  ` +
     `dnf ${dnf}  times ascending ${monotonic}  ${order}`,
   );
-  return { tail, dnf, monotonic, complete: core.phase === 'complete' };
+  const playerDnf = !!res.entries.find((e) => e.isPlayer)?.dnf;
+  return { tail, dnf, monotonic, playerDnf, complete: core.phase === 'complete' };
 }
 
 let bad = 0;
@@ -65,7 +66,9 @@ for (const t of ['canopy', 'ruin', 'cloudforge']) {
     const b = run(t, seed, 0.5);
     for (const r of [a, b]) {
       if (!r.complete) { console.log('  !! never completed'); bad++; }
-      if (r.dnf > 0) { console.log('  !! someone was marked DNF by the tail'); bad++; }
+      // A racer still out when the flag closes IS a DNF — that is honest. What must
+      // never happen is the player being marked DNF after crossing the line.
+      if (r.playerDnf) { console.log('  !! the player crossed the line and was marked DNF'); bad++; }
       if (!r.monotonic) { console.log('  !! finish times are not in finishing order'); bad++; }
     }
     if (a.tail > 6) { console.log(`  !! tail ${a.tail.toFixed(1)}s is too long`); bad++; }
