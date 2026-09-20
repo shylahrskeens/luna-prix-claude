@@ -12,9 +12,9 @@ bonus events that ask for something other than a lap time.
 ## Short description (48 words)
 
 Pick an Axie, fit it into a kart, and go. Luna Prix is a browser kart racer
-built around drift-charged boost, with three circuits, seven rival drivers, a
-shop and a rank ladder. No install, no wallet, no waiting. The Axie you choose
-changes how the kart drives.
+built on drift-charged boost, where the Axie's class decides both how the kart
+drives and which battle move it brings. Three circuits, seven rivals, three
+bonus events, a shop and a rank ladder. No install, no wallet, no waiting.
 
 ## Full description (270 words)
 
@@ -39,8 +39,18 @@ Cloudforge Circuit throws you out of a broken hangar, over a moored airship,
 through a boost ring and onto a banked sky bridge. Each has an alternate line,
 and the game tells you honestly whether it is shorter or merely faster.
 
-Two bonus events reuse the same kart and ask a different question: how far can
-you throw it, and how clean can you keep a chain of five leaps.
+The same drift that charges your boost also charges your class special, and
+that is where the Axie stops being a driver and becomes a weapon. Nine classes,
+nine moves. Beast shoulder-charges the kart in front out of shape. Plant roots
+it to the floor. Bug takes the leader's boost away. Reptile goes four seconds
+where nothing can touch it. Mech runs a long flat overdrive. Rivals have theirs
+too, so the corner in front of you is never only about the corner.
+
+Three bonus events reuse the same kart and ask different questions. Mega Ramp
+is a long runway, five boost pads and one launch, with four hoops hanging down
+the flight path worth twelve metres each. Gator Gauntlet asks how clean you can
+keep a chain of five leaps. Luna Launch is a stunt yard with rings, obstacles
+and a target to land on.
 
 Everything is generated — models, tracks, effects, audio. There are no
 imported assets.
