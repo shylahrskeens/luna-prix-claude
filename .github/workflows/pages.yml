@@ -5,9 +5,12 @@
 # public on a free plan. Until then this workflow simply sits here.
 name: Deploy to GitHub Pages
 
+# Manual only for now. It ran once on push and failed at configure-pages
+# because Pages is not enabled yet, which puts a red cross on the repository —
+# not what a judge should see. Turn Pages on (Settings -> Pages -> Source:
+# GitHub Actions, which needs a public repo on the free plan), then either run
+# this from the Actions tab or put the push trigger back.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
