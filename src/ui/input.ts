@@ -185,11 +185,22 @@ export function controlCard(device: Device, binds: Record<string, string>): { ke
       { key: 'DRIFT airborne', label: 'Trick' },
     ];
   }
+  //  The arrow keys drive the kart alongside whatever is bound, always. The
+  //  card has to say so: a player who reaches for the arrows and sees only
+  //  "W" on screen assumes they do not work, and they do.
+  const alt: Record<string, string> = {
+    accelerate: '↑', brake: '↓', left: '←', right: '→', drift: 'Shift',
+  };
+  const both = (action: string) => {
+    const bound = pretty(binds[action]);
+    const arrow = alt[action];
+    return arrow && arrow !== bound ? `${bound} or ${arrow}` : bound;
+  };
   return [
-    { key: pretty(binds.accelerate), label: 'Accelerate' },
-    { key: pretty(binds.brake), label: 'Brake and reverse' },
-    { key: `${pretty(binds.left)} / ${pretty(binds.right)}`, label: 'Steer' },
-    { key: pretty(binds.drift), label: 'Hop, then hold to drift' },
+    { key: both('accelerate'), label: 'Accelerate' },
+    { key: both('brake'), label: 'Brake and reverse' },
+    { key: `${both('left')} / ${both('right')}`, label: 'Steer' },
+    { key: both('drift'), label: 'Hop, then hold to drift' },
     { key: `${pretty(binds.drift)} in the air`, label: 'Trick' },
     { key: pretty(binds.lookBack), label: 'Look back' },
     { key: pretty(binds.reset), label: 'Reset to the track' },
