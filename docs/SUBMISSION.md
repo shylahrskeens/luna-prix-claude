@@ -141,7 +141,37 @@ invisible from playing and only showed up in a terminal.
 In `docs/evidence/`: garage, the gator pit mid-leap, Cloudforge, the Ruin
 temple gate, results, and the phone layout.
 
+## Controls and supported devices
+
+**Keyboard** — W or Up accelerate · S or Down brake and reverse · A/D or
+Left/Right steer · Space or Shift hop, hold to drift · Space in the air trick ·
+Q look back · R reset to the track · Esc pause. The control card on the entry
+screen lists the same bindings, and they are rebindable in settings.
+
+**Touch** — a thumb stick and pedals appear on a touch screen; the HUD scales
+with the device.
+
+**Gamepad** — not supported in this build.
+
+**Where it runs.** Any browser with WebGL2: tested in Chrome on macOS at
+1512x796 and at a 400px-wide phone layout. It needs no install, no wallet and
+no backend. Quality steps itself down once if the frame time will not hold.
+
+## Known issues
+
+- **Multiplayer is offline.** The client and an authoritative server sim exist
+  and have been run end to end as two headless Node clients on localhost, but
+  no server is hosted, so the menu entry says "Offline — point it at a race
+  server". Nothing in single player depends on it.
+- **Rank, coins and leaderboards are local** to the browser profile. Clearing
+  site data resets them. There is no account.
+- **Frame rate is verified only on the development machine.** No measurement
+  exists on a low-end GPU or a phone.
+- **Gamepad input is not implemented.**
+- The UI typeface is fetched from Google Fonts; with no network the game still
+  runs and falls back to a system font.
+
 ## Links
 
-- Playable build: *(host `dist/` and paste the link)*
-- Repository: *(push and paste the link)*
+- Playable build: **https://shylahrskeens.github.io/luna-prix-claude/**
+- Repository: **https://github.com/shylahrskeens/luna-prix-claude**

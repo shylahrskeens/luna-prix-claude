@@ -3,12 +3,15 @@
 An Axie kart racer. Three circuits, seven rivals, a rank to climb, and two
 bonus events that ask for something other than a lap time.
 
-Built for the Ronin Vibeathon. It runs in a browser with no install, no wallet
-and no network connection.
+Built for the Ronin Vibeathon. It runs in a browser with no install and no
+wallet. The only request it makes off the page is the Google Fonts stylesheet
+for its UI type; the game itself needs no network once loaded.
+
+**Play it now: https://shylahrskeens.github.io/luna-prix-claude/**
 
 ---
 
-## Play it
+## Play it locally
 
 ```bash
 npm install
