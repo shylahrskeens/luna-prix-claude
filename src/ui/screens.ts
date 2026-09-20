@@ -68,9 +68,16 @@ function topbar(app: AppApi, title: string, backTo?: ScreenName): HTMLElement {
       el('div', { class: 'sub', text: title }),
     ),
     el('div', { class: 'spacer' }),
-    chip('Coins', String(p.coins)),
+    chip('Coins', String(p.coins), false, 'topbar-coins'),
     chip(div.name, String(p.rating), true),
   );
+}
+
+/** Refresh the live numbers in the topbar without rebuilding the screen —
+ *  buying a part has to change the coin count you are looking at. */
+function refreshTopbar(app: AppApi): void {
+  const node = document.getElementById('topbar-coins');
+  if (node) node.textContent = String(app.profile.coins);
 }
 
 function statsPanel(
@@ -287,42 +294,92 @@ export function garageScreen(app: AppApi): HTMLElement {
     // parent. Without it the shared `.col { min-height: 0 }` lets them collapse
     // into each other.
     const slotCol = el('div', { class: 'col', style: 'flex:0 0 auto' });
-    slotCol.appendChild(el('h3', { text: 'Parts' }));
+    slotCol.appendChild(el('div', { class: 'row', style: 'justify-content:space-between;align-items:baseline' },
+      el('h3', { text: 'Parts' }),
+      el('span', { class: 'hint', text: 'Click a part to fit it. Locked parts show their price.' }),
+    ));
     for (const slot of SLOTS) {
       const fitted = parts[slot.id];
       const def = partById(fitted.partId);
-      const owned = partsForSlot(slot.id).filter((x) => (p.owned[x.id] ?? 0) > 0);
-      const row = el('div', { class: 'panel tight', style: 'margin-bottom:8px' },
-        el('div', { class: 'row', style: 'justify-content:space-between' },
-          el('div', null,
-            el('div', { style: 'font-weight:700', text: slot.label }),
-            el('div', { class: 'hint', text: slot.blurb }),
-          ),
-          el('div', { style: 'text-align:right' },
-            el('div', { style: `font-weight:700;color:${RARITY_COLOR[def.rarity]}`, text: def.name }),
-            el('div', { class: 'hint', text: def.maxLevel > 1 ? `Level ${fitted.level}/${def.maxLevel}` : 'No levels' }),
-          ),
-        ),
-        el('div', { class: 'row', style: 'margin-top:8px' },
-          ...owned.map((cand) => {
-            const isOn = cand.id === fitted.partId;
-            return el('button', {
-              class: isOn ? 'primary' : 'ghost',
-              style: 'padding:7px 11px;min-height:36px;font-size:13px',
-              onMouseenter: () => preview(cand, p.owned[cand.id] ?? 1),
-              onMouseleave: () => preview(null, 1),
-              onClick: () => {
-                parts[slot.id] = { partId: cand.id, level: p.owned[cand.id] ?? 1 };
-                app.sfx('uiSelect');
-                app.save();
-                app.showcase(true);
-                render();
-              },
-            }, cand.name);
+      const candidates = partsForSlot(slot.id);
+
+      //  Every part for the slot is shown, owned or not, with what it does and
+      //  what it costs. Listing only what you already own makes a fresh garage
+      //  look like a page of read-only labels — there is nothing that reads as
+      //  buyable, and the shop is a button at the bottom of a scrolling column.
+      const chips = candidates.map((cand) => {
+        const ownedLvl = p.owned[cand.id] ?? 0;
+        const isFitted = cand.id === fitted.partId;
+        const affordable = p.coins >= cand.price;
+        const mods = (Object.keys(cand.mods) as StatKey[])
+          .map((key) => `${cand.mods[key]! > 0 ? '+' : ''}${(cand.mods[key]! * levelCurve(1)).toFixed(1)} ${STAT_LABEL[key]}`);
+
+        const action = isFitted ? 'FITTED'
+          : ownedLvl > 0 ? 'Fit'
+          : `${cand.price}c`;
+
+        return el('button', {
+          class: isFitted ? 'primary' : ownedLvl > 0 ? '' : 'ghost',
+          style: 'flex:1 1 140px;min-width:132px;display:flex;flex-direction:column;align-items:flex-start;'
+               + 'gap:3px;padding:9px 11px;text-align:left;'
+               + (ownedLvl === 0 && !affordable ? 'opacity:0.45;' : ''),
+          disabled: ownedLvl === 0 && !affordable,
+          onMouseenter: () => preview(cand, Math.max(1, ownedLvl)),
+          onMouseleave: () => preview(null, 1),
+          onClick: async () => {
+            if (isFitted) { app.sfx('uiMove'); return; }
+            if (ownedLvl === 0) {
+              if (!affordable) { app.sfx('uiDenied'); return; }
+              const ok = await confirmDialog(app.screenHost, `Buy ${cand.name}?`,
+                `${cand.price} coins. It is fitted straight away, and swapping back to what you had is free.`,
+                'Buy and fit');
+              if (!ok) return;
+              p.coins -= cand.price;
+              p.owned[cand.id] = 1;
+              app.sfx('uiBuy');
+            } else {
+              app.sfx('uiSelect');
+            }
+            parts[slot.id] = { partId: cand.id, level: Math.max(1, p.owned[cand.id] ?? 1) };
+            app.save();
+            app.showcase(true);
+            render();
+            refreshTopbar(app);
+          },
+        },
+          // On the filled "fitted" background the rarity colour has no contrast,
+          // so the name switches to the dark ink the primary button is built for.
+          el('span', {
+            style: `font-weight:700;font-size:13.5px;color:${isFitted ? '#150d24' : RARITY_COLOR[cand.rarity]}`,
+            text: cand.name,
           }),
-          def.maxLevel > 1 && fitted.level < def.maxLevel
-            ? el('button', {
-                style: 'padding:7px 11px;min-height:36px;font-size:13px',
+          el('span', {
+            class: isFitted ? '' : 'hint',
+            style: `font-size:11.5px;line-height:1.3${isFitted ? ';color:rgba(21,13,36,0.75)' : ''}`,
+            text: mods.length ? mods.join(' · ') : 'Cosmetic only',
+          }),
+          el('span', {
+            style: 'font-size:11px;font-weight:700;letter-spacing:0.08em;margin-top:2px;'
+                 + (isFitted ? 'color:#120c1f' : ownedLvl > 0 ? 'color:var(--accent-2)' : 'color:var(--warm)'),
+            text: action,
+          }),
+        );
+      });
+
+      const canUpgrade = def.maxLevel > 1 && fitted.level < def.maxLevel;
+      const row = el('div', { class: 'panel tight', style: 'margin-bottom:10px' },
+        el('div', { class: 'row', style: 'justify-content:space-between;align-items:baseline' },
+          el('div', null,
+            el('span', { style: 'font-weight:700', text: slot.label }),
+            el('span', { class: 'hint', style: 'margin-left:8px', text: slot.blurb }),
+          ),
+          el('span', { class: 'hint', text: def.maxLevel > 1 ? `Level ${fitted.level}/${def.maxLevel}` : '' }),
+        ),
+        el('div', { class: 'row', style: 'margin-top:9px;gap:8px' }, ...chips),
+        canUpgrade
+          ? el('div', { class: 'row', style: 'margin-top:8px' },
+              el('button', {
+                style: 'padding:7px 12px;min-height:36px;font-size:13px',
                 disabled: p.coins < def.upgradeCost,
                 onClick: () => {
                   if (p.coins < def.upgradeCost) { app.sfx('uiDenied'); return; }
@@ -333,15 +390,16 @@ export function garageScreen(app: AppApi): HTMLElement {
                   app.sfx('uiBuy');
                   app.save();
                   render();
+                  refreshTopbar(app);
                 },
-              }, `Upgrade ${def.upgradeCost}c`)
-            : null,
-        ),
+              }, `Upgrade ${def.name} to level ${fitted.level + 1} — ${def.upgradeCost}c`),
+            )
+          : null,
       );
       slotCol.appendChild(row);
     }
     slotCol.appendChild(el('div', { class: 'row', style: 'margin-top:4px' },
-      el('button', { class: 'primary', onClick: () => { app.sfx('uiSelect'); app.go('shop'); } }, 'Open the shop'),
+      el('button', { class: 'ghost', onClick: () => { app.sfx('uiSelect'); app.go('shop'); } }, 'Browse every part'),
     ));
 
     // --- stats column ---
@@ -1035,6 +1093,8 @@ export function settingsScreen(app: AppApi): HTMLElement {
       ),
       el('div', { class: 'panel' },
         el('h3', { text: 'Driving' }),
+        toggle('Invert steering', s.invertSteering, (v) => { s.invertSteering = v; },
+          'Swaps left and right. Try it if the steering reads the wrong way round to you.'),
         toggle('Drift as a toggle', s.driftToggle, (v) => { s.driftToggle = v; },
           'Tap to start and stop a drift instead of holding the button.'),
         slider('Steering sensitivity', s.steerSensitivity, 0.5, 1.6, 0.05, (v) => { s.steerSensitivity = v; }),

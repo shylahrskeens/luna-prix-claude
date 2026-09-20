@@ -42,6 +42,9 @@ export interface Settings {
   quality: 'low' | 'medium' | 'high' | 'auto';
   /** Hold to drift, or tap to toggle. */
   driftToggle: boolean;
+  /** Flip left/right. Some people read a chase camera the other way round,
+   *  and arguing with them about handedness is not a feature. */
+  invertSteering: boolean;
   /** Colour-blind-safe palette for hazards and route cues. */
   highContrast: boolean;
   hudScale: number;
@@ -115,6 +118,7 @@ export function newProfile(): Profile {
       assists: { autoAccel: false, steerAssist: false, recoveryAssist: true },
       quality: 'auto',
       driftToggle: false,
+      invertSteering: false,
       highContrast: false,
       hudScale: 1,
       steerSensitivity: 1,

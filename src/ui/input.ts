@@ -158,7 +158,7 @@ export class InputManager {
     //  The bots are untouched — they steer toward a world-space target and were
     //  always self-consistent, which is exactly why 21 clean test races never
     //  caught this. Only a human looking at a screen could.
-    steer = clamp(-steer * s.steerSensitivity, -1, 1);
+    steer = clamp(-steer * s.steerSensitivity * (s.invertSteering ? -1 : 1), -1, 1);
     return { throttle: clamp01(throttle), brake: clamp01(brake), steer, drift, lookBack };
   }
 

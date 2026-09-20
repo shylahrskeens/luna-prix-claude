@@ -123,7 +123,14 @@ export class Hud {
   private mapPoint(x: number, y: number): [number, number] {
     const b = this.bounds;
     const w = this.minimap.width, h = this.minimap.height;
-    const sx = (x - b.minX) / (b.maxX - b.minX);
+    //  Mirror X to match what the player is looking at.
+    //
+    //  The chase camera looks along +Z, which puts world +X on the LEFT of the
+    //  screen. A minimap that draws +X to the right is therefore a mirror of
+    //  the view: the dot slides left when the kart goes right, and the whole
+    //  track is handed the wrong way. The only reference a player has is the
+    //  3D view, so the map has to agree with it.
+    const sx = 1 - (x - b.minX) / (b.maxX - b.minX);
     const sy = (y - b.minY) / (b.maxY - b.minY);
     const scale = Math.min(w, h);
     const ox = (w - scale) / 2, oy = (h - scale) / 2;

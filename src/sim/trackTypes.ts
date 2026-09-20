@@ -79,7 +79,12 @@ export type HazardDef =
   | { kind: 'roller';  s: number; lat: number; period: number; phase: number; travel: number; r: number }
   | { kind: 'turbine'; s: number; lat: number; strength: number; len: number }
   | { kind: 'bumper';  s: number; lat: number; r: number }
-  | { kind: 'ring';    s: number; lat: number; h: number; r: number };
+  | { kind: 'ring';    s: number; lat: number; h: number; r: number }
+  /** Something to jump OVER. Solid: clip it and the run is over. */
+  | { kind: 'stack';   s: number; lat: number; w: number; h: number; len: number; style?: 'crates' | 'bus' | 'gator'; points?: number }
+  /** A landing target painted on the ground. Scores by which ring you land in;
+   *  no collision, because the target is the reward, not the obstacle. */
+  | { kind: 'target';  s: number; lat: number; rings: number[]; points?: number[] };
 
 export interface BranchDef {
   id: string;

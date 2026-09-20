@@ -8,7 +8,7 @@ import { buildRouteFull, type RouteSeg } from './route';
 import { at, span } from './trackHelpers';
 import type { TrackDefinition } from '../sim/trackTypes';
 
-export type BonusKind = 'megaRamp' | 'gauntlet';
+export type BonusKind = 'megaRamp' | 'gauntlet' | 'launch';
 
 export interface MedalThresholds {
   bronze: number;
@@ -219,6 +219,117 @@ export const GAUNTLET_TRACK: TrackDefinition = {
   schemaVersion: 3,
 };
 
+
+// ---------------------------------------------------------------------------
+// Luna Launch — the stunt yard.
+//
+// A long descent to build speed, a kicker at the bottom, and then one flight
+// that has to do three things at once: thread the rings in the air, clear the
+// obstacles on the ground, and come down inside the target.
+//
+// The reason this plays differently from the Mega Ramp is that the target is
+// at a FIXED distance. On the Mega Ramp more speed is always better. Here,
+// overshooting the gold ring costs exactly as much as falling short of it, so
+// the skill is hitting a number rather than maximising one — and the rings and
+// obstacles push you to want more distance than the target wants to give you.
+// ---------------------------------------------------------------------------
+
+const LAUNCH_SEGS: RouteSeg[] = [
+  { t: 'straight', len: 60, w: 14, mark: 'stage' },
+  // The huge ramp. Twenty-one degrees for a hundred and sixty metres.
+  { t: 'straight', len: 160, dy: -62, w: 13, mark: 'dropIn' },
+  { t: 'straight', len: 50, dy: -6, w: 13, mark: 'runout' },
+  // 29 degrees. A shallower kicker sends the kart far but low, which
+  // leaves no room for rings overhead or obstacles underneath.
+  { t: 'straight', len: 36, dy: 20, w: 12, mark: 'kicker' },
+  { t: 'straight', len: 250, dy: -16, w: 26, mark: 'yard' },
+  { t: 'straight', len: 90, dy: -2, w: 26, mark: 'catch' },
+];
+
+const launchRoute = buildRouteFull(LAUNCH_SEGS, {
+  width: 14, spacing: 6, start: [0, 140, 0], heading: 0, closed: false,
+});
+const LM = launchRoute.marks;
+
+export const LUNA_LAUNCH_TRACK: TrackDefinition = {
+  id: 'event-launch',
+  name: 'Luna Launch',
+  subtitle: 'Stunt yard • rings, obstacles and a target',
+  setPiece: 'One flight, three jobs: thread it, clear it, land on it.',
+  difficulty: 3,
+  laps: 1,
+  closed: false,
+  nodes: launchRoute.nodes,
+  checkpointCount: 6,
+  start: { s: 0.004, rows: 1, colGap: 5, rowGap: 6 },
+  killY: -400,
+  shoulder: 6,
+  unlock: { kind: 'podium' },
+  zones: [
+    { from: 0, to: 1, surface: 'road', wall: 'both', shoulder: 6 },
+    { ...span(LM.stage, 0, 1), surface: 'metal', wall: 'both', shoulder: 3, label: 'Staging' },
+    { ...span(LM.dropIn, 0, 1), surface: 'road', wall: 'both', shoulder: 4, label: 'The Drop' },
+    { ...span(LM.runout, 0, 1), surface: 'road', wall: 'both', shoulder: 4, label: 'Run-out' },
+    { ...span(LM.kicker, 0, 1), surface: 'metal', wall: 'both', shoulder: 2, label: 'Kicker' },
+    // The yard is solid ground, not a hole. Falling short is a bad score, not
+    // a respawn — which is what makes the retry loop fast enough to learn on.
+    { ...span(LM.yard, 0, 1), surface: 'dirt', wall: 'none', shoulder: 12, label: 'The Yard' },
+    { ...span(LM.catch, 0, 1), surface: 'dirt', wall: 'both', shoulder: 12, label: 'Catch' },
+  ],
+  boostPads: [
+    { s: at(LM.dropIn, 0.25), lat: 0, len: 18, w: 6 },
+    { s: at(LM.dropIn, 0.55), lat: 0, len: 18, w: 6 },
+    // The greedy one: right on the edge, and taking it straight costs you the
+    // line into the kicker.
+    { s: at(LM.dropIn, 0.85), lat: 4.8, len: 20, w: 5 },
+    { s: at(LM.runout, 0.45), lat: 0, len: 16, w: 6 },
+  ],
+  branches: [],
+  hazards: [
+    //  Placement is read off a measured flight, not guessed: a clean run
+    //  leaves the kicker at ~145 km/h, peaks 8.7 m up at 39 m out, and lands
+    //  72 m out. Everything below is positioned against that curve.
+
+    // ---- rings in the air -------------------------------------------------
+    // Low, apex, then low again — and offset left then right, so threading all
+    // three needs a deliberate S in the air rather than one held line.
+    { kind: 'ring', s: at(LM.yard, 0.062), lat: 0, h: 6.0, r: 6.0 },
+    { kind: 'ring', s: at(LM.yard, 0.117), lat: -3.5, h: 8.6, r: 5.5 },
+    { kind: 'ring', s: at(LM.yard, 0.177), lat: 3.5, h: 6.8, r: 5.5 },
+
+    // ---- things to jump over ---------------------------------------------
+    // Escalating, and the tallest is last — where the kart is already coming
+    // down, so the final one is the one that actually costs you something.
+    { kind: 'stack', s: at(LM.yard, 0.054), lat: 0, w: 11, h: 3.4, len: 4, style: 'crates', points: 150 },
+    { kind: 'stack', s: at(LM.yard, 0.105), lat: 0, w: 13, h: 4.4, len: 9, style: 'bus', points: 250 },
+    { kind: 'stack', s: at(LM.yard, 0.157), lat: 0, w: 12, h: 4.4, len: 5, style: 'crates', points: 200 },
+    { kind: 'stack', s: at(LM.yard, 0.209), lat: 0, w: 17, h: 4.3, len: 14, style: 'gator', points: 500 },
+
+    // ---- the target -------------------------------------------------------
+    // Centred just BEYOND where a clean run lands, so the gold needs the pads
+    // or a drift boost on the way down — and overshooting it costs exactly as
+    // much as falling short.
+    { kind: 'target', s: at(LM.yard, 0.277), lat: 0,
+      rings: [22, 15, 9, 4.5], points: [200, 500, 1100, 2200] },
+  ],
+  theme: {
+    sky: ['#4a7fd6', '#ffcf9a'],
+    fog: '#cbd9e8',
+    fogNear: 110,
+    fogFar: 800,
+    sun: '#fff2d6',
+    sunDir: [0.45, 0.72, -0.52],
+    ambient: '#8ea4bd',
+    ground: '#7e8a5e',
+    roadTop: '#6b6355',
+    roadEdge: '#ffb23f',
+    rail: '#b2bccb',
+    accent: '#ffd166',
+    scenery: 'canopy',
+  },
+  schemaVersion: 3,
+};
+
 export const BONUS_EVENTS: BonusEventDefinition[] = [
   {
     id: 'megaramp',
@@ -235,6 +346,24 @@ export const BONUS_EVENTS: BonusEventDefinition[] = [
     medals: { bronze: 72, silver: 104, gold: 132 },
     timeLimit: 45,
     unlock: null,
+  },
+  {
+    id: 'launch',
+    name: 'Luna Launch',
+    tagline: 'Down the big one. Thread it, clear it, land on it.',
+    brief:
+      'A hundred and sixty metres of descent to build speed, then one kicker and one flight. ' +
+      'Three rings hang in the air at different heights — thread them in a row and each one is worth more than the last. ' +
+      'Under you is a row of obstacles ending in a very large gator; clipping any of them ends the flight there. ' +
+      'And the target is at a fixed distance, so unlike the Mega Ramp you can absolutely overshoot it. ' +
+      'Pitch with accelerate and brake, roll level with steering, and land flat in the gold.',
+    kind: 'launch',
+    track: LUNA_LAUNCH_TRACK,
+    higherIsBetter: true,
+    unit: 'pts',
+    medals: { bronze: 900, silver: 2200, gold: 3800 },
+    timeLimit: 60,
+    unlock: { kind: 'races', value: 1 },
   },
   {
     id: 'gauntlet',

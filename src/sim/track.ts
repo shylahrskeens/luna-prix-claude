@@ -497,6 +497,23 @@ export class TrackRuntime {
           h.telegraph = 1;
           break;
         }
+        case 'stack': {
+          // Static. The only thing that changes is whether it has been hit,
+          // which the scoring layer owns rather than the track.
+          h.phase = 0;
+          h.pos.y = h.anchor.y + d.h * 0.5;
+          h.active = true;
+          h.radius = Math.max(d.w, d.len) * 0.5;
+          h.telegraph = 1;
+          break;
+        }
+        case 'target': {
+          h.phase = wrap(time * 0.2, 1);
+          h.active = false;
+          h.radius = d.rings[0] ?? 6;
+          h.telegraph = 1;
+          break;
+        }
       }
     }
     return list;

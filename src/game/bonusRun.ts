@@ -40,6 +40,21 @@ export class BonusRun {
   private tricks = 0;
   private outsideCorridor = false;
 
+  // --- luna launch state ---
+  private ringsHit = new Set<number>();
+  /** Signed distance along the road from each ring's plane, last frame. */
+  private ringSide = new Map<number, number>();
+  /** Rings threaded back-to-back without missing one. */
+  private ringChain = 0;
+  private bestChain = 0;
+  private ringPoints = 0;
+  private clearedStacks = new Set<number>();
+  private stackPoints = 0;
+  private hitStack = false;
+  private touchdownS = -1;
+  private targetPoints = 0;
+  private targetRingName = 'missed';
+
   // --- gauntlet state ---
   private resets = 0;
   private nearMiss = 0;
@@ -61,10 +76,13 @@ export class BonusRun {
 
   onKartEvent(racer: Racer, e: KartEvent): void {
     if (!racer.isPlayer) return;
-    if (this.def.kind === 'megaRamp') {
+    // Mega Ramp and Luna Launch are both single flights judged on how they
+    // land, so they read the same events.
+    if (this.def.kind === 'megaRamp' || this.def.kind === 'launch') {
       if (e.kind === 'trickComplete') this.tricks++;
       if (e.kind === 'land') this.landingQuality = Math.max(this.landingQuality, 1);
       if (e.kind === 'hardLand') this.landingQuality = Math.min(this.landingQuality, 1 - 0.34 * clamp01(e.value));
+      if (e.kind === 'hazardHit' && e.value >= 1) this.hitStack = true;
       if (e.kind === 'respawnStart' && this.launched) this.outsideCorridor = true;
     } else {
       if (e.kind === 'respawnStart') this.resets++;
@@ -79,6 +97,11 @@ export class BonusRun {
 
     if (core.phase === 'countdown') { this.phase = 'countdown'; return; }
     if (this.phase === 'scored' || this.phase === 'failed') return;
+
+    if (this.def.kind === 'launch') {
+      this.updateLaunch(dt);
+      return;
+    }
 
     if (this.def.kind === 'megaRamp') {
       const rampEnd = this.rampLipS(track.def);
@@ -146,6 +169,170 @@ export class BonusRun {
       else if (core.time > this.def.timeLimit) this.fail('Time limit reached.');
     }
     void dt;
+  }
+
+  /** Luna Launch: one flight, scored on three independent channels. */
+  private updateLaunch(dt: number): void {
+    const core = this.view.core;
+    const player = core.player!;
+    const k = player.kart;
+    const track = this.view.track;
+    const L = track.lapLength;
+    const hazards = core.hazards;
+    void dt;
+
+    const kickerEnd = this.zoneEndS('Kicker');
+
+    if (!this.launched) {
+      this.phase = 'run';
+      this.live.primary = `${Math.round(k.speed * 3.6)} km/h`;
+      this.live.secondary = 'Speed down the drop is your distance';
+      this.live.hint = k.boosting ? 'BOOSTING' : 'Three pads on the way down';
+      if (!k.grounded && player.ground.s > kickerEnd - 8) {
+        this.launched = true;
+        this.launchS = player.ground.s;
+        this.peakHeight = k.pos.y;
+      }
+      if (core.time > this.def.timeLimit) this.fail('Ran out of time on the ramp.');
+      return;
+    }
+
+    // ---- in the air -------------------------------------------------------
+    if (!k.grounded && this.touchdownS < 0) {
+      this.phase = 'flight';
+      this.peakHeight = Math.max(this.peakHeight, k.pos.y);
+      this.scoreRings(hazards, k);
+      this.scoreStacks(hazards, k, player.ground.s);
+      const dist = Math.max(0, player.ground.s - this.launchS);
+      const target = hazards.find((h) => h.def.kind === 'target');
+      const toTarget = target
+        ? (target.def as Extract<typeof target.def, { kind: 'target' }>).s * L - player.ground.s
+        : 0;
+      this.live.primary = `${this.runningTotal()} pts`;
+      this.live.secondary = `${dist.toFixed(0)} m · ${this.ringsHit.size}/3 rings · ${this.clearedStacks.size}/4 cleared`;
+      this.live.hint = this.hitStack
+        ? 'CLIPPED IT'
+        : toTarget > 6 ? `${toTarget.toFixed(0)} m to the target`
+        : toTarget < -6 ? 'PAST THE TARGET' : 'TARGET — LAND FLAT';
+      return;
+    }
+
+    // ---- touchdown --------------------------------------------------------
+    if (this.touchdownS < 0 && k.grounded) {
+      this.touchdownS = player.ground.s;
+      this.scoreTarget(hazards, k, player.ground.lat);
+      this.finishLaunch();
+    }
+  }
+
+  /** Arc length where a named zone ends. */
+  private zoneEndS(label: string): number {
+    const z = this.view.track.def.zones.find((q) => q.label === label);
+    return (z ? z.to : 0.5) * this.view.track.lapLength;
+  }
+
+  /** A ring counts when the kart crosses its plane inside the hoop. */
+  private scoreRings(hazards: typeof this.view.core.hazards, k: { pos: { x: number; y: number; z: number } }): void {
+    for (let i = 0; i < hazards.length; i++) {
+      const h = hazards[i];
+      if (h.def.kind !== 'ring' || this.ringsHit.has(i)) continue;
+      const dx = k.pos.x - h.pos.x;
+      const dy = k.pos.y - h.pos.y;
+      const dz = k.pos.z - h.pos.z;
+      const along = dx * h.fwd.x + dz * h.fwd.z;
+      const prev = this.ringSide.get(i);
+      this.ringSide.set(i, along);
+      if (prev === undefined || prev > 0 || along <= 0) continue;
+      // Crossed the plane this frame. Inside the hoop?
+      const lat = dx * h.right.x + dz * h.right.z;
+      const radial = Math.hypot(lat, dy);
+      if (radial <= h.radius) {
+        this.ringsHit.add(i);
+        this.ringChain++;
+        this.bestChain = Math.max(this.bestChain, this.ringChain);
+        // Consecutive rings are worth progressively more: the third one in a
+        // row is the hard one, so it should pay like it.
+        this.ringPoints += 250 * this.ringChain;
+      } else {
+        this.ringChain = 0;
+      }
+    }
+  }
+
+  /** An obstacle counts as cleared once the kart is past it and still flying. */
+  private scoreStacks(
+    hazards: typeof this.view.core.hazards,
+    k: { pos: { y: number } },
+    s: number,
+  ): void {
+    const L = this.view.track.lapLength;
+    for (let i = 0; i < hazards.length; i++) {
+      const h = hazards[i];
+      if (h.def.kind !== 'stack' || this.clearedStacks.has(i)) continue;
+      const def = h.def as Extract<typeof h.def, { kind: 'stack' }>;
+      const stackS = def.s * L;
+      if (s > stackS + def.len * 0.5 && k.pos.y > h.anchor.y + def.h) {
+        this.clearedStacks.add(i);
+        this.stackPoints += def.points ?? 150;
+      }
+    }
+  }
+
+  /** Where did it come down relative to the target? */
+  private scoreTarget(
+    hazards: typeof this.view.core.hazards,
+    k: { pos: { x: number; z: number } },
+    lat: number,
+  ): void {
+    void lat;
+    const target = hazards.find((h) => h.def.kind === 'target');
+    if (!target) return;
+    const def = target.def as Extract<typeof target.def, { kind: 'target' }>;
+    const d = Math.hypot(k.pos.x - target.anchor.x, k.pos.z - target.anchor.z);
+    const names = ['outer', 'bronze', 'silver', 'GOLD'];
+    for (let i = def.rings.length - 1; i >= 0; i--) {
+      if (d <= def.rings[i]) {
+        this.targetPoints = def.points?.[i] ?? 0;
+        this.targetRingName = names[Math.min(names.length - 1, i)];
+        return;
+      }
+    }
+    this.targetPoints = 0;
+    this.targetRingName = 'missed';
+  }
+
+  private runningTotal(): number {
+    return Math.round(this.ringPoints + this.stackPoints + this.targetPoints);
+  }
+
+  private finishLaunch(): void {
+    const trickMult = 1 + Math.min(0.25, this.tricks * 0.08);
+    const base = this.ringPoints + this.stackPoints + this.targetPoints;
+    // A perfect run — gold ring, flat landing — is worth calling out.
+    const perfect = this.targetRingName === 'GOLD' && this.landingQuality >= 0.99;
+    const bonus = perfect ? 750 : 0;
+    const score = Math.round((base + bonus) * this.landingQuality * trickMult);
+    this.phase = 'scored';
+    this.result = {
+      score,
+      valid: true,
+      medal: medalFor(this.def, score),
+      lines: [
+        { label: 'Rings threaded', value: this.ringsHit.size > 0
+            ? `${this.ringsHit.size}/3 (best chain ${this.bestChain}) — ${this.ringPoints} pts`
+            : 'None', good: this.ringsHit.size > 0 },
+        { label: 'Obstacles cleared', value: `${this.clearedStacks.size}/4 — ${this.stackPoints} pts`,
+          good: this.clearedStacks.size >= 4 },
+        { label: 'Landed in', value: this.targetPoints > 0
+            ? `${this.targetRingName} — ${this.targetPoints} pts` : 'Missed the target',
+          good: this.targetPoints > 0 },
+        { label: 'Landing', value: this.landingQuality >= 0.99
+            ? 'Clean ×1.00' : `Heavy ×${this.landingQuality.toFixed(2)}`, good: this.landingQuality >= 0.99 },
+        { label: 'Tricks', value: this.tricks > 0 ? `${this.tricks} ×${trickMult.toFixed(2)}` : 'None',
+          good: this.tricks > 0 },
+        ...(perfect ? [{ label: 'Perfect landing', value: '+750 pts', good: true }] : []),
+      ],
+    };
   }
 
   /** Arc length of the ramp lip on the Mega Ramp course. */

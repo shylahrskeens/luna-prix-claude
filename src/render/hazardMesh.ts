@@ -143,8 +143,105 @@ export function buildHazards(track: TrackRuntime, mats: MaterialLibrary): Hazard
       case 'ring': {
         const ring = new THREE.Mesh(new THREE.TorusGeometry(d.r, 0.42, 6, 18), mats.glow(theme.accent, 0.92));
         ring.position.y = d.h;
+        ring.name = 'ringBand';
         root.add(ring);
         warn.push(ring);
+        // Four posts of light so the ring reads as a gate from a distance and
+        // you can judge its height against the ground.
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2;
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), mats.glow('#ffffff', 0.8));
+          post.position.set(Math.cos(a) * d.r, d.h + Math.sin(a) * d.r, 0);
+          root.add(post);
+        }
+        break;
+      }
+      case 'stack': {
+        //  Three silhouettes, so a row of obstacles reads as a row of
+        //  different things rather than one shape repeated.
+        const style = d.style ?? 'crates';
+        if (style === 'bus') {
+          const body = new THREE.Mesh(new THREE.BoxGeometry(d.w, d.h * 0.78, d.len), mats.toon('#e8a33d'));
+          body.position.y = d.h * 0.5;
+          root.add(body);
+          const roof = new THREE.Mesh(new THREE.BoxGeometry(d.w * 0.86, d.h * 0.22, d.len * 0.9), mats.toon('#f2c46a'));
+          roof.position.y = d.h * 0.96;
+          root.add(roof);
+          for (let i = -1; i <= 1; i += 2) {
+            const win = new THREE.Mesh(new THREE.BoxGeometry(d.w + 0.1, d.h * 0.24, d.len * 0.7), mats.toon('#2a3444'));
+            win.position.set(0, d.h * 0.62, i * 0.01);
+            root.add(win);
+          }
+        } else if (style === 'gator') {
+          const skin = mats.toon('#4f7a46');
+          const body = new THREE.Mesh(new THREE.BoxGeometry(d.w, d.h * 0.62, d.len), skin);
+          body.position.y = d.h * 0.4;
+          root.add(body);
+          const head = new THREE.Mesh(new THREE.BoxGeometry(d.w * 0.8, d.h * 0.5, d.len * 0.4), skin);
+          head.position.set(0, d.h * 0.7, d.len * 0.4);
+          root.add(head);
+          for (const side of [-1, 1] as const) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.34, 7, 6), mats.glow('#ffd23f'));
+            eye.position.set(side * d.w * 0.26, d.h * 1.0, d.len * 0.36);
+            root.add(eye);
+            warn.push(eye);
+          }
+          const toothGeo = new THREE.ConeGeometry(0.16, 0.5, 4);
+          for (let i = 0; i < 6; i++) {
+            const t = new THREE.Mesh(toothGeo, mats.toon('#f4f2e6'));
+            t.position.set((i % 3 - 1) * d.w * 0.28, d.h * 0.5, d.len * (i < 3 ? 0.56 : 0.48));
+            root.add(t);
+          }
+        } else {
+          const rows = Math.max(1, Math.round(d.h / 1.3));
+          for (let r2 = 0; r2 < rows; r2++) {
+            const n = Math.max(1, rows - r2);
+            for (let c = 0; c < n; c++) {
+              const crate = new THREE.Mesh(
+                new THREE.BoxGeometry(d.w / rows * 0.92, 1.2, d.len * 0.9),
+                mats.toon(c % 2 ? '#a9733c' : '#8d5f30'),
+              );
+              crate.position.set((c - (n - 1) / 2) * (d.w / rows), 0.6 + r2 * 1.25, 0);
+              root.add(crate);
+            }
+          }
+        }
+        // A striped board at the near face, so the thing you must clear has an
+        // edge you can actually judge from the air.
+        const face = new THREE.Mesh(new THREE.BoxGeometry(d.w, 0.6, 0.25), mats.glow('#ffd166', 0.9));
+        face.position.set(0, d.h + 0.4, d.len * 0.5);
+        root.add(face);
+        warn.push(face);
+        break;
+      }
+      case 'target': {
+        //  Concentric rings on the ground. Painted flat and unlit so the
+        //  colours read the same from a hundred metres up as from the edge.
+        const palette = ['#2f3a4c', '#c07a3e', '#c7ced8', '#ffd23f'];
+        d.rings.forEach((radius, i) => {
+          const inner = d.rings[i + 1] ?? 0;
+          const ringMesh = new THREE.Mesh(
+            new THREE.RingGeometry(inner, radius, 40),
+            mats.glow(palette[Math.min(palette.length - 1, i)], 0.8),
+          );
+          ringMesh.rotation.x = -Math.PI / 2;
+          ringMesh.position.y = 0.06 + i * 0.01;
+          ringMesh.renderOrder = 2 + i;
+          root.add(ringMesh);
+        });
+        // Corner posts: the target has to be findable while you are in the air
+        // and looking at it edge-on.
+        const outer = d.rings[0] ?? 8;
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5.5, 0.4), mats.toon('#2b2f3a'));
+          post.position.set(Math.cos(a) * outer * 1.25, 2.75, Math.sin(a) * outer * 1.25);
+          root.add(post);
+          const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 6), mats.glow('#ffd23f'));
+          lamp.position.set(Math.cos(a) * outer * 1.25, 5.8, Math.sin(a) * outer * 1.25);
+          root.add(lamp);
+          warn.push(lamp);
+        }
         break;
       }
     }

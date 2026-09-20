@@ -546,7 +546,25 @@ export class RaceCore {
             k.vel.z += h.right.z * push * dt;
             break;
           }
+          case 'stack': {
+            //  Solid, and deliberately unforgiving: the whole point of an
+            //  obstacle is that clearing it was a choice you could fail.
+            //  Judged as a box, because a stack of crates is a box and a
+            //  sphere would let a kart clip a corner and sail on.
+            const along = dx * h.fwd.x + dz * h.fwd.z;
+            const lat = dx * h.right.x + dz * h.right.z;
+            const below = k.pos.y < h.anchor.y + d.h + k.h.radius * 0.5;
+            if (Math.abs(along) < d.len * 0.5 + k.h.radius
+                && Math.abs(lat - 0) < d.w * 0.5 + k.h.radius
+                && below && k.pos.y > h.anchor.y - 2
+                && this.canHit(hazardIndex, r.id, 1.2)) {
+              k.hit(0.9, -h.fwd.x, -h.fwd.z);
+              k.events.push({ kind: 'hazardHit', value: 1, pos: { ...k.pos } });
+            }
+            break;
+          }
           case 'ring':
+          case 'target':
             break;
         }
       }

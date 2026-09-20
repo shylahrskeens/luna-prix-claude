@@ -75,10 +75,10 @@ export function kv(k: string, v: string | number, cls = ''): HTMLElement {
   );
 }
 
-export function chip(label: string, value?: string, accent = false): HTMLElement {
+export function chip(label: string, value?: string, accent = false, valueId?: string): HTMLElement {
   return el('div', { class: `chip${accent ? ' accent' : ''}` },
     label,
-    value !== undefined ? el('strong', { text: value }) : null,
+    value !== undefined ? el('strong', { text: value, id: valueId }) : null,
   );
 }
 

@@ -190,6 +190,8 @@ export interface TrackVisual {
   group: THREE.Group;
   /** Boost pad meshes, so they can pulse. */
   pads: THREE.Mesh[];
+  /** Pad chevrons, so they can run forward rather than blink together. */
+  chevrons: { mesh: THREE.Mesh; index: number }[];
   /** Start/finish banner, for the lights. */
   startLights: THREE.Mesh[];
 }
@@ -198,6 +200,7 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
   const theme = track.def.theme;
   const group = new THREE.Group();
   const pads: THREE.Mesh[] = [];
+  const chevrons: { mesh: THREE.Mesh; index: number }[] = [];
   const startLights: THREE.Mesh[] = [];
   const L = track.lapLength;
 
@@ -478,21 +481,40 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
     group.add(mesh);
     pads.push(mesh);
 
-    // Chevrons so the pad reads as a direction, not just a colour.
-    for (let c = 0; c < 3; c++) {
+    //  Chevrons. These are the clearest thing on the track — a player reads
+    //  them from a long way out and aims at them — so they are built to be
+    //  read: wide, white, thick-edged, and they run forward in sequence so the
+    //  pad points somewhere rather than just sitting there.
+    const chevCount = 4;
+    for (let c = 0; c < chevCount; c++) {
+      const scale = 0.62;
       const chev = new THREE.Mesh(
-        new THREE.ConeGeometry(pad.w * 0.28, pad.w * 0.34, 3),
-        mats.glow('#ffffff', 0.85),
+        new THREE.ConeGeometry(pad.w * scale, pad.w * 0.55, 3),
+        mats.glow('#ffffff', 0.95),
       );
-      const off = (c - 1) * pad.len * 0.28;
-      chev.position.set(
+      const off = (c - (chevCount - 1) / 2) * pad.len * 0.26;
+      const pos = new THREE.Vector3(
         sm.pos.x + sm.right.x * pad.lat + sm.fwd.x * off,
-        sm.pos.y + sm.right.y * pad.lat + 0.10,
+        sm.pos.y + sm.right.y * pad.lat + 0.12,
         sm.pos.z + sm.right.z * pad.lat + sm.fwd.z * off,
       );
+      chev.position.copy(pos);
       chev.rotation.set(Math.PI / 2, 0, -Math.atan2(sm.fwd.x, sm.fwd.z));
-      chev.renderOrder = 3;
+      chev.renderOrder = 4;
+      chev.name = `chev${c}`;
       group.add(chev);
+      chevrons.push({ mesh: chev, index: c });
+
+      // A darker outline behind each one, so a white chevron still reads on a
+      // pale surface like the Cloudforge decking or the Mega Ramp runway.
+      const edge = new THREE.Mesh(
+        new THREE.ConeGeometry(pad.w * scale * 1.22, pad.w * 0.68, 3),
+        mats.glow('#1b1f2b', 0.85),
+      );
+      edge.position.copy(pos).setY(pos.y - 0.02);
+      edge.rotation.copy(chev.rotation);
+      edge.renderOrder = 3;
+      group.add(edge);
     }
   }
 
@@ -571,13 +593,22 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
 
   group.matrixAutoUpdate = false;
   group.updateMatrix();
-  return { group, pads, startLights };
+  return { group, pads, chevrons, startLights };
 }
 
 /** Pulse the boost pads and drive the start lights. */
 export function animateTrack(v: TrackVisual, time: number, countdown: number | null): void {
   const pulse = 0.72 + 0.28 * Math.sin(time * 6);
   for (const p of v.pads) (p.material as THREE.MeshBasicMaterial).opacity = pulse;
+  // Chevrons light in sequence, so the pad reads as an arrow travelling in the
+  // direction it wants to send you.
+  for (const c of v.chevrons) {
+    const phase = (time * 3.2 - c.index * 0.28) % 1.2;
+    const lit = phase > 0 && phase < 0.55;
+    const m = c.mesh.material as THREE.MeshBasicMaterial;
+    m.opacity = lit ? 1 : 0.42;
+    c.mesh.scale.setScalar(lit ? 1.12 : 1);
+  }
   if (countdown === null) {
     for (const l of v.startLights) (l.material as THREE.MeshBasicMaterial).color.set('#1d3a22');
     return;
