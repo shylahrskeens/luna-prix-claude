@@ -93,7 +93,6 @@ export class AudioEngine {
   // music
   private musicTimer: number | null = null;
   private musicStep = 0;
-  private musicKey: number[] = [0, 3, 5, 7, 10];
   private musicRoot = 110;
   private musicIntensity = 0;
 
@@ -287,8 +286,10 @@ export class AudioEngine {
     this.driftSrc.start();
 
     this.musicRoot = theme === 'canopy' ? 110 : theme === 'ruin' ? 98 : 123.47;
-    this.musicKey = theme === 'ruin' ? [0, 2, 3, 7, 8] : theme === 'cloud' ? [0, 2, 4, 7, 9] : [0, 3, 5, 7, 10];
-    this.startMusic();
+    this.musicProg = theme === 'ruin' ? [0, 10, 8, 7]      // darker, keeps dropping
+      : theme === 'cloud' ? [0, 5, 8, 10]                  // brighter, lifts at the end
+      : [0, 8, 3, 10];
+    this.startMusic(false);
   }
 
   /** A band-limited impulse: near-flat harmonics, phase-aligned so the time
@@ -593,46 +594,178 @@ export class AudioEngine {
   }
 
   // ---- music --------------------------------------------------------------
+  //
+  //  A late-80s arcade soundtrack, synthesised: four-on-the-floor kick, a clap
+  //  on two and four, an octave-jumping bass, detuned saw stabs, and an arp and
+  //  a lead that only arrive when you are actually driving. Everything is
+  //  scheduled against the audio clock with a look-ahead, because the old
+  //  setTimeout-per-note version drifted and could never hold a groove.
 
-  private startMusic(): void {
+  private readonly bpm = 128;
+  private nextNoteTime = 0;
+  private musicMenu = false;
+  /** Minor progression in semitones from the tonic: i - VI - III - VII. */
+  private musicProg: number[] = [0, 8, 3, 10];
+
+  private startMusic(menu = false): void {
     if (!this.ctx) return;
+    this.stopMusic();
+    this.musicMenu = menu;
     this.musicStep = 0;
-    const tick = () => {
+    this.nextNoteTime = this.ctx.currentTime + 0.08;
+    const step16 = 60 / this.bpm / 4;
+    const tick = (): void => {
       if (!this.ctx) return;
-      const step = this.musicStep++;
-      const intensity = clamp01(this.musicIntensity);
-      // The bed is always there; the top voice only arrives at speed, so the
-      // music lifts when the driving does without a crossfade.
-      const deg = this.musicKey[step % this.musicKey.length];
-      const oct = step % 8 < 4 ? 1 : 2;
-      const freq = this.musicRoot * Math.pow(2, deg / 12) * oct;
-      if (step % 2 === 0) this.musicNote(this.musicRoot / 2, 'triangle', 0.45, 0.06);
-      this.musicNote(freq, 'square', 0.22, 0.020 + intensity * 0.022);
-      if (intensity > 0.55 && step % 4 === 2) {
-        this.musicNote(freq * 2, 'triangle', 0.16, 0.016);
+      while (this.nextNoteTime < this.ctx.currentTime + 0.12) {
+        this.scheduleStep(this.musicStep++, this.nextNoteTime);
+        this.nextNoteTime += step16;
       }
-      this.musicTimer = window.setTimeout(tick, 250 - intensity * 40);
+      this.musicTimer = window.setTimeout(tick, 25);
     };
     tick();
   }
 
-  private musicNote(freq: number, type: OscillatorType, decay: number, peak: number): void {
-    if (!this.ctx) return;
-    const ctx = this.ctx;
-    const o = ctx.createOscillator();
-    o.type = type;
-    o.frequency.value = freq;
+  private scheduleStep(step: number, t: number): void {
+    const step16 = 60 / this.bpm / 4;
+    const s = step % 16;
+    const bar = Math.floor(step / 16) % 4;
+    const root = this.musicRoot * Math.pow(2, this.musicProg[bar] / 12);
+    const I = clamp01(this.musicIntensity);
+    const menu = this.musicMenu;
+
+    if (!menu) {
+      if (s % 4 === 0) this.drumKick(t);
+      if (s === 4 || s === 12) this.drumClap(t);
+      if (s % 2 === 1) this.drumHat(t, s === 7 || s === 15 ? 0.030 : 0.017);
+      if (I > 0.6 && s % 4 === 2) this.drumHat(t, 0.012);
+      // a fill on the last beat of the phrase, so the loop has a seam to hear
+      if (bar === 3 && s >= 12) this.drumClap(t + (s - 12) * step16 * 0.5, 0.05);
+    }
+
+    // Bass: eighths with octave jumps — the engine of every track of this era.
+    const bassOn = [1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1][s] === 1;
+    if (bassOn) {
+      const up = s === 6 || s === 13 || s === 15;
+      this.synthBass(root / 4 * (up ? 2 : 1), t, step16 * 1.7, (menu ? 0.16 : 0.34) + I * 0.10);
+    }
+
+    if (s === 0 || s === 10) {
+      this.synthChord(root, t, menu ? 2.2 : 0.6, (menu ? 0.055 : 0.075) + I * 0.02);
+    }
+
+    if (!menu && I > 0.3) {
+      const arp = [0, 3, 7, 12, 15, 12, 7, 3];
+      this.synthArp(root * 2 * Math.pow(2, arp[step % arp.length] / 12), t, step16 * 0.85, 0.022 + I * 0.030);
+    }
+
+    if (!menu && I > 0.5 && s % 2 === 0) {
+      const mel = [12, 10, 7, 10, 12, 15, 14, 12, 10, 7, 5, 7, 10, 12, 15, 19];
+      const n = mel[Math.floor(step / 2) % mel.length];
+      this.synthLead(root * Math.pow(2, n / 12), t, step16 * 1.9, 0.030 + I * 0.030);
+    }
+  }
+
+  private drumKick(t: number): void {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(46, t + 0.10);
     const g = ctx.createGain();
-    const t = ctx.currentTime;
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(peak, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
-    const f = ctx.createBiquadFilter();
-    f.type = 'lowpass';
-    f.frequency.value = 1800;
-    o.connect(g).connect(f).connect(this.busMusic);
-    o.start();
-    o.stop(t + decay + 0.05);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.85, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+    o.connect(g).connect(this.busMusic);
+    o.start(t); o.stop(t + 0.30);
+  }
+
+  private drumClap(t: number, peak = 0.16): void {
+    const ctx = this.ctx!;
+    for (let i = 0; i < 3; i++) {
+      const src = ctx.createBufferSource(); src.buffer = this.noise;
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1700; f.Q.value = 1.1;
+      const g = ctx.createGain();
+      const tt = t + i * 0.011;
+      g.gain.setValueAtTime(0.0001, tt);
+      g.gain.exponentialRampToValueAtTime(peak * (i === 2 ? 1 : 0.55), tt + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, tt + (i === 2 ? 0.16 : 0.035));
+      src.connect(f).connect(g).connect(this.busMusic);
+      src.start(tt); src.stop(tt + 0.20);
+    }
+  }
+
+  private drumHat(t: number, peak: number): void {
+    const ctx = this.ctx!;
+    const src = ctx.createBufferSource(); src.buffer = this.noise;
+    const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7600;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+    src.connect(f).connect(g).connect(this.busMusic);
+    src.start(t); src.stop(t + 0.08);
+  }
+
+  private synthBass(freq: number, t: number, dur: number, peak: number): void {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 7;
+    f.frequency.setValueAtTime(320 + this.musicIntensity * 500, t);
+    f.frequency.exponentialRampToValueAtTime(140, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f).connect(g).connect(this.busMusic);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+
+  /** Three detuned saws: root, minor third, fifth. The sound of the decade. */
+  private synthChord(root: number, t: number, dur: number, peak: number): void {
+    const ctx = this.ctx!;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 1;
+    f.frequency.setValueAtTime(900 + this.musicIntensity * 2600, t);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + (this.musicMenu ? 0.35 : 0.02));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    f.connect(g).connect(this.busMusic);
+    for (const [semi, cents] of [[0, -7], [3, 0], [7, 7], [12, 4]] as [number, number][]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.value = root * Math.pow(2, semi / 12) * Math.pow(2, cents / 1200);
+      o.connect(f);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+  }
+
+  private synthArp(freq: number, t: number, dur: number, peak: number): void {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = freq;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 3200;
+    o.connect(f).connect(g).connect(this.busMusic);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+
+  /** Lead, with one delay tap behind it — the era's whole reverb budget. */
+  private synthLead(freq: number, t: number, dur: number, peak: number): void {
+    const ctx = this.ctx!;
+    const voice = (when: number, gain: number, detune: number): void => {
+      const o = ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.value = freq; o.detune.value = detune;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(gain, when + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 4200;
+      o.connect(f).connect(g).connect(this.busMusic);
+      o.start(when); o.stop(when + dur + 0.05);
+    };
+    voice(t, peak, -6);
+    voice(t, peak * 0.8, 7);
+    voice(t + 60 / this.bpm / 4 * 3, peak * 0.35, 0);
   }
 
   private stopMusic(): void {
@@ -640,14 +773,14 @@ export class AudioEngine {
     this.musicTimer = null;
   }
 
-  /** Menu ambience: a slow pad, no percussion. */
+  /** Menu: the same music with the drums and the top voices taken out. */
   menuMusic(on: boolean): void {
     if (!this.ctx) return;
     if (on && this.musicTimer === null) {
       this.musicIntensity = 0;
       this.musicRoot = 98;
-      this.musicKey = [0, 3, 7, 10, 7, 3];
-      this.startMusic();
+      this.musicProg = [0, 8, 3, 10];
+      this.startMusic(true);
     } else if (!on) {
       this.stopMusic();
     }
