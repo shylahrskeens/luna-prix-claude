@@ -6,7 +6,7 @@
  *  (music, SFX, engine, ambience) so the mix is controllable and a warning cue
  *  is never buried by the music.
  */
-import { clamp, clamp01, lerp } from '../core/math';
+import { clamp, clamp01 } from '../core/math';
 
 export interface MixSettings {
   master: number;
@@ -43,12 +43,41 @@ export class AudioEngine {
   mix: MixSettings = { ...DEFAULT_MIX };
   muted = false;
 
-  // engine voices
+  //  Engine voice.
+  //
+  //  Modelled the way the sound is actually made: combustion produces a train
+  //  of sharp pulses, and the exhaust pipe is a resonator those pulses ring.
+  //  Two oscillators carrying a near-flat harmonic series ARE the pulse train
+  //  (a flat spectrum in frequency is an impulse in time); the resonators give
+  //  it the vowel. Two detuned voices beat against each other the way real
+  //  cylinders never quite agree.
+  //
+  //  The previous version was a sawtooth and a square through one low-pass,
+  //  which is a continuous tone with its harmonics removed — a hum.
   private engOscA: OscillatorNode | null = null;
   private engOscB: OscillatorNode | null = null;
   private engSub: OscillatorNode | null = null;
-  private engFilter: BiquadFilterNode | null = null;
+  /** Exhaust pipe: high-Q, tracks the firing rate. */
+  private engPipe: BiquadFilterNode | null = null;
+  /** Fixed body resonance — the part that does not move with revs. */
+  private engBody: BiquadFilterNode | null = null;
+  /** Load/brightness. */
+  private engTone: BiquadFilterNode | null = null;
+  /** Clears the sub-bass mud that reads as a hum. */
+  private engHigh: BiquadFilterNode | null = null;
   private engGain: GainNode | null = null;
+  private engDrive: WaveShaperNode | null = null;
+  /** Induction roar: noise gated by the same rev band. */
+  private engAir: AudioBufferSourceNode | null = null;
+  private engAirFilter: BiquadFilterNode | null = null;
+  private engAirGain: GainNode | null = null;
+  /** Turbine whine while boosting. */
+  private boostWhine: OscillatorNode | null = null;
+  private boostWhineGain: GainNode | null = null;
+  /** Cycle-to-cycle wobble, so the note is never perfectly steady. */
+  private engJitter = 0;
+  private engJitterTarget = 0;
+  private engPulse: PeriodicWave | null = null;
 
   // continuous beds
   private tyreSrc: AudioBufferSourceNode | null = null;
@@ -132,30 +161,95 @@ export class AudioEngine {
     this.stopRace();
     const ctx = this.ctx;
 
-    // Engine: two detuned saws plus a sub, through a moving low-pass. The
-    // filter is what makes the difference between "on throttle" and "coasting"
-    // audible without a second sample set.
+    // ---- engine ----------------------------------------------------------
+    //  Signal path:
+    //    pulse oscillators -> soft clip -> pipe resonance -> body resonance
+    //                      -> load low-pass -> gain -> bus
+    //  plus an induction-noise path in parallel.
+    this.engPulse = this.makePulseWave(ctx);
+
     this.engGain = ctx.createGain();
     this.engGain.gain.value = 0;
-    this.engFilter = ctx.createBiquadFilter();
-    this.engFilter.type = 'lowpass';
-    this.engFilter.frequency.value = 700;
-    this.engFilter.Q.value = 3.5;
-    this.engGain.connect(this.engFilter).connect(this.busEngine);
 
-    this.engOscA = ctx.createOscillator();
-    this.engOscA.type = 'sawtooth';
-    this.engOscB = ctx.createOscillator();
-    this.engOscB.type = 'square';
+    this.engTone = ctx.createBiquadFilter();
+    this.engTone.type = 'lowpass';
+    this.engTone.frequency.value = 2400;
+    this.engTone.Q.value = 0.8;
+
+    this.engBody = ctx.createBiquadFilter();
+    this.engBody.type = 'peaking';
+    this.engBody.frequency.value = 340;
+    this.engBody.Q.value = 1.4;
+    this.engBody.gain.value = 3.5;
+
+    //  Clear the sub-bass.
+    //
+    //  Measured, the old engine put 12 dB more energy below 100 Hz than
+    //  anywhere else — which is the definition of a hum. Almost none of what
+    //  makes an engine recognisable lives down there; it lives in the harmonic
+    //  series above it, and the mud was masking all of it.
+    this.engHigh = ctx.createBiquadFilter();
+    this.engHigh.type = 'highpass';
+    this.engHigh.frequency.value = 72;
+    this.engHigh.Q.value = 0.7;
+
+    this.engPipe = ctx.createBiquadFilter();
+    this.engPipe.type = 'bandpass';
+    this.engPipe.frequency.value = 520;
+    this.engPipe.Q.value = 3.2;
+
+    this.engDrive = ctx.createWaveShaper();
+    this.engDrive.curve = this.makeDriveCurve(3.4);
+    this.engDrive.oversample = '2x';
+
+    // Keep a little of the dry pulse alongside the resonated signal, or the
+    // bandpass leaves nothing but the vowel and no edge.
+    const dry = ctx.createGain(); dry.gain.value = 0.52;
+    const wet = ctx.createGain(); wet.gain.value = 1.0;
+
+    this.engDrive.connect(this.engPipe).connect(wet).connect(this.engBody);
+    this.engDrive.connect(dry).connect(this.engBody);
+    this.engBody.connect(this.engHigh).connect(this.engTone).connect(this.engGain).connect(this.busEngine);
+
+    const mkOsc = (gainValue: number, detune: number) => {
+      const o = ctx.createOscillator();
+      o.setPeriodicWave(this.engPulse!);
+      o.detune.value = detune;
+      const g = ctx.createGain();
+      g.gain.value = gainValue;
+      o.connect(g).connect(this.engDrive!);
+      o.start();
+      return o;
+    };
+    this.engOscA = mkOsc(0.5, 0);
+    this.engOscB = mkOsc(0.34, 11);   // eleven cents apart: a slow beat
     this.engSub = ctx.createOscillator();
     this.engSub.type = 'triangle';
-    const gA = ctx.createGain(); gA.gain.value = 0.55;
-    const gB = ctx.createGain(); gB.gain.value = 0.22;
-    const gS = ctx.createGain(); gS.gain.value = 0.42;
-    this.engOscA.connect(gA).connect(this.engGain);
-    this.engOscB.connect(gB).connect(this.engGain);
-    this.engSub.connect(gS).connect(this.engGain);
-    this.engOscA.start(); this.engOscB.start(); this.engSub.start();
+    // The sub is a presence cue, not the sound. Loud, it is just a drone.
+    const gS = ctx.createGain(); gS.gain.value = 0.22;
+    this.engSub.connect(gS).connect(this.engHigh);
+    this.engSub.start();
+
+    // Induction roar. Broadband, tracks the revs, and it is most of what makes
+    // an engine sound like it is working rather than humming.
+    this.engAirGain = ctx.createGain(); this.engAirGain.gain.value = 0;
+    this.engAirFilter = ctx.createBiquadFilter();
+    this.engAirFilter.type = 'bandpass';
+    this.engAirFilter.frequency.value = 900;
+    this.engAirFilter.Q.value = 1.1;
+    this.engAir = ctx.createBufferSource();
+    this.engAir.buffer = this.noise;
+    this.engAir.loop = true;
+    this.engAir.connect(this.engAirFilter).connect(this.engAirGain).connect(this.busEngine);
+    this.engAir.start();
+
+    // Turbine whine, only while boosting.
+    this.boostWhineGain = ctx.createGain(); this.boostWhineGain.gain.value = 0;
+    this.boostWhine = ctx.createOscillator();
+    this.boostWhine.type = 'sine';
+    this.boostWhine.frequency.value = 2000;
+    this.boostWhine.connect(this.boostWhineGain).connect(this.busEngine);
+    this.boostWhine.start();
 
     // Tyre / surface bed.
     this.tyreGain = ctx.createGain(); this.tyreGain.gain.value = 0;
@@ -197,13 +291,49 @@ export class AudioEngine {
     this.startMusic();
   }
 
+  /** A band-limited impulse: near-flat harmonics, phase-aligned so the time
+   *  domain is a sharp pulse. This is the combustion event; the filters after
+   *  it are the pipe that rings. */
+  private makePulseWave(ctx: AudioContext, harmonics = 30): PeriodicWave {
+    const real = new Float32Array(harmonics + 1);
+    const imag = new Float32Array(harmonics + 1);
+    for (let n = 1; n <= harmonics; n++) {
+      // Gentle rolloff keeps it from being painfully bright, and the small
+      // alternating term stops the spectrum being mathematically perfect —
+      // real exhausts are not.
+      const rolloff = Math.pow(n, -0.42);
+      const uneven = 1 + 0.22 * Math.sin(n * 1.9);
+      real[n] = rolloff * uneven;
+      imag[n] = 0;
+    }
+    return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+  }
+
+  /** Asymmetric soft clip. Asymmetry adds even harmonics, which is most of the
+   *  difference between "buzzy" and "combustion". */
+  private makeDriveCurve(amount: number): Float32Array<ArrayBuffer> {
+    const n = 1024;
+    const curve = new Float32Array(new ArrayBuffer(n * 4));
+    for (let i = 0; i < n; i++) {
+      const x = (i / (n - 1)) * 2 - 1;
+      const bias = x + 0.12;
+      curve[i] = Math.tanh(bias * amount) / Math.tanh(amount);
+    }
+    return curve;
+  }
+
   stopRace(): void {
-    for (const n of [this.engOscA, this.engOscB, this.engSub, this.tyreSrc, this.windSrc, this.driftSrc]) {
+    for (const n of [this.engOscA, this.engOscB, this.engSub, this.tyreSrc,
+                     this.windSrc, this.driftSrc, this.engAir, this.boostWhine]) {
       try { n?.stop(); } catch { /* already stopped */ }
     }
     this.engOscA = this.engOscB = this.engSub = null;
     this.tyreSrc = this.windSrc = this.driftSrc = null;
+    this.engAir = null;
+    this.boostWhine = null;
     this.engGain = this.tyreGain = this.windGain = this.driftGain = null;
+    this.engAirGain = this.boostWhineGain = null;
+    this.engPipe = this.engBody = this.engTone = this.engHigh = null;
     this.stopMusic();
   }
 
@@ -215,36 +345,85 @@ export class AudioEngine {
   }): void {
     if (!this.ctx || !this.engOscA) return;
     const t = this.ctx.currentTime;
-    const rpm = clamp01(s.speed / Math.max(8, s.topSpeed));
-    // Gear steps give the note somewhere to go instead of a single long ramp.
-    const gear = Math.min(4, Math.floor(rpm * 5));
-    const inGear = (rpm * 5) - gear;
-    const base = this.engOscA.frequency.value;
-    const target = 52 + gear * 14 + inGear * 78 + (s.boosting ? 26 : 0);
-    const smooth = lerp(base, target, 0.25);
-    this.engOscA!.frequency.setTargetAtTime(smooth, t, 0.03);
-    this.engOscB!.frequency.setTargetAtTime(smooth * 1.505, t, 0.03);
-    this.engSub!.frequency.setTargetAtTime(smooth * 0.5, t, 0.04);
-    this.engFilter!.frequency.setTargetAtTime(
-      420 + rpm * 2600 + s.throttle * 900 + (s.boosting ? 1400 : 0), t, 0.05,
+    const rpmRaw = clamp01(s.speed / Math.max(8, s.topSpeed));
+
+    //  Gearbox. Revs climb through a gear, then drop on the shift — the thing
+    //  a continuously rising tone can never do, and the single strongest cue
+    //  that an engine is working rather than droning.
+    const GEARS = 5;
+    const g = Math.min(GEARS - 1, Math.floor(rpmRaw * GEARS));
+    const through = rpmRaw * GEARS - g;
+
+    //  Firing frequency, as a gearbox.
+    //
+    //  Within a gear the note sweeps from `low` to `high`; on a shift it drops
+    //  back to `low` of the next gear. Both ends climb with gear number, so
+    //  there is overall progression as well as the shift.
+    //
+    //  The drop is about a third, which is roughly what a real change gives
+    //  you. My first attempt dropped it by more than an octave — very audible,
+    //  and completely wrong: no gearbox has ratios that far apart.
+    const low = 96 + g * 13;
+    const high = 152 + g * 17;
+    const fire = low + (high - low) * through;
+
+    // Cycle-to-cycle wobble, re-rolled a few times a second. Without it the
+    // note is mathematically steady and reads as a synthesiser.
+    if (Math.random() < 0.06) this.engJitterTarget = (Math.random() * 2 - 1) * 7;
+    this.engJitter += (this.engJitterTarget - this.engJitter) * 0.15;
+    const load = s.throttle;
+
+    // Revs respond fast on throttle and fall slower off it, like inertia.
+    const tau = load > 0.5 ? 0.045 : 0.10;
+    this.engOscA.frequency.setTargetAtTime(fire, t, tau);
+    this.engOscB!.frequency.setTargetAtTime(fire, t, tau);
+    this.engOscA.detune.setTargetAtTime(this.engJitter, t, 0.05);
+    this.engOscB!.detune.setTargetAtTime(11 - this.engJitter, t, 0.05);
+    this.engSub!.frequency.setTargetAtTime(fire * 0.5, t, tau);
+
+    //  The pipe resonance sits a few harmonics up and climbs with the revs —
+    //  this is the "vowel" that makes a rev sound like a rev.
+    this.engPipe!.frequency.setTargetAtTime(
+      fire * (3.1 + load * 1.4) + 120 + (s.boosting ? 260 : 0), t, 0.05,
     );
-    this.engGain!.gain.setTargetAtTime(
-      (0.12 + rpm * 0.16 + s.throttle * 0.07) * (s.grounded ? 1 : 0.55), t, 0.06,
+    this.engPipe!.Q.setTargetAtTime(2.6 + rpmRaw * 3.4, t, 0.1);
+
+    //  Brightness is load, not speed. Off throttle the engine goes dull and
+    //  hollow (overrun); on throttle it opens right up.
+    const bright = 900 + rpmRaw * 2200 + load * 4200 + (s.boosting ? 2200 : 0);
+    this.engTone!.frequency.setTargetAtTime(s.covered ? bright * 0.75 : bright, t, 0.06);
+
+    //  Level: mostly load, some revs, and quieter with the wheels off the
+    //  ground because there is nothing for the engine to push against.
+    const level = (0.055 + rpmRaw * 0.10 + load * 0.115) * (s.grounded ? 1 : 0.5);
+    this.engGain!.gain.setTargetAtTime(level, t, 0.05);
+
+    //  Induction roar, tracking the revs and only really present on throttle.
+    this.engAirFilter!.frequency.setTargetAtTime(420 + rpmRaw * 2600, t, 0.08);
+    this.engAirGain!.gain.setTargetAtTime(
+      (0.018 + rpmRaw * 0.05) * (0.35 + load * 0.65) * (s.grounded ? 1 : 0.6), t, 0.07,
     );
 
-    this.tyreFilter!.frequency.setTargetAtTime(500 + rpm * 1400 + s.surfaceRough * 900, t, 0.08);
+    //  Turbine whine while boosting, an octave-ish above the pipe.
+    this.boostWhine!.frequency.setTargetAtTime(fire * 8 + 900, t, 0.12);
+    this.boostWhineGain!.gain.setTargetAtTime(s.boosting ? 0.016 : 0, t, 0.15);
+
+    //  Tyres: quiet on smooth road, loud and broad on dirt. Scaled off speed
+    //  so a stationary kart is actually silent.
+    this.tyreFilter!.frequency.setTargetAtTime(420 + rpmRaw * 1500 + s.surfaceRough * 1200, t, 0.08);
+    this.tyreFilter!.Q.setTargetAtTime(0.6 + s.surfaceRough * 1.8, t, 0.1);
     this.tyreGain!.gain.setTargetAtTime(
-      s.grounded ? (0.03 + rpm * 0.10) * (0.5 + s.surfaceRough * 1.6) : 0, t, 0.08,
+      s.grounded ? rpmRaw * (0.022 + s.surfaceRough * 0.14) : 0, t, 0.08,
     );
 
-    this.windFilter!.frequency.setTargetAtTime(s.covered ? 300 : 900, t, 0.2);
-    this.windGain!.gain.setTargetAtTime(rpm * rpm * 0.12, t, 0.12);
+    this.windFilter!.frequency.setTargetAtTime(s.covered ? 320 : 1100, t, 0.2);
+    this.windGain!.gain.setTargetAtTime(rpmRaw * rpmRaw * 0.10, t, 0.12);
 
-    const driftLevel = s.drifting ? 0.09 + s.driftTier * 0.035 : 0;
+    const driftLevel = s.drifting ? 0.075 + s.driftTier * 0.03 : 0;
     this.driftFilter!.frequency.setTargetAtTime(1700 + s.driftTier * 900, t, 0.06);
     this.driftGain!.gain.setTargetAtTime(driftLevel, t, 0.05);
 
-    this.musicIntensity = rpm;
+    this.musicIntensity = rpmRaw;
   }
 
   // ---- one-shots ----------------------------------------------------------
@@ -343,6 +522,67 @@ export class AudioEngine {
         break;
       }
     }
+  }
+
+  /** Tap the engine bus for tuning.
+   *
+   *  Sound is the one thing in this project that cannot be checked by looking,
+   *  and "it sounds like a hum" is a measurable claim: a hum is a couple of
+   *  low partials with a low crest factor, an engine is a wide harmonic series
+   *  with sharp pulses in it. */
+  private analyser: AnalyserNode | null = null;
+  analyse(): { centroidHz: number; crest: number; bands: number[]; rolloffHz: number } | null {
+    if (!this.ctx) return null;
+    if (!this.analyser) {
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.analyser.smoothingTimeConstant = 0.1;
+      this.busEngine.connect(this.analyser);
+    }
+    const a = this.analyser;
+    const freq = new Float32Array(a.frequencyBinCount);
+    const time = new Float32Array(a.fftSize);
+    a.getFloatFrequencyData(freq);
+    a.getFloatTimeDomainData(time);
+
+    const nyquist = this.ctx.sampleRate / 2;
+    const hzPerBin = nyquist / freq.length;
+    let num = 0, den = 0, total = 0;
+    const lin = new Float32Array(freq.length);
+    for (let i = 0; i < freq.length; i++) {
+      const v = Math.pow(10, freq[i] / 20);
+      lin[i] = v;
+      num += v * i * hzPerBin;
+      den += v;
+      total += v;
+    }
+    // 85% spectral rolloff: where most of the energy is below.
+    let acc = 0, rolloff = 0;
+    for (let i = 0; i < lin.length; i++) {
+      acc += lin[i];
+      if (acc >= total * 0.85) { rolloff = i * hzPerBin; break; }
+    }
+    let peak = 0, sumSq = 0;
+    for (const v of time) { peak = Math.max(peak, Math.abs(v)); sumSq += v * v; }
+    const rms = Math.sqrt(sumSq / time.length);
+
+    // Eight octave-ish bands, for a readable shape.
+    const bands: number[] = [];
+    const edges = [0, 100, 200, 400, 800, 1600, 3200, 6400, nyquist];
+    for (let b = 0; b < 8; b++) {
+      let sum = 0, n = 0;
+      for (let i = 0; i < lin.length; i++) {
+        const hz = i * hzPerBin;
+        if (hz >= edges[b] && hz < edges[b + 1]) { sum += lin[i]; n++; }
+      }
+      bands.push(n ? +(20 * Math.log10(sum / n + 1e-9)).toFixed(1) : -99);
+    }
+    return {
+      centroidHz: den > 0 ? Math.round(num / den) : 0,
+      crest: rms > 1e-6 ? +(peak / rms).toFixed(2) : 0,
+      bands,
+      rolloffHz: Math.round(rolloff),
+    };
   }
 
   /** Short vocal-ish chirp for an Axie reaction. */

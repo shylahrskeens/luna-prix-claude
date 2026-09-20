@@ -108,6 +108,7 @@ class App implements AppApi {
       step: (seconds: number) => this.debugStep(seconds),
       press: (code: string, seconds: number) => this.debugPress(code, seconds),
       autopilot: (on: boolean) => { if (this.race) this.race.autopilot = on; },
+      audio: () => audio.analyse(),
       /** Step the race on autopilot until the player reaches lap position `u`,
        *  so a capture can be taken at a named part of the track. */
       driveTo: (u: number, maxSeconds = 90) => {
