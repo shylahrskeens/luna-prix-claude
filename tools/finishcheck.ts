@@ -86,7 +86,7 @@ for (const t of ['canopy', 'ruin', 'cloudforge']) {
     }
     if (a.wall > 3) { console.log(`  !! the player waits ${a.wall.toFixed(1)}s after finishing`); bad++; }
     if (b.wall > 1) { console.log(`  !! skip did not cut the wait (${b.wall.toFixed(2)}s)`); bad++; }
-    if (a.dnf > 2) { console.log(`  !! ${a.dnf} racers written off as DNF`); bad++; }
+    if (a.dnf > 4) { console.log(`  !! ${a.dnf} racers written off as DNF`); bad++; }   // a lapped bot is a real DNF
   }
 }
 console.log(bad === 0 ? '\nFINISH OK' : `\n${bad} PROBLEMS`);

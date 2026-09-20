@@ -61,6 +61,8 @@ export interface Racer {
   special: number;
   /** Edge detection for the special button. */
   specialHeld: boolean;
+  /** Seconds before this racer may fire again. */
+  specialCooldown: number;
   /** Drift seconds already paid into the meter. */
   driftPaid: number;
   /** Bot skill 0..1; unused for humans. */
@@ -166,7 +168,7 @@ export class RaceCore {
       isPlayer: opts.isPlayer ?? false,
       isBot: opts.isBot ?? false,
       kart, ground, loadout,
-      special: 0, specialHeld: false, driftPaid: 0,
+      special: 0, specialHeld: false, specialCooldown: 0, driftPaid: 0,
       skill: opts.skill ?? 0.7,
       colorIndex: opts.colorIndex ?? this.racers.length,
       progress: {
@@ -240,7 +242,8 @@ export class RaceCore {
         r.special = Math.min(1, r.special + (r.kart.driftSeconds - r.driftPaid) * 0.34);
         r.driftPaid = r.kart.driftSeconds;
       }
-      if (input.special && !r.specialHeld && r.special >= SPECIAL_COST
+      if (r.specialCooldown > 0) r.specialCooldown -= dt;
+      if (input.special && !r.specialHeld && r.special >= SPECIAL_COST && r.specialCooldown <= 0
           && r.kart.mode === 'driving' && !r.progress.finished && this.phase !== 'countdown') {
         this.fireSpecial(r);
       }
@@ -436,6 +439,7 @@ export class RaceCore {
   private fireSpecial(r: Racer): void {
     const sp = SPECIALS[r.loadout.axieClass];
     r.special = 0;
+    r.specialCooldown = r.isBot ? 11 : 6;
     const me = r.kart;
     const fwdX = Math.sin(me.yaw), fwdZ = Math.cos(me.yaw);
     const rel = this.racers
@@ -450,23 +454,23 @@ export class RaceCore {
 
     switch (sp.kind) {
       case 'ram':
-        for (const t of rel) if (t.dist < sp.range && t.ahead > -3) t.o.kart.hit(0.9, t.nx, t.nz);
+        for (const t of rel) if (t.dist < sp.range && t.ahead > -3) t.o.kart.hit(0.50, t.nx, t.nz);
         me.startBoost(1, 'special');
         break;
       case 'wake':
         for (const t of rel) if (t.dist < sp.range && t.ahead < 0) {
-          t.o.kart.applySlow(0.72, sp.duration);
-          t.o.kart.hit(0.34, t.nx, t.nz);
+          t.o.kart.applySlow(0.84, sp.duration);
+          t.o.kart.hit(0.26, t.nx, t.nz);
         }
         break;
       case 'root':
-        if (inFront) inFront.o.kart.applySlow(0.45, sp.duration);
+        if (inFront) inFront.o.kart.applySlow(0.58, sp.duration);
         break;
       case 'gust':
-        for (const t of rel.slice(0, 3)) if (t.dist < sp.range) t.o.kart.hit(0.6, -t.nz, t.nx);
+        for (const t of rel.slice(0, 3)) if (t.dist < sp.range) t.o.kart.hit(0.42, -t.nz, t.nx);
         break;
       case 'sting':
-        if (inFront) { inFront.o.kart.applyNoBoost(sp.duration); inFront.o.kart.applySlow(0.82, sp.duration); }
+        if (inFront) { inFront.o.kart.applyNoBoost(sp.duration); inFront.o.kart.applySlow(0.90, sp.duration); }
         break;
       case 'shell':
         me.applyShield(sp.duration);

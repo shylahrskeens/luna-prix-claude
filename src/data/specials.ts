@@ -31,14 +31,14 @@ export interface Special {
 
 export const SPECIALS: Record<AxieClass, Special> = {
   Beast:   { kind: 'ram',       name: 'Ram',       blurb: 'Shoulder-charge: anything just ahead of you loses its line.', range: 16, duration: 0 },
-  Aquatic: { kind: 'wake',      name: 'Wake',      blurb: 'Leave a wash behind you. Whoever is following slides.',       range: 18, duration: 1.6 },
-  Plant:   { kind: 'root',      name: 'Root',      blurb: 'Pin the kart in front to the floor for a moment.',            range: 45, duration: 1.5 },
+  Aquatic: { kind: 'wake',      name: 'Wake',      blurb: 'Leave a wash behind you. Whoever is following slides.',       range: 18, duration: 1.1 },
+  Plant:   { kind: 'root',      name: 'Root',      blurb: 'Pin the kart in front to the floor for a moment.',            range: 45, duration: 1.0 },
   Bird:    { kind: 'gust',      name: 'Gust',      blurb: 'A downdraught that shoves the nearest karts off line.',       range: 26, duration: 0 },
-  Bug:     { kind: 'sting',     name: 'Sting',     blurb: 'Take the boost and the top end off the kart ahead.',          range: 40, duration: 2.2 },
+  Bug:     { kind: 'sting',     name: 'Sting',     blurb: 'Take the boost and the top end off the kart ahead.',          range: 40, duration: 1.4 },
   Reptile: { kind: 'shell',     name: 'Shell',     blurb: 'Nothing touches you for four seconds. Go through them.',      range: 0,  duration: 4 },
   Mech:    { kind: 'overdrive', name: 'Overdrive', blurb: 'A long, flat boost. No tiers, no payout, just drive.',        range: 0,  duration: 3.2 },
   Dawn:    { kind: 'draft',     name: 'Slipstream', blurb: 'Take the tow off the kart ahead as if you had sat there.',   range: 55, duration: 2.5 },
-  Dusk:    { kind: 'hex',       name: 'Hex',       blurb: 'The kart ahead cannot boost. Watch them try.',                range: 50, duration: 5 },
+  Dusk:    { kind: 'hex',       name: 'Hex',       blurb: 'The kart ahead cannot boost. Watch them try.',                range: 50, duration: 3 },
 };
 
 /** How much of the meter a move costs. Everything costs the lot for now: one

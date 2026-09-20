@@ -265,7 +265,7 @@ export class BotDriver {
       const dx = o.kart.pos.x - k.pos.x, dz = o.kart.pos.z - k.pos.z;
       return dx * dx + dz * dz < 55 * 55;
     });
-    const special = near && st.rng.next() < 0.012;   // this runs every frame: roughly one shot a second once charged
+    const special = near && this.racer.specialCooldown <= 0 && st.rng.next() < 0.03;   // per frame, so about twice a second once it is off cooldown
     return { throttle, brake, steer, drift, lookBack: false, special };
   }
 
