@@ -487,10 +487,13 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
     //  pad points somewhere rather than just sitting there.
     const chevCount = 4;
     for (let c = 0; c < chevCount; c++) {
-      const scale = 0.62;
+      const scale = 0.44;
+      //  Opaque, with its own material instance so each chevron can be lit
+      //  independently. Transparent chevrons sort into the blended pass and
+      //  draw over the kart that is standing on them.
       const chev = new THREE.Mesh(
-        new THREE.ConeGeometry(pad.w * scale, pad.w * 0.55, 3),
-        mats.glow('#ffffff', 0.95),
+        new THREE.ConeGeometry(pad.w * scale, pad.w * 0.40, 3),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
       );
       const off = (c - (chevCount - 1) / 2) * pad.len * 0.26;
       const pos = new THREE.Vector3(
@@ -500,7 +503,7 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
       );
       chev.position.copy(pos);
       chev.rotation.set(Math.PI / 2, 0, -Math.atan2(sm.fwd.x, sm.fwd.z));
-      chev.renderOrder = 4;
+      chev.renderOrder = 0;
       chev.name = `chev${c}`;
       group.add(chev);
       chevrons.push({ mesh: chev, index: c });
@@ -508,12 +511,12 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
       // A darker outline behind each one, so a white chevron still reads on a
       // pale surface like the Cloudforge decking or the Mega Ramp runway.
       const edge = new THREE.Mesh(
-        new THREE.ConeGeometry(pad.w * scale * 1.22, pad.w * 0.68, 3),
-        mats.glow('#1b1f2b', 0.85),
+        new THREE.ConeGeometry(pad.w * scale * 1.30, pad.w * 0.52, 3),
+        new THREE.MeshBasicMaterial({ color: 0x1b1f2b, toneMapped: false }),
       );
       edge.position.copy(pos).setY(pos.y - 0.02);
       edge.rotation.copy(chev.rotation);
-      edge.renderOrder = 3;
+      edge.renderOrder = 0;
       group.add(edge);
     }
   }
@@ -606,8 +609,8 @@ export function animateTrack(v: TrackVisual, time: number, countdown: number | n
     const phase = (time * 3.2 - c.index * 0.28) % 1.2;
     const lit = phase > 0 && phase < 0.55;
     const m = c.mesh.material as THREE.MeshBasicMaterial;
-    m.opacity = lit ? 1 : 0.42;
-    c.mesh.scale.setScalar(lit ? 1.12 : 1);
+    m.color.setRGB(1, lit ? 1 : 0.62, lit ? 1 : 0.28);
+    c.mesh.scale.setScalar(lit ? 1.1 : 1);
   }
   if (countdown === null) {
     for (const l of v.startLights) (l.material as THREE.MeshBasicMaterial).color.set('#1d3a22');

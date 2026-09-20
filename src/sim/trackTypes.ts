@@ -132,6 +132,9 @@ export interface TrackTheme {
   accent: string;
   /** Procedural scenery generator key. */
   scenery: 'canopy' | 'ruin' | 'cloud';
+  /** Multiplier on scenery density, and on how far out it starts. A course
+   *  you fly through needs its sightlines kept clear. */
+  sceneryScale?: number;
 }
 
 export interface TrackDefinition {

@@ -318,14 +318,20 @@ export const LUNA_LAUNCH_TRACK: TrackDefinition = {
     fogNear: 110,
     fogFar: 800,
     sun: '#fff2d6',
-    sunDir: [0.45, 0.72, -0.52],
-    ambient: '#8ea4bd',
+    // Sun ahead of the course, not behind it: a 21-degree descent faces
+    // forward, so a sun at your back leaves the entire ramp in shadow and the
+    // thing you are about to drive down reads as a black hole.
+    sunDir: [0.40, 0.70, 0.59],
+    ambient: '#9fb4cc',
     ground: '#7e8a5e',
-    roadTop: '#6b6355',
+    roadTop: '#8a8172',
     roadEdge: '#ffb23f',
     rail: '#b2bccb',
     accent: '#ffd166',
     scenery: 'canopy',
+    // An open yard: you have to be able to see the rings and the target from
+    // the air, and a forest at the roadside is exactly what blocks that.
+    sceneryScale: 0.3,
   },
   schemaVersion: 3,
 };

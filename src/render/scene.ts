@@ -97,6 +97,14 @@ function makeSky(theme: TrackTheme): THREE.Mesh {
         float d = max(dot(normalize(vDir), normalize(sunDir)), 0.0);
         col += sunColor * pow(d, 6.0) * 0.30;
         col += sunColor * pow(d, 220.0) * 0.9;
+        //  Encode to sRGB by hand.
+        //
+        //  three converts colours to linear working space on the way in, and
+        //  normally converts back on the way out — but only for materials
+        //  built from its own shader chunks. A raw ShaderMaterial writing
+        //  gl_FragColor directly skips that, so the sky was being written as
+        //  linear values into an sRGB buffer and came out several stops dark.
+        col = pow(max(col, vec3(0.0)), vec3(1.0 / 2.2));
         gl_FragColor = vec4(col, 1.0);
       }
     `,

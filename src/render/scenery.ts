@@ -21,13 +21,15 @@ function bandScatter(
   track: TrackRuntime,
   rng: Rng,
   count: number,
-  minOff: number,
+  minOffRaw: number,
   maxOff: number,
   yJitter: number,
   scale: () => number,
   sink = 0,
 ): THREE.Matrix4[] {
   const out: THREE.Matrix4[] = [];
+  const minOff = minOffRaw * (track.def.theme.sceneryScale && track.def.theme.sceneryScale < 1
+    ? 1 + (1 - track.def.theme.sceneryScale) * 1.8 : 1);
   const L = track.lapLength;
   const q = new THREE.Quaternion();
   const v = new THREE.Vector3();
@@ -92,7 +94,11 @@ export function buildScenery(track: TrackRuntime, mats: MaterialLibrary, density
   const group = new THREE.Group();
   const theme = track.def.theme;
   const rng = new Rng(hashString(track.def.id));
-  const d = (n: number) => Math.round(n * density);
+  const scale = track.def.theme.sceneryScale ?? 1;
+  const d = (n: number) => Math.round(n * density * scale);
+  // Sparse courses also push their scenery further from the road (handled in
+  // bandScatter), so the remaining props frame the action instead of standing
+  // in front of it.
 
   addGround(group, track, mats);
 
