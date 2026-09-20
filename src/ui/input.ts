@@ -144,7 +144,21 @@ export class InputManager {
     }
     this.prevDriftRaw = driftRaw;
 
-    steer = clamp(steer * s.steerSensitivity, -1, 1);
+    //  Flip the steering to match the screen.
+    //
+    //  The kart's yaw convention is fwd = (sin y, 0, cos y), so increasing yaw
+    //  swings the nose toward world +X. The chase camera sits behind the kart
+    //  looking along +Z — and in a right-handed system, a camera looking down
+    //  +Z has world +X on its LEFT. So "turn toward +X" is "turn toward screen
+    //  left", and pressing right steered left.
+    //
+    //  Negating here rather than in the physics keeps every derived value
+    //  consistent: drift direction, body lean, wheel angle and the camera's
+    //  drift framing are all computed from this number, so they flip with it.
+    //  The bots are untouched — they steer toward a world-space target and were
+    //  always self-consistent, which is exactly why 21 clean test races never
+    //  caught this. Only a human looking at a screen could.
+    steer = clamp(-steer * s.steerSensitivity, -1, 1);
     return { throttle: clamp01(throttle), brake: clamp01(brake), steer, drift, lookBack };
   }
 

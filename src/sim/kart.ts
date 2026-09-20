@@ -284,7 +284,10 @@ export class KartRuntime {
     let steerTarget = clamp(input.steer, -1, 1);
     if (this.assists.steerAssist && this.mode === 'driving' && Math.abs(steerTarget) < 0.35) {
       // Nudge toward the centre of the road. Disclosed, and off in ranked.
-      steerTarget = clamp(steerTarget + clamp(-g.lat / Math.max(2, g.width) * 0.55, -0.4, 0.4), -1, 1);
+      // `lat` is world-right offset and steering is screen-relative, so the
+      // correction is +lat: drifting toward +X needs a turn back toward -X,
+      // which is a positive steer value.
+      steerTarget = clamp(steerTarget + clamp(g.lat / Math.max(2, g.width) * 0.55, -0.4, 0.4), -1, 1);
     }
     // Faster to release than to apply: the kart snaps straight, which is what
     // makes quick direction changes feel crisp.
@@ -519,6 +522,20 @@ export class KartRuntime {
     const rotated = -yawRate * dt * vf;
     vr += rotated;
     vr = approach(vr, 0, maxLat * dt);
+
+    //  Bound the slide.
+    //
+    //  Yaw injects lateral velocity at |yawRate| * vf per second and friction
+    //  removes maxLat per second. The yaw limiter allows 45% more than grip
+    //  can cancel, so a corner held at full lock adds sideways speed forever:
+    //  ten seconds of it reached 100 m/s sideways while forward speed sat at
+    //  25. A cap is what actually makes grip mean something — past it the kart
+    //  understeers, which is the honest outcome of asking for more grip than
+    //  the tyres have.
+    const maxSlip = this.drifting
+      ? Math.max(4, Math.abs(vf) * 0.62)    // a committed slide, ~32 degrees
+      : Math.max(2.0, maxLat * 0.16);       // a scrub, not a slide
+    vr = clamp(vr, -maxSlip, maxSlip);
 
     // ---- drift charge -----------------------------------------------------
     if (this.drifting) {
