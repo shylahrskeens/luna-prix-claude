@@ -151,7 +151,7 @@ export function homeScreen(app: AppApi): HTMLElement {
         el('div', { class: 'panel' },
           el('h1', { text: 'Race.' }),
           el('p', { style: 'margin-top:8px' },
-            'Pick an Axie, fit it into a kart, and go. Three circuits, seven rivals, a rank to climb, and two bonus events that ask for something other than a lap time.'),
+            'Pick an Axie, fit it into a kart, and go. Three circuits, seven rivals, a rank to climb, and three bonus events that ask for something other than a lap time.'),
         ),
         el('div', { class: 'grid', style: 'grid-template-columns:1fr' },
           bigButton('Quick Race', 'Three laps, seven rivals, no rating at stake', 'primary big', () => app.go('trackSelect', { mode: 'quickRace' })),
@@ -614,7 +614,8 @@ export function resultsScreen(app: AppApi, params: Record<string, unknown>): HTM
   const r = params as unknown as ResultsParams;
   const p = app.profile;
   const me = r.result.entries.find((e) => e.isPlayer)!;
-  const podium = me.finish <= 3;
+  const solo = r.result.entries.length <= 1;   // a time trial is a field of one: not a podium
+  const podium = !solo && me.finish <= 3;
 
   const rows = r.result.entries.map((e) => el('tr', { class: e.isPlayer ? 'me' : '' },
     el('td', { text: String(e.finish) }),
@@ -633,8 +634,9 @@ export function resultsScreen(app: AppApi, params: Record<string, unknown>): HTM
     el('div', { class: 'body' },
       el('div', { class: 'col grow scroll' },
         el('div', { class: 'panel' },
-          el('h1', { text: podium ? `P${me.finish}` : `Finished ${me.finish}th` }),
-          el('p', { style: 'margin-top:6px', text: podium ? 'On the podium.' : 'Back to the garage, then.' }),
+          el('h1', { text: solo ? 'Lap done' : podium ? `P${me.finish}` : `Finished ${me.finish}th` }),
+          el('p', { style: 'margin-top:6px', text: solo ? 'Alone against the clock — see if it stuck as a record.'
+            : podium ? 'On the podium.' : 'Back to the garage, then.' }),
           el('div', { class: 'row', style: 'margin-top:10px' },
             chip('Time', formatTime(me.totalTime)),
             chip('Best lap', me.bestLap ? formatTime(me.bestLap) : '—'),

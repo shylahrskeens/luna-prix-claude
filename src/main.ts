@@ -490,10 +490,15 @@ class App implements AppApi {
     const params: ResultsParams = {
       result, ratingDelta: delta, coins, improved, unlocked, promoted,
     };
-    // Let the finish play out for a moment before the screen appears.
-    window.setTimeout(() => {
+    // Let the finish play out for a moment before the screen appears — but the
+    // wait is skippable, because it used to stack a fixed 1.8s on top of the
+    // tail and a key press could not touch it.
+    this.showResults = () => {
+      this.showResults = null;
+      if (this.resultsTimer !== null) { window.clearTimeout(this.resultsTimer); this.resultsTimer = null; }
       if (this.race === view) this.go('results', params as unknown as Record<string, unknown>);
-    }, 1800);
+    };
+    this.resultsTimer = window.setTimeout(() => this.showResults?.(), 1200);
   }
 
   private finishBonus(): void {
@@ -521,6 +526,8 @@ class App implements AppApi {
   }
 
   private endRace(): void {
+    if (this.resultsTimer !== null) { window.clearTimeout(this.resultsTimer); this.resultsTimer = null; }
+    this.showResults = null;
     if (this.pause) { this.pause.remove(); this.pause = null; }
     this.race?.dispose();
     this.race = null;
@@ -591,6 +598,9 @@ class App implements AppApi {
 
   private fpsMeter = 0;
   private pointerPressed = false;
+  /** Set while the short pause between the flag and the results screen runs. */
+  private showResults: (() => void) | null = null;
+  private resultsTimer: number | null = null;
 
   /** Advance the game by `seconds` of simulated frames, without waiting on the
    *  display. Used by the screenshot and smoke-test tooling, which runs in a
@@ -647,6 +657,8 @@ class App implements AppApi {
     if (this.race) {
       if (this.input.consumePress(this.profile.settings.keybinds.pause)) this.togglePause();
       if (this.race.core.canSkipTail && this.pointerPressed) this.race.skipRequested = true;
+      // Once the flag is out, anything at all brings the results up now.
+      if (this.showResults && (this.pointerPressed || this.input.consumeAnyPress())) this.showResults();
       this.pointerPressed = false;
       if (!this.pause) {
         this.race.update(dt);
