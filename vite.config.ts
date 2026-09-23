@@ -1,5 +1,5 @@
 import { defineConfig, type Plugin } from 'vite';
-import { createReadStream, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createReadStream, statSync, mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,9 +33,14 @@ function axiePack(): Plugin {
     } catch {
       res.statusCode = 404; res.end(`not in the Axie pack: ${rel}`); return;
     }
+    // LUNA_PACK_LOG=<file>: append every pack path served, so the subset of
+    // the pack the shipped Axies actually need can be measured, not guessed.
+    if (process.env.LUNA_PACK_LOG) appendFileSync(process.env.LUNA_PACK_LOG, `${rel}\t${size}\n`);
     res.setHeader('Content-Type', MIME[path.extname(file)] ?? 'application/octet-stream');
     res.setHeader('Content-Length', size);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    // no-cache, not max-age: the browser must ask each time, so the LUNA_PACK_LOG
+    // measurement sees every file and a pack change shows up without a hard reload.
+    res.setHeader('Cache-Control', 'no-cache');
     createReadStream(file).pipe(res);
   };
   return {

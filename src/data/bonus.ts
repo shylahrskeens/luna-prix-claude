@@ -8,7 +8,7 @@ import { buildRouteFull, type RouteSeg } from './route';
 import { at, span } from './trackHelpers';
 import type { TrackDefinition } from '../sim/trackTypes';
 
-export type BonusKind = 'megaRamp' | 'gauntlet' | 'launch';
+export type BonusKind = 'gauntlet' | 'launch';
 
 export interface MedalThresholds {
   bronze: number;
@@ -43,97 +43,6 @@ export interface BonusEventDefinition {
 // competent run now lands between roughly 100 and 240 metres, and there are
 // hoops down the flight path worth real metres if you can steer to them.
 // ---------------------------------------------------------------------------
-
-const RAMP_SEGS: RouteSeg[] = [
-  { t: 'straight', len: 90, w: 16, mark: 'stage' },
-  { t: 'straight', len: 320, w: 15, mark: 'runway' },
-  { t: 'straight', len: 64, dy: 27, w: 13, mark: 'ramp' },
-  // The lip continues the ramp's slope for a few metres of open air. There is
-  // no road here, but it is what keeps the spline tangent pointing UP at the
-  // lip: with the hill starting straight after the ramp the tangent averaged
-  // to nearly flat and a full-speed kart left at a three-metre apex.
-  { t: 'straight', len: 10, dy: 4, w: 13, mark: 'lip' },
-  // ...and then the ground falls away under it before the hill begins.
-  { t: 'straight', len: 14, dy: -12, w: 13, mark: 'lipDrop' },
-  // The landing hill. It drops steeply, so a kart that launches harder simply
-  // flies further down it.
-  { t: 'straight', len: 460, dy: -258, w: 30, mark: 'landing' },
-  { t: 'straight', len: 150, dy: -22, w: 30, mark: 'runout' },
-  { t: 'straight', len: 90, w: 26, mark: 'catch' },
-];
-
-const rampRoute = buildRouteFull(RAMP_SEGS, { width: 16, spacing: 7, start: [0, 200, 0], heading: 0, closed: false });
-const RM = rampRoute.marks;
-
-export const MEGA_RAMP_TRACK: TrackDefinition = {
-  id: 'event-megaramp',
-  name: 'Mega Ramp',
-  subtitle: 'Long jump • distance and style',
-  setPiece: 'One ramp, one landing, one number.',
-  difficulty: 2,
-  laps: 1,
-  closed: false,
-  nodes: rampRoute.nodes,
-  checkpointCount: 6,
-  start: { s: 0.005, rows: 1, colGap: 5, rowGap: 6 },
-  killY: -400,
-  shoulder: 5,
-  unlock: null,
-  zones: [
-    { from: 0, to: 1, surface: 'road', wall: 'both', shoulder: 5 },
-    { ...span(RM.stage, 0, 1), surface: 'metal', wall: 'both', shoulder: 3, label: 'Staging' },
-    { ...span(RM.runway, 0, 1), surface: 'road', wall: 'both', shoulder: 4, label: 'Runway' },
-    { ...span(RM.ramp, 0, 1), surface: 'metal', wall: 'both', shoulder: 2, label: 'Ramp' },
-    { ...span(RM.lip, 0, 1), gap: true, wall: 'none', shoulder: 2, label: 'Ramp' },
-    { ...span(RM.lipDrop, 0, 1), gap: true, wall: 'none', shoulder: 2, label: 'Ramp' },
-    { ...span(RM.landing, 0, 1), surface: 'dirt', wall: 'none', shoulder: 9, label: 'Landing Hill' },
-    { ...span(RM.runout, 0, 1), surface: 'dirt', wall: 'none', shoulder: 9, label: 'Run-out' },
-    { ...span(RM.catch, 0, 1), surface: 'grass', wall: 'both', shoulder: 9, label: 'Catch' },
-  ],
-  boostPads: [
-    // The risky line: pads you can only take flat out and straight. Five of
-    // them now, and the last two are narrow, so a greedy run is a committed one.
-    { s: at(RM.runway, 0.18), lat: 0, len: 24, w: 8 },
-    { s: at(RM.runway, 0.38), lat: 0, len: 24, w: 7 },
-    { s: at(RM.runway, 0.56), lat: 0, len: 24, w: 7 },
-    { s: at(RM.runway, 0.74), lat: 0, len: 22, w: 6 },
-    { s: at(RM.runway, 0.90), lat: 0, len: 22, w: 5.5 },
-    // Two on the ramp itself, so the climb does not bleed the speed away and
-    // the lip is left at a real launch pace.
-    { s: at(RM.ramp, 0.30), lat: 0, len: 16, w: 9 },
-    { s: at(RM.ramp, 0.70), lat: 0, len: 16, w: 9 },
-  ],
-  branches: [],
-  hazards: [
-    // Hoops down the flight path. They sit where the arc actually goes, rise
-    // with it and then fall, and each is worth metres — so the line you pick
-    // off the lip is a real decision rather than "hold accelerate".
-    // Heights are above the hill under each ring, set from tools/rampprobe.ts
-    // so the hoops sit ON the flight arc of a kart that used the pads.
-    // A boosted launch leaves the lip at ~39 m/s and lands ~130 m out; the
-    // arc (metres along : height vs lip) is 30:+2.5, 60:-8.5, 90:-27, 115:-47.
-    { kind: 'ring', s: at(RM.landing, 0.013), lat: 0, h: 14, r: 7.5 },
-    { kind: 'ring', s: at(RM.landing, 0.078), lat: -4, h: 19.5, r: 7.0 },
-    { kind: 'ring', s: at(RM.landing, 0.143), lat: 4, h: 11, r: 6.5 },
-    { kind: 'ring', s: at(RM.landing, 0.198), lat: 0, h: 8, r: 6.0 },
-  ],
-  theme: {
-    sky: ['#4f8fd6', '#ffd2a0'],
-    fog: '#cddcee',
-    fogNear: 120,
-    fogFar: 900,
-    sun: '#fff4dc',
-    sunDir: [0.5, 0.7, -0.5],
-    ambient: '#8fa8c4',
-    ground: '#8c9a6e',
-    roadTop: '#5f6672',
-    roadEdge: '#ffb23f',
-    rail: '#b9c2d0',
-    accent: '#ffb23f',
-    scenery: 'cloud',
-  },
-  schemaVersion: 3,
-};
 
 // ---------------------------------------------------------------------------
 // Gator Gauntlet — the second event.
@@ -264,26 +173,130 @@ export const GAUNTLET_TRACK: TrackDefinition = {
 
 const LAUNCH_SEGS: RouteSeg[] = [
   { t: 'straight', len: 60, w: 14, mark: 'stage' },
-  // The huge ramp. Twenty-one degrees for a hundred and sixty metres.
-  { t: 'straight', len: 160, dy: -62, w: 13, mark: 'dropIn' },
-  { t: 'straight', len: 50, dy: -6, w: 13, mark: 'runout' },
-  // 29 degrees. A shallower kicker sends the kart far but low, which
-  // leaves no room for rings overhead or obstacles underneath.
-  { t: 'straight', len: 36, dy: 20, w: 12, mark: 'kicker' },
-  { t: 'straight', len: 250, dy: -16, w: 26, mark: 'yard' },
-  { t: 'straight', len: 90, dy: -2, w: 26, mark: 'catch' },
+  // The big one: two hundred and twenty metres at twenty-three degrees.
+  { t: 'straight', len: 220, dy: -92, w: 13, mark: 'dropIn' },
+  { t: 'straight', len: 40, dy: -4, w: 13, mark: 'runout' },
+  // Thirty-one degrees of kicker...
+  { t: 'straight', len: 46, dy: 28, w: 12, mark: 'kicker' },
+  // ...and a held lip, which is what keeps the spline tangent pointing UP at
+  // the edge (the Mega Ramp lesson: without it the tangent averages flat and
+  // the kart leaves low).
+  { t: 'straight', len: 10, dy: 6, w: 12, mark: 'lip' },
+  // The cliff. Solid, so a short flight lands on the face and slides down to
+  // the yard rather than respawning — but the arc goes a long way over it.
+  { t: 'straight', len: 110, dy: -120, w: 26, mark: 'cliff' },
+  { t: 'straight', len: 340, dy: -8, w: 30, mark: 'yard' },
+  { t: 'straight', len: 80, dy: -2, w: 30, mark: 'catch' },
 ];
 
 const launchRoute = buildRouteFull(LAUNCH_SEGS, {
-  width: 14, spacing: 6, start: [0, 140, 0], heading: 0, closed: false,
+  width: 14, spacing: 6, start: [0, 200, 0], heading: 0, closed: false,
 });
 const LM = launchRoute.marks;
+
+/** Where the flight is, MEASURED (tools/rampprobe.ts launch, Dartwing, no
+ *  boost), in WORLD metres relative to the lip: [forward, up, sideways] every
+ *  tenth of a second. Everything on this course is placed in world space and
+ *  then converted to a route position, because an airborne kart over a
+ *  47-degree cliff projects onto the spline perpendicularly — its "distance
+ *  along the road" runs far ahead of where it actually is, so anything placed
+ *  by arc length lands behind and below the flight. (That is exactly what the
+ *  first cut of this course did.) Re-run the probe and paste the table
+ *  whenever the ramp changes. */
+const LAUNCH_LIP_WORLD: [number, number, number] = [-1.4, 136.2, 372.6];
+const LAUNCH_ARC: [number, number, number][] = [[0.0, 0.0, 0.0],[3.3, 1.5, -0.1],[6.5, 2.7, -0.2],[9.8, 3.7, -0.3],[13.0, 4.4, -0.4],[16.3, 5.0, -0.5],[19.6, 5.2, -0.6],[22.8, 5.3, -0.6],[26.1, 5.0, -0.7],[29.4, 4.6, -0.8],[32.6, 3.9, -0.9],[35.9, 3.0, -1.0],[39.1, 1.8, -1.1],[42.4, 0.4, -1.2],[45.7, -1.3, -1.3],[48.9, -3.1, -1.4],[52.2, -5.3, -1.5],[55.5, -7.6, -1.6],[58.7, -10.3, -1.7],[62.0, -13.1, -1.8],[65.2, -16.2, -1.9],[68.5, -19.5, -1.9],[71.8, -23.1, -2.0],[75.0, -26.9, -2.1],[78.3, -30.9, -2.2],[81.6, -35.2, -2.3],[84.8, -39.8, -2.4],[88.1, -44.5, -2.5],[91.3, -49.5, -2.6],[94.6, -54.8, -2.7],[97.9, -60.3, -2.8],[101.1, -66.0, -2.9],[104.4, -72.0, -3.0],[107.7, -78.2, -3.1],[110.9, -84.6, -3.1],[114.2, -91.3, -3.2],[117.4, -98.3, -3.3],[120.7, -105.4, -3.4],[124.0, -112.8, -3.5]];
+
+/** Height of the measured arc above the lip, `d` metres forward of it. */
+/** Sideways drift of the measured flight, `d` metres out (the kart wanders
+ *  a few metres left over the whole arc; the rings follow it). */
+function arcSide(d: number): number {
+  const t = LAUNCH_ARC;
+  if (d <= t[0][0]) return t[0][2];
+  for (let i = 1; i < t.length; i++) {
+    if (d <= t[i][0]) {
+      const f = (d - t[i - 1][0]) / (t[i][0] - t[i - 1][0]);
+      return t[i - 1][2] + (t[i][2] - t[i - 1][2]) * f;
+    }
+  }
+  return t[t.length - 1][2];
+}
+
+function arcHeight(d: number): number {
+  const t = LAUNCH_ARC;
+  if (d <= t[0][0]) return t[0][1];
+  for (let i = 1; i < t.length; i++) {
+    if (d <= t[i][0]) {
+      const f = (d - t[i - 1][0]) / (t[i][0] - t[i - 1][0]);
+      return t[i - 1][1] + (t[i][1] - t[i - 1][1]) * f;
+    }
+  }
+  // Past the table: keep falling at the last measured rate.
+  const [d1, y1] = t[t.length - 1]; const [d0, y0] = t[t.length - 2];
+  return y1 + (d - d1) * (y1 - y0) / (d1 - d0);
+}
+
+/** Convert a world point to the route's (s, lat, h): the node polyline is
+ *  scanned in the horizontal plane for the segment the point is over, and the
+ *  height is measured from the road there. Fractions are of the polyline's 3D
+ *  length, which is what the sim scales `s` by. */
+function worldToRoute(x: number, y: number, z: number): { s: number; lat: number; h: number } {
+  const nodes = launchRoute.nodes;
+  const cums: number[] = [0];
+  for (let i = 1; i < nodes.length; i++) {
+    const [x0, y0, z0] = nodes[i - 1]; const [x1, y1, z1] = nodes[i];
+    cums.push(cums[i - 1] + Math.hypot(x1 - x0, y1 - y0, z1 - z0));
+  }
+  const total = cums[cums.length - 1];
+  let best = { d2: Infinity, s: 0, lat: 0, h: 0 };
+  for (let i = 1; i < nodes.length; i++) {
+    const [x0, y0, z0] = nodes[i - 1]; const [x1, y1, z1] = nodes[i];
+    const ex = x1 - x0, ez = z1 - z0; const len2 = ex * ex + ez * ez || 1e-9;
+    const f = Math.max(0, Math.min(1, ((x - x0) * ex + (z - z0) * ez) / len2));
+    const px = x0 + ex * f, pz = z0 + ez * f, py = y0 + (y1 - y0) * f;
+    const d2 = (x - px) ** 2 + (z - pz) ** 2;
+    if (d2 < best.d2) {
+      const hl = Math.sqrt(len2);
+      // Right-hand side of the direction of travel is positive lat.
+      const lat = ((x - px) * (ez / hl) - (z - pz) * (ex / hl));
+      best = { d2, s: (cums[i - 1] + (cums[i] - cums[i - 1]) * f) / total, lat, h: y - py };
+    }
+  }
+  return { s: best.s, lat: best.lat, h: best.h };
+}
+
+/** A hoop `d` metres past the lip, centred on the measured arc, `side`
+ *  metres to the right of the flight line. */
+function arcRing(d: number, side: number, r: number, extra: Partial<Extract<TrackDefinition['hazards'][number], { kind: 'ring' }>> = {}) {
+  const [lx, ly, lz] = LAUNCH_LIP_WORLD;
+  const p = worldToRoute(lx + arcSide(d) + side, ly + arcHeight(d), lz + d);
+  return { kind: 'ring' as const, s: p.s, lat: p.lat, h: p.h, r, ...extra };
+}
+
+/** Something on the ground `d` metres past the lip, on the flight line. */
+function onGround(d: number): { s: number; lat: number } {
+  const [lx, , lz] = LAUNCH_LIP_WORLD;
+  const p = worldToRoute(lx, 0, lz + d);
+  return { s: p.s, lat: p.lat };
+}
+
+// Twelve hoops every nine metres along the arc, in a gentle S so threading
+// all of them needs a line, not a held stick. The late ones are wider: a
+// faster kart flies a flatter arc and comes through them higher.
+const LAUNCH_RINGS = Array.from({ length: 12 }, (_, i) => {
+  const d = 10 + i * 9;
+  return arcRing(d, Math.sin(i * 0.7) * 3.0, 5.6 + i * 0.25);
+});
+// Four bonus bullseyes that sweep across the flight path, out of phase with
+// each other, worth a flat bounty each.
+const LAUNCH_TARGETS = [24, 50, 76, 100].map((d, i) =>
+  arcRing(d, 0, 4.2 + i * 0.3, { sweep: 8, period: 3.4 + i * 0.5, phase: i * 0.25, bonus: true, points: 800 }),
+);
 
 export const LUNA_LAUNCH_TRACK: TrackDefinition = {
   id: 'event-launch',
   name: 'Luna Launch',
-  subtitle: 'Stunt yard • rings, obstacles and a target',
-  setPiece: 'One flight, three jobs: thread it, clear it, land on it.',
+  subtitle: 'Stunt yard • rings, bullseyes and a moving landing target',
+  setPiece: 'One flight, three jobs: thread it, hit it, land on it.',
   difficulty: 3,
   laps: 1,
   closed: false,
@@ -299,46 +312,35 @@ export const LUNA_LAUNCH_TRACK: TrackDefinition = {
     { ...span(LM.dropIn, 0, 1), surface: 'road', wall: 'both', shoulder: 4, label: 'The Drop' },
     { ...span(LM.runout, 0, 1), surface: 'road', wall: 'both', shoulder: 4, label: 'Run-out' },
     { ...span(LM.kicker, 0, 1), surface: 'metal', wall: 'both', shoulder: 2, label: 'Kicker' },
-    // The yard is solid ground, not a hole. Falling short is a bad score, not
+    { ...span(LM.lip, 0, 1), surface: 'metal', wall: 'none', shoulder: 2, label: 'Kicker' },
+    // Solid ground under the whole flight. Falling short is a bad score, not
     // a respawn — which is what makes the retry loop fast enough to learn on.
+    { ...span(LM.cliff, 0, 1), surface: 'dirt', wall: 'none', shoulder: 12, label: 'The Cliff' },
     { ...span(LM.yard, 0, 1), surface: 'dirt', wall: 'none', shoulder: 12, label: 'The Yard' },
     { ...span(LM.catch, 0, 1), surface: 'dirt', wall: 'both', shoulder: 12, label: 'Catch' },
   ],
   boostPads: [
-    { s: at(LM.dropIn, 0.25), lat: 0, len: 18, w: 6 },
-    { s: at(LM.dropIn, 0.55), lat: 0, len: 18, w: 6 },
+    { s: at(LM.dropIn, 0.18), lat: 0, len: 18, w: 6 },
+    { s: at(LM.dropIn, 0.42), lat: 0, len: 18, w: 6 },
+    { s: at(LM.dropIn, 0.66), lat: 0, len: 18, w: 6 },
     // The greedy one: right on the edge, and taking it straight costs you the
     // line into the kicker.
-    { s: at(LM.dropIn, 0.85), lat: 4.8, len: 20, w: 5 },
+    { s: at(LM.dropIn, 0.88), lat: 4.8, len: 20, w: 5 },
     { s: at(LM.runout, 0.45), lat: 0, len: 16, w: 6 },
   ],
   branches: [],
   hazards: [
-    //  Placement is read off a measured flight, not guessed: a clean run
-    //  leaves the kicker at ~145 km/h, peaks 8.7 m up at 39 m out, and lands
-    //  72 m out. Everything below is positioned against that curve.
-
-    // ---- rings in the air -------------------------------------------------
-    // Low, apex, then low again — and offset left then right, so threading all
-    // three needs a deliberate S in the air rather than one held line.
-    { kind: 'ring', s: at(LM.yard, 0.062), lat: 0, h: 6.0, r: 6.0 },
-    { kind: 'ring', s: at(LM.yard, 0.117), lat: -3.5, h: 8.6, r: 5.5 },
-    { kind: 'ring', s: at(LM.yard, 0.177), lat: 3.5, h: 6.8, r: 5.5 },
-
-    // ---- things to jump over ---------------------------------------------
-    // Escalating, and the tallest is last — where the kart is already coming
-    // down, so the final one is the one that actually costs you something.
-    { kind: 'stack', s: at(LM.yard, 0.054), lat: 0, w: 11, h: 3.4, len: 4, style: 'crates', points: 150 },
-    { kind: 'stack', s: at(LM.yard, 0.105), lat: 0, w: 13, h: 4.4, len: 9, style: 'bus', points: 250 },
-    { kind: 'stack', s: at(LM.yard, 0.157), lat: 0, w: 12, h: 4.4, len: 5, style: 'crates', points: 200 },
-    { kind: 'stack', s: at(LM.yard, 0.209), lat: 0, w: 17, h: 4.3, len: 14, style: 'gator', points: 500 },
-
-    // ---- the target -------------------------------------------------------
-    // Centred just BEYOND where a clean run lands, so the gold needs the pads
-    // or a drift boost on the way down — and overshooting it costs exactly as
-    // much as falling short.
-    { kind: 'target', s: at(LM.yard, 0.277), lat: 0,
-      rings: [22, 15, 9, 4.5], points: [200, 500, 1100, 2200] },
+    ...LAUNCH_RINGS,
+    ...LAUNCH_TARGETS,
+    // ---- the landing zone -------------------------------------------------
+    // A painted strip on the yard, and inside it a bullseye that slides side
+    // to side. The measured run touches down about 128 m past the lip; the
+    // gold is 14 m beyond that, so it takes the pads (or a boost off the
+    // kicker) to reach — and overshooting costs exactly as much as falling
+    // short.
+    { kind: 'zone', ...onGround(160), w: 26, len: 90, label: 'LANDING ZONE' },
+    { kind: 'target', ...onGround(142),
+      rings: [13, 9, 5.5, 2.6], points: [300, 800, 1600, 3000], sweep: 5.5, period: 5.2 },
   ],
   theme: {
     sky: ['#4a7fd6', '#ffcf9a'],
@@ -366,39 +368,23 @@ export const LUNA_LAUNCH_TRACK: TrackDefinition = {
 
 export const BONUS_EVENTS: BonusEventDefinition[] = [
   {
-    id: 'megaramp',
-    name: 'Mega Ramp',
-    tagline: 'Build speed, pick your line, stick the landing.',
-    brief:
-      'Five boost pads down a long runway and one decision: how straight are you willing to run to take them all. ' +
-      'At the lip, pitch the kart with accelerate and brake, roll it level with steering, and land flat on the hill. ' +
-      'Four hoops hang down the flight path and each one you thread is worth twelve metres. ' +
-      'A clean landing keeps your distance. A trick on the way down multiplies it. A bad landing costs you a third of it.',
-    kind: 'megaRamp',
-    track: MEGA_RAMP_TRACK,
-    higherIsBetter: true,
-    unit: 'm',
-    medals: { bronze: 110, silver: 165, gold: 215 },
-    timeLimit: 45,
-    unlock: null,
-  },
-  {
     id: 'launch',
     name: 'Luna Launch',
-    tagline: 'Down the big one. Thread it, clear it, land on it.',
+    tagline: 'Down the big one. Thread it, hit it, land on it.',
     brief:
-      'A hundred and sixty metres of descent to build speed, then one kicker and one flight. ' +
-      'Three rings hang in the air at different heights — thread them in a row and each one is worth more than the last. ' +
-      'Under you is a row of obstacles ending in a very large gator; clipping any of them ends the flight there. ' +
-      'And the target is at a fixed distance, so unlike the Mega Ramp you can absolutely overshoot it. ' +
+      'Two hundred and twenty metres of descent to build speed, then a kicker and one very long flight over a cliff. ' +
+      'Every metre of flight is worth points, so speed off the lip is the base of the score. ' +
+      'Twelve rings hang on the arc — thread them in a row and each one pays more than the last — ' +
+      'and four bullseyes sweep across the flight path for a flat bounty each. ' +
+      'The landing zone is painted on the yard and the target inside it is moving, so aim for where it will be. ' +
       'Pitch with accelerate and brake, roll level with steering, and land flat in the gold.',
     kind: 'launch',
     track: LUNA_LAUNCH_TRACK,
     higherIsBetter: true,
     unit: 'pts',
-    medals: { bronze: 900, silver: 2200, gold: 3800 },
-    timeLimit: 60,
-    unlock: { kind: 'races', value: 1 },
+    medals: { bronze: 3000, silver: 7000, gold: 12000 },
+    timeLimit: 75,
+    unlock: null,
   },
   {
     id: 'gauntlet',
@@ -414,7 +400,7 @@ export const BONUS_EVENTS: BonusEventDefinition[] = [
     unit: 's',
     medals: { bronze: 42, silver: 35, gold: 30 },
     timeLimit: 120,
-    unlock: { kind: 'races', value: 1 },
+    unlock: null,
   },
 ];
 

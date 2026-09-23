@@ -240,9 +240,16 @@ export class BotDriver {
       st.driftHold += dt;
       // Release on the tier the bot is patient enough to wait for.
       const wantTier = p.driftLove > 0.8 ? 2 : p.driftLove > 0.45 ? 1 : 1;
-      const done = k.driftTier >= wantTier && (curveAhead < 0.010 || st.driftHold > 3.4);
+      // A drift is locked to one direction, so it has to be let go the moment
+      // the road asks for the other one — the dune flick on the savannah is a
+      // left then a right, and a bot holding its right-hand drift into the
+      // left went 50 m off the outside with the throttle pinned. Same if the
+      // slide is already running off the road.
+      const reversed = Math.abs(steer) > 0.3 && Math.sign(steer) !== Math.sign(k.driftDir || 1);
+      const runningWide = g.outside > 0.5;
+      const done = (k.driftTier >= wantTier && (curveAhead < 0.010 || st.driftHold > 3.4)) || reversed || runningWide;
       drift = !done;
-      if (done) { st.driftHold = 0; st.driftCooldown = 0.5; }
+      if (done) { st.driftHold = 0; st.driftCooldown = reversed || runningWide ? 0.9 : 0.5; }
     } else if (
       sustained && speed > 13 && Math.abs(steer) > 0.32 && !jumping &&
       // Only drift where a drift is actually quicker. A drift trades lateral
@@ -288,8 +295,37 @@ export class BotDriver {
     });
     const special = near && this.racer.specialCooldown <= 0 && st.rng.next() < 0.03;   // per frame, so about twice a second once it is off cooldown
     // Spend a charged boost where it pays: on a straight, not into a corner.
-    const boost = k.driftTier >= 2 && !k.drifting && curveAhead < 0.006 && curveFar < 0.010 && speed > 12;
-    return { throttle, brake, steer, drift, lookBack: false, special, boost };
+    // "Straight" has to mean the whole boost run, not the next 44 m: with the
+    // meter filling as you race, every bot arrived at the first corner with a
+    // full meter, lit it on the pad, and went 50 m off the outside at 45 m/s.
+    // So a boost also needs the corner planner's headroom for the speed it
+    // will produce (about 1.3× top speed) over its full reach.
+    const boostedSpeed = Math.max(speed, k.h.topSpeed) * k.h.boostPower + 2;
+    const straightEnough = curveAhead < 0.006 && curveFar < 0.010 && corner > boostedSpeed;
+    const boost = k.driftTier >= 2 && !k.drifting && straightEnough && speed > 12;
+    // Items, the way a player uses them: a comet when there is somebody in
+    // front to hit, a surge on a straight, a bubble when a comet is coming
+    // (or after sitting on it long enough).
+    let item = false;
+    if (this.racer.item && this.racer.itemHoldTime > 0.8) {
+      const fx = Math.sin(k.yaw), fz = Math.cos(k.yaw);
+      if (this.racer.item === 'comet') {
+        item = core.racers.some((o) => {
+          if (o === this.racer || o.progress.finished) return false;
+          const dx = o.kart.pos.x - k.pos.x, dz = o.kart.pos.z - k.pos.z;
+          const ahead = dx * fx + dz * fz, side = Math.abs(dx * fz - dz * fx);
+          return ahead > 5 && ahead < 60 && side < 7;
+        });
+      } else if (this.racer.item === 'surge') {
+        item = !k.boosting && straightEnough && speed > 10;
+      } else {
+        item = this.racer.itemHoldTime > 7 || core.comets.some((c) => {
+          if (c.ownerId === this.racer.id) return false;
+          return Math.hypot(c.x - k.pos.x, c.z - k.pos.z) < 28;
+        });
+      }
+    }
+    return { throttle, brake, steer, drift, lookBack: false, special, boost, item };
   }
 
   /** Pick a lateral lane through a gap that misses the jaws.

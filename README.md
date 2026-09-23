@@ -45,7 +45,8 @@ npm run server                            # ws://localhost:8787
 | `S` / `↓` | LT or B | **BRAKE** | Brake, then reverse |
 | `A` `D` / `← →` | Left stick | Stick | Steer |
 | `Space` | RB / LB | **DRIFT** | Hop, then hold to drift |
-| `Shift` | X | **BOOST** | Fire the boost. The meter fills as you race; drifts, pads and item chests top it up |
+| `Shift` | X | **BOOST** | Fire the boost. The meter fills as you race; drifts and pads top it up |
+| `F` | Y | **ITEM** | Use the item from the last treasure chest: Moon Comet (spins out the kart ahead), Bubble Shield (five seconds untouchable) or Lunar Surge (a full tier-three boost) |
 | `Space` in the air | RB in the air | **DRIFT** | Trick |
 | `Q` | Y | — | Look back |
 | `R` | — | — | Return to the track |
@@ -90,8 +91,7 @@ crosswind.
 
 **Two bonus events**
 
-- **Mega Ramp** — build speed, pick your launch, stick the landing. Scored on
-  distance × landing quality × trick multiplier.
+- **Luna Launch** — a 220 m drop, a kicker, and one very long flight over a cliff. Twelve rings on the arc, four sweeping bullseyes, a moving landing target, and points for every metre flown.
 - **Gator Gauntlet** — five leaps, four sets of jaws, scored on time with a
   clean-chain bonus and a six-second penalty per reset.
 

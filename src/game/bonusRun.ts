@@ -13,8 +13,8 @@ import type { KartEvent } from '../sim/kart';
 import type { Racer } from '../sim/race';
 import { clamp01 } from '../core/math';
 
-/** What one threaded hoop is worth on the Mega Ramp, in metres. */
-const RING_METRES = 12;
+/** Points per horizontal metre of flight on Luna Launch. */
+const FLIGHT_POINTS_PER_M = 8;
 
 export type BonusPhase = 'countdown' | 'run' | 'flight' | 'scored' | 'failed';
 
@@ -36,12 +36,12 @@ export class BonusRun {
   result: BonusScore | null = null;
 
   // --- mega ramp state ---
-  private launchS = 0;
+  private launchX = 0;
+  private launchZ = 0;
   private launched = false;
   private peakHeight = 0;
   private landingQuality = 1;
   private tricks = 0;
-  private outsideCorridor = false;
 
   // --- luna launch state ---
   private ringsHit = new Set<number>();
@@ -51,6 +51,10 @@ export class BonusRun {
   private ringChain = 0;
   private bestChain = 0;
   private ringPoints = 0;
+  private bonusHit = 0;
+  private bonusPoints = 0;
+  private flightPoints = 0;
+  private flightMetres = 0;
   private clearedStacks = new Set<number>();
   private stackPoints = 0;
   private hitStack = false;
@@ -79,14 +83,11 @@ export class BonusRun {
 
   onKartEvent(racer: Racer, e: KartEvent): void {
     if (!racer.isPlayer) return;
-    // Mega Ramp and Luna Launch are both single flights judged on how they
-    // land, so they read the same events.
-    if (this.def.kind === 'megaRamp' || this.def.kind === 'launch') {
+    if (this.def.kind === 'launch') {
       if (e.kind === 'trickComplete') this.tricks++;
       if (e.kind === 'land') this.landingQuality = Math.max(this.landingQuality, 1);
       if (e.kind === 'hardLand') this.landingQuality = Math.min(this.landingQuality, 1 - 0.34 * clamp01(e.value));
       if (e.kind === 'hazardHit' && e.value >= 1) this.hitStack = true;
-      if (e.kind === 'respawnStart' && this.launched) this.outsideCorridor = true;
     } else {
       if (e.kind === 'respawnStart') this.resets++;
     }
@@ -106,43 +107,7 @@ export class BonusRun {
       return;
     }
 
-    if (this.def.kind === 'megaRamp') {
-      const rampEnd = this.rampLipS(track.def);
-      if (!this.launched) {
-        this.phase = 'run';
-        this.live.primary = `${Math.round(k.speed * 3.6)} km/h`;
-        this.live.secondary = 'Speed at the lip is the whole score';
-        this.live.hint = k.boosting ? 'BOOSTING' : 'Take all five pads';
-        if (!k.grounded && player.ground.s > rampEnd - 6) {
-          this.launched = true;
-          this.launchS = player.ground.s;
-          this.peakHeight = k.pos.y;
-        }
-      } else if (!k.grounded) {
-        this.phase = 'flight';
-        this.peakHeight = Math.max(this.peakHeight, k.pos.y);
-        this.scoreRings(core.hazards, k);
-        const dist = Math.max(0, player.ground.s - this.launchS) + this.ringsHit.size * RING_METRES;
-        const medals = this.def.medals;
-        const next = dist < medals.bronze ? ['BRONZE', medals.bronze] as const
-          : dist < medals.silver ? ['SILVER', medals.silver] as const
-          : dist < medals.gold ? ['GOLD', medals.gold] as const
-          : null;
-        this.live.primary = `${dist.toFixed(1)} m`;
-        this.live.secondary = this.ringsHit.size
-          ? `${this.ringsHit.size}/4 hoops · +${this.ringsHit.size * RING_METRES} m · air ${k.airTime.toFixed(1)}s`
-          : `air ${k.airTime.toFixed(1)}s · hoops are worth ${RING_METRES} m each`;
-        this.live.hint = k.trickActive ? 'TRICK — LAND IT FLAT'
-          : next ? `${(next[1] - dist).toFixed(0)} m to ${next[0]}`
-          : 'PAST GOLD — LAND IT';
-        if (Math.abs(player.ground.lat) > player.ground.width + 6) this.outsideCorridor = true;
-      } else if (this.phase === 'flight') {
-        this.finishRamp(player.ground.s - this.launchS);
-      }
-      if (core.time > this.def.timeLimit && !this.launched) {
-        this.fail('Ran out of time on the runway.');
-      }
-    } else {
+    {
       this.phase = 'run';
       const t = Math.max(0, core.time);
       this.live.primary = `${t.toFixed(2)} s`;
@@ -203,7 +168,7 @@ export class BonusRun {
       this.live.hint = k.boosting ? 'BOOSTING' : 'Three pads on the way down';
       if (!k.grounded && player.ground.s > kickerEnd - 8) {
         this.launched = true;
-        this.launchS = player.ground.s;
+        this.launchX = k.pos.x; this.launchZ = k.pos.z;
         this.peakHeight = k.pos.y;
       }
       if (core.time > this.def.timeLimit) this.fail('Ran out of time on the ramp.');
@@ -216,16 +181,27 @@ export class BonusRun {
       this.peakHeight = Math.max(this.peakHeight, k.pos.y);
       this.scoreRings(hazards, k);
       this.scoreStacks(hazards, k, player.ground.s);
-      const dist = Math.max(0, player.ground.s - this.launchS);
+      // Horizontal metres, not arc length: over the cliff the spline projection
+      // of an airborne kart runs far ahead of where it actually is.
+      const dist = Math.hypot(k.pos.x - this.launchX, k.pos.z - this.launchZ);
+      this.flightMetres = dist;
+      this.flightPoints = Math.round(dist * FLIGHT_POINTS_PER_M);
       const target = hazards.find((h) => h.def.kind === 'target');
       const toTarget = target
-        ? (target.def as Extract<typeof target.def, { kind: 'target' }>).s * L - player.ground.s
+        ? (target.pos.x - k.pos.x) * player.ground.fwd.x + (target.pos.z - k.pos.z) * player.ground.fwd.z
         : 0;
+      void L;
+      const ringTotal = hazards.filter((h) => h.def.kind === 'ring' && !(h.def as { bonus?: boolean }).bonus).length;
+      const bonusTotal = hazards.filter((h) => h.def.kind === 'ring' && (h.def as { bonus?: boolean }).bonus).length;
+      const stackTotal = hazards.filter((h) => h.def.kind === 'stack').length;
+      const plainRings = this.ringsHit.size - this.bonusHit;
       this.live.primary = `${this.runningTotal()} pts`;
-      this.live.secondary = `${dist.toFixed(0)} m · ${this.ringsHit.size}/3 rings · ${this.clearedStacks.size}/4 cleared`;
+      this.live.secondary = `${dist.toFixed(0)} m · ${plainRings}/${ringTotal} rings · ${this.bonusHit}/${bonusTotal} bullseyes`
+        + (stackTotal ? ` · ${this.clearedStacks.size}/${stackTotal} cleared` : '');
       this.live.hint = this.hitStack
         ? 'CLIPPED IT'
-        : toTarget > 6 ? `${toTarget.toFixed(0)} m to the target`
+        : this.ringChain >= 3 ? `CHAIN ×${Math.min(5, this.ringChain)}`
+        : toTarget > 6 ? `${toTarget.toFixed(0)} m to the landing zone`
         : toTarget < -6 ? 'PAST THE TARGET' : 'TARGET — LAND FLAT';
       return;
     }
@@ -259,14 +235,21 @@ export class BonusRun {
       // Crossed the plane this frame. Inside the hoop?
       const lat = dx * h.right.x + dz * h.right.z;
       const radial = Math.hypot(lat, dy);
+      const def = h.def as Extract<typeof h.def, { kind: 'ring' }>;
       if (radial <= h.radius) {
         this.ringsHit.add(i);
-        this.ringChain++;
-        this.bestChain = Math.max(this.bestChain, this.ringChain);
-        // Consecutive rings are worth progressively more: the third one in a
-        // row is the hard one, so it should pay like it.
-        this.ringPoints += 250 * this.ringChain;
-      } else {
+        if (def.bonus) {
+          // A sweeping bullseye: a flat bounty, and it does not touch the chain.
+          this.bonusHit++;
+          this.bonusPoints += def.points ?? 800;
+        } else {
+          this.ringChain++;
+          this.bestChain = Math.max(this.bestChain, this.ringChain);
+          // Consecutive rings are worth progressively more, up to a cap: the
+          // fifth in a row is the hard one, so it should pay like it.
+          this.ringPoints += 200 * Math.min(5, this.ringChain);
+        }
+      } else if (!def.bonus) {
         this.ringChain = 0;
       }
     }
@@ -301,7 +284,7 @@ export class BonusRun {
     const target = hazards.find((h) => h.def.kind === 'target');
     if (!target) return;
     const def = target.def as Extract<typeof target.def, { kind: 'target' }>;
-    const d = Math.hypot(k.pos.x - target.anchor.x, k.pos.z - target.anchor.z);
+    const d = Math.hypot(k.pos.x - target.pos.x, k.pos.z - target.pos.z);
     const names = ['outer', 'bronze', 'silver', 'GOLD'];
     for (let i = def.rings.length - 1; i >= 0; i--) {
       if (d <= def.rings[i]) {
@@ -315,12 +298,17 @@ export class BonusRun {
   }
 
   private runningTotal(): number {
-    return Math.round(this.ringPoints + this.stackPoints + this.targetPoints);
+    return Math.round(this.ringPoints + this.bonusPoints + this.stackPoints + this.targetPoints + this.flightPoints);
   }
 
   private finishLaunch(): void {
     const trickMult = 1 + Math.min(0.25, this.tricks * 0.08);
-    const base = this.ringPoints + this.stackPoints + this.targetPoints;
+    const base = this.ringPoints + this.bonusPoints + this.stackPoints + this.targetPoints + this.flightPoints;
+    const hazards = this.view.core.hazards;
+    const ringTotal = hazards.filter((h) => h.def.kind === 'ring' && !(h.def as { bonus?: boolean }).bonus).length;
+    const bonusTotal = hazards.filter((h) => h.def.kind === 'ring' && (h.def as { bonus?: boolean }).bonus).length;
+    const stackTotal = hazards.filter((h) => h.def.kind === 'stack').length;
+    const plainRings = this.ringsHit.size - this.bonusHit;
     // A perfect run — gold ring, flat landing — is worth calling out.
     const perfect = this.targetRingName === 'GOLD' && this.landingQuality >= 0.99;
     const bonus = perfect ? 750 : 0;
@@ -331,11 +319,14 @@ export class BonusRun {
       valid: true,
       medal: medalFor(this.def, score),
       lines: [
-        { label: 'Rings threaded', value: this.ringsHit.size > 0
-            ? `${this.ringsHit.size}/3 (best chain ${this.bestChain}) — ${this.ringPoints} pts`
-            : 'None', good: this.ringsHit.size > 0 },
-        { label: 'Obstacles cleared', value: `${this.clearedStacks.size}/4 — ${this.stackPoints} pts`,
-          good: this.clearedStacks.size >= 4 },
+        { label: 'Flight', value: `${this.flightMetres.toFixed(1)} m — ${this.flightPoints} pts`, good: this.flightMetres > 100 },
+        { label: 'Rings threaded', value: plainRings > 0
+            ? `${plainRings}/${ringTotal} (best chain ${this.bestChain}) — ${this.ringPoints} pts`
+            : 'None', good: plainRings > 0 },
+        { label: 'Bullseyes hit', value: this.bonusHit > 0
+            ? `${this.bonusHit}/${bonusTotal} — ${this.bonusPoints} pts` : 'None', good: this.bonusHit > 0 },
+        ...(stackTotal ? [{ label: 'Obstacles cleared', value: `${this.clearedStacks.size}/${stackTotal} — ${this.stackPoints} pts`,
+          good: this.clearedStacks.size >= stackTotal }] : []),
         { label: 'Landed in', value: this.targetPoints > 0
             ? `${this.targetRingName} — ${this.targetPoints} pts` : 'Missed the target',
           good: this.targetPoints > 0 },
@@ -344,34 +335,6 @@ export class BonusRun {
         { label: 'Tricks', value: this.tricks > 0 ? `${this.tricks} ×${trickMult.toFixed(2)}` : 'None',
           good: this.tricks > 0 },
         ...(perfect ? [{ label: 'Perfect landing', value: '+750 pts', good: true }] : []),
-      ],
-    };
-  }
-
-  /** Arc length of the ramp lip on the Mega Ramp course. */
-  private rampLipS(def: { zones: { from: number; to: number; label?: string }[] }): number {
-    const ramp = def.zones.find((z) => z.label === 'Ramp');
-    return (ramp ? ramp.to : 0.5) * this.view.track.lapLength;
-  }
-
-  private finishRamp(distance: number): void {
-    const d = Math.max(0, distance) + this.ringsHit.size * RING_METRES;
-    const trickMult = 1 + Math.min(0.25, this.tricks * 0.08);
-    const score = d * this.landingQuality * trickMult;
-    if (this.outsideCorridor) {
-      this.fail('Landed outside the corridor.');
-      return;
-    }
-    this.phase = 'scored';
-    this.result = {
-      score,
-      valid: true,
-      medal: medalFor(this.def, score),
-      lines: [
-        { label: 'Distance', value: `${d.toFixed(1)} m` },
-        { label: 'Landing', value: this.landingQuality >= 0.99 ? 'Clean ×1.00' : `Heavy ×${this.landingQuality.toFixed(2)}`, good: this.landingQuality >= 0.99 },
-        { label: 'Tricks', value: this.tricks > 0 ? `${this.tricks} ×${trickMult.toFixed(2)}` : 'None', good: this.tricks > 0 },
-        { label: 'Peak height', value: `${(this.peakHeight - (this.view.player.kart.pos.y)).toFixed(0)} m` },
       ],
     };
   }

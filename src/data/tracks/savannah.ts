@@ -70,10 +70,10 @@ export const SAVANNAH: TrackDefinition = {
     { from: 0, to: 1, surface: 'road', wall: 'none', shoulder: 5.0 },
     { ...span(M.duneA, 0, 1), surface: 'road', wall: 'none', shoulder: 6.0, label: 'Dune Sweep' },
     { ...span(M.duneB, 0, 1), surface: 'road', wall: 'none', shoulder: 6.0, label: 'Dune Sweep' },
-    { ...span(M.riverRamp, 0, 1), surface: 'road', wall: 'none', shoulder: 4.0, label: 'River Jump' },
+    { ...span(M.riverRamp, 0, 1), surface: 'road', wall: 'both', shoulder: 2.0, label: 'River Jump' },
     { ...span(M.riverGapA, 0, 1), gap: true, wall: 'none', shoulder: 4.0, label: 'River Jump' },
     { ...span(M.riverGapB, 0, 1), gap: true, wall: 'none', shoulder: 4.0, label: 'River Jump' },
-    { ...span(M.riverLanding, 0, 1), surface: 'road', wall: 'none', shoulder: 4.0, label: 'River Jump' },
+    { ...span(M.riverLanding, 0, 1), surface: 'road', wall: 'both', shoulder: 2.0, label: 'River Jump' },
     { ...span(M.baobabBend, 0, 1), surface: 'road', wall: 'right', shoulder: 3.0, label: 'Baobab Bend' },
     { ...span(M.canyon, 0, 1), surface: 'road', wall: 'both', shoulder: 2.0, label: 'Canyon' },
     { ...span(M.canyonA, 0, 1), surface: 'road', wall: 'both', shoulder: 2.0, label: 'Canyon' },
@@ -111,9 +111,11 @@ export const SAVANNAH: TrackDefinition = {
     // The Chimera prowls the golden plain and hammers the middle of the road.
     { kind: 'boss', s: at(M.plain, 0.55), lat: -16, period: 6.5, phase: 0.0, slamLat: -1.5, reach: 2.8, style: 'chimera' },
     // Boulder heaps on the canyon edges; a rolling boulder across the plain.
-    { kind: 'stack', s: at(M.canyon, 0.50), lat: 4.4, w: 2.2, h: 1.6, len: 2.8, style: 'boulders' },
-    { kind: 'stack', s: at(M.canyonA, 0.55), lat: -4.0, w: 2.0, h: 1.5, len: 2.6, style: 'boulders' },
-    { kind: 'stack', s: at(M.canyonB, 0.55), lat: 4.0, w: 2.0, h: 1.5, len: 2.6, style: 'boulders' },
+    // Boulders sit off the racing line with two metres of road either side of
+    // them; pushed against the canyon wall they pinned bots between the two.
+    { kind: 'stack', s: at(M.canyon, 0.50), lat: 0, w: 2.0, h: 1.6, len: 2.8, style: 'boulders' },
+    { kind: 'stack', s: at(M.canyonA, 0.55), lat: -2.0, w: 1.8, h: 1.5, len: 2.6, style: 'boulders' },
+    { kind: 'stack', s: at(M.canyonB, 0.55), lat: 2.0, w: 1.8, h: 1.5, len: 2.6, style: 'boulders' },
     { kind: 'roller', s: at(M.plain, 0.50), lat: 0, period: 4.0, phase: 0.3, travel: 6.0, r: 2.0 },
   ],
   theme: {

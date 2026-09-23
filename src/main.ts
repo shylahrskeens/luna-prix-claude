@@ -10,7 +10,7 @@ import { RenderContext, type QualityTier } from './render/scene';
 import { RaceView } from './game/raceView';
 import { BonusRun } from './game/bonusRun';
 import { Showcase } from './game/showcase';
-import { InputManager } from './ui/input';
+import { InputManager, prettyKey } from './ui/input';
 import { TouchControls, isTouchDevice } from './ui/touch';
 import { Hud } from './ui/hud';
 import { el, mount, clear } from './ui/dom';
@@ -21,6 +21,7 @@ import {
   type AppApi, type ScreenName, type ResultsParams, type BonusResultParams,
 } from './ui/screens';
 import { loadProfile, saveProfile, submitRecord, submitBonus, type Profile } from './persist/store';
+import { ITEMS } from './data/items';
 import { audio } from './audio/audio';
 import { MODE_RULES, ratingDelta, divisionFor, type Mode } from './data/rules';
 import { trackById, TRACKS } from './data/tracks/index';
@@ -436,6 +437,12 @@ class App implements AppApi {
       this.hud.toast(`LAP ${e.value} — ${formatTime(lapTime)}`, 1.6);
     }
     if (e.kind === 'lastLap') this.hud.toast('FINAL LAP', 1.8, 'var(--warm)');
+    if (e.kind === 'item') {
+      const it = ITEMS[(e as { text?: string }).text as keyof typeof ITEMS];
+      if (it && e.value === 0) { audio.sfx('padHit'); this.hud.toast(`${it.name.toUpperCase()} — press ${prettyKey(this.profile.settings.keybinds.item ?? 'KeyF')}`, 1.6, it.color); }
+      if (it && e.value === 1) { audio.sfx(it.kind === 'surge' ? 'boostStart' : it.kind === 'bubble' ? 'checkpoint' : 'hop'); this.hud.toast(it.name.toUpperCase(), 0.9, it.color); }
+    }
+    if (e.kind === 'itemHit') { audio.sfx('spin'); this.hud.toast('HIT BY A MOON COMET', 1.4, 'var(--warm)'); }
     if (e.kind === 'checkpoint' && e.value >= 0) audio.sfx('checkpoint');
     if (e.kind === 'finish') {
       audio.sfx('finish');

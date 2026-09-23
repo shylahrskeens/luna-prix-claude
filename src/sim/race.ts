@@ -12,11 +12,11 @@
 import { clamp, clamp01, loopDelta, v3, wrap, type V3 } from '../core/math';
 import { TrackRuntime, type HazardState } from './track';
 import { KartRuntime, resolveKartContact, type KartEvent, type KartInput, NEUTRAL_INPUT } from './kart';
-import { DRIFT_TIERS } from './kart';
 import type { GroundInfo } from './trackTypes';
 import type { ValidatedLoadout } from './loadout';
 import { MODE_RULES, RULES_VERSION, type Mode } from '../data/rules';
 import { SPECIALS, SPECIAL_COST } from '../data/specials';
+import { ITEM_KINDS, itemWeights, COMET_LIFE, COMET_SPEED, COMET_HOMING_RANGE, BUBBLE_SECONDS, type ItemKind } from '../data/items';
 
 /** Largest believable lap-fraction advance in one simulation step. At 120 Hz
  *  and 45 m/s on the shortest track this is ~0.0004, so 0.02 is a 50x margin
@@ -66,6 +66,12 @@ export interface Racer {
   specialCooldown: number;
   /** Drift seconds already paid into the meter. */
   driftPaid: number;
+  /** The item from the last chest, if it has not been used yet. */
+  item: ItemKind | null;
+  /** Edge detection for the item button. */
+  itemHeld: boolean;
+  /** Seconds the current item has been held (bots wait for a good moment). */
+  itemHoldTime: number;
   /** Bot skill 0..1; unused for humans. */
   skill: number;
   /** Livery tint index for the renderer. */
@@ -115,8 +121,21 @@ export interface RaceResult {
   finishedAt: number;
 }
 
+/** A Moon Comet in flight. */
+export interface Comet {
+  id: number;
+  ownerId: string;
+  x: number; y: number; z: number;
+  dirX: number; dirZ: number;
+  sHint: number;
+  life: number;
+  dead: boolean;
+}
+
 export interface RaceEvent {
-  kind: 'lap' | 'finish' | 'overtake' | 'checkpoint' | 'countdown' | 'go' | 'lastLap' | 'integrity' | 'special' | 'chest';
+  kind: 'lap' | 'finish' | 'overtake' | 'checkpoint' | 'countdown' | 'go' | 'lastLap' | 'integrity' | 'special' | 'chest'
+    | 'item'      // value 0 = picked up, 1 = used; text = the item kind
+    | 'itemHit';  // racerId = who was hit; text = who fired
   racerId: string;
   value: number;
   text?: string;
@@ -133,6 +152,12 @@ export class RaceCore {
   private phaseTimer = 0;
   hazards: HazardState[] = [];
   events: RaceEvent[] = [];
+  /** Live Moon Comets. Pure state: the renderer mirrors it, never owns it. */
+  comets: Comet[] = [];
+  private cometSeq = 0;
+  private cometGround = TrackRuntime.emptyGround();
+  /** Deterministic item draws (a small LCG, seeded once). */
+  private itemRoll = 0.4135;
   /** Set when every racer has finished or the finish timer expires. */
   finishTimeout = 0;
   /** No race runs past this, however badly it is going. Set from the leader's time. */
@@ -170,6 +195,7 @@ export class RaceCore {
       isBot: opts.isBot ?? false,
       kart, ground, loadout,
       special: 0, specialHeld: false, specialCooldown: 0, driftPaid: 0,
+      item: null, itemHeld: false, itemHoldTime: 0,
       skill: opts.skill ?? 0.7,
       colorIndex: opts.colorIndex ?? this.racers.length,
       progress: {
@@ -243,7 +269,16 @@ export class RaceCore {
         r.special = Math.min(1, r.special + (r.kart.driftSeconds - r.driftPaid) * 0.34);
         r.driftPaid = r.kart.driftSeconds;
       }
+      // ...and it also fills slowly just from racing (full in about 520 m at
+      // speed), so a driver who never drifts still gets their class move.
+      if (r.kart.mode === 'driving' && this.phase === 'racing') r.special = Math.min(1, r.special + (r.kart.speed * dt) / 520);
       if (r.specialCooldown > 0) r.specialCooldown -= dt;
+      // The chest item: one press, one use.
+      if (r.item) r.itemHoldTime += dt;
+      if (input.item && !r.itemHeld && r.item && r.kart.mode === 'driving' && !r.progress.finished && this.phase !== 'countdown') {
+        this.useItem(r);
+      }
+      r.itemHeld = !!input.item;
       if (input.special && !r.specialHeld && r.special >= SPECIAL_COST && r.specialCooldown <= 0
           && r.kart.mode === 'driving' && !r.progress.finished && this.phase !== 'countdown') {
         this.fireSpecial(r);
@@ -525,7 +560,7 @@ export class RaceCore {
       // the winner's pace, so a longer circuit does not turn the back of the
       // field into DNFs by arithmetic.
       const avgLap = this.time / Math.max(1, this.cfg.laps);
-      this.finishTimeout = clamp(avgLap * 1.4, 45, 90);
+      this.finishTimeout = clamp(avgLap * 1.8, 55, 100);
     }
   }
 
@@ -677,13 +712,18 @@ export class RaceCore {
             break;
           }
           case 'chest': {
-            // A tier of boost charge, once per kart every five seconds.
+            // An item, if the kart is not already holding one; once per kart
+            // every five seconds. (The boost meter fills from racing.)
             const dist = Math.hypot(dx, dz);
             if (dist < h.radius + k.h.radius * 0.6 && Math.abs(dy) < 2.5 && k.mode === 'driving'
                 && this.canHit(hazardIndex, r.id, 5.0)) {
-              k.driftCharge = Math.min(DRIFT_TIERS[2], Math.max(k.driftCharge, DRIFT_TIERS[Math.min(2, k.driftTier)]));
               k.events.push({ kind: 'padHit', value: 1, pos: { ...k.pos } });
-              this.events.push({ kind: 'chest', racerId: r.id, value: k.driftTier });
+              if (!r.item) {
+                r.item = this.rollItem(r);
+                r.itemHoldTime = 0;
+                this.events.push({ kind: 'item', racerId: r.id, value: 0, text: r.item });
+              }
+              this.events.push({ kind: 'chest', racerId: r.id, value: r.item ? 1 : 0, text: r.item ?? undefined });
             }
             break;
           }
@@ -716,11 +756,99 @@ export class RaceCore {
           }
           case 'ring':
           case 'target':
+          case 'zone':
             break;
         }
       }
     }
     void tmp;
+    this.stepComets(dt);
+  }
+
+  // ---- items ---------------------------------------------------------------
+
+  /** Which item this chest gives: weighted by race position, drawn from a
+   *  deterministic sequence so a replay hands out the same items. */
+  private rollItem(r: Racer): ItemKind {
+    const order = [...this.racers].sort((a, b) => b.progress.raw - a.progress.raw);
+    const position = Math.max(1, order.indexOf(r) + 1);
+    const w = itemWeights(position, this.racers.length);
+    this.itemRoll = (this.itemRoll * 9301 + 0.49297) % 1;
+    let x = this.itemRoll * (w.comet + w.bubble + w.surge);
+    for (const kind of ITEM_KINDS) { x -= w[kind]; if (x <= 0) return kind; }
+    return 'surge';
+  }
+
+  private useItem(r: Racer): void {
+    const kind = r.item!;
+    const me = r.kart;
+    switch (kind) {
+      case 'comet': {
+        const fx = Math.sin(me.yaw), fz = Math.cos(me.yaw);
+        this.comets.push({
+          id: ++this.cometSeq, ownerId: r.id,
+          x: me.pos.x + fx * 2.2, y: me.pos.y + 0.6, z: me.pos.z + fz * 2.2,
+          dirX: fx, dirZ: fz, sHint: r.ground.s, life: COMET_LIFE, dead: false,
+        });
+        break;
+      }
+      case 'bubble':
+        me.applyShield(BUBBLE_SECONDS);
+        break;
+      case 'surge':
+        me.startBoost(3, 'item');
+        break;
+    }
+    r.item = null;
+    r.itemHoldTime = 0;
+    this.events.push({ kind: 'item', racerId: r.id, value: 1, text: kind });
+  }
+
+  /** Comets follow the road at kart height, steer toward the nearest kart in
+   *  front of them, and spin out the first one they touch. */
+  private stepComets(dt: number): void {
+    if (!this.comets.length) return;
+    for (const c of this.comets) {
+      if (c.dead) continue;
+      c.life -= dt;
+      if (c.life <= 0) { c.dead = true; continue; }
+      const g = this.track.ground({ x: c.x, y: c.y, z: c.z }, c.sHint, this.cometGround);
+      c.sHint = g.s;
+      // Follow the road's direction, bending toward a target in front.
+      let tx = g.fwd.x, tz = g.fwd.z;
+      let best: Racer | null = null, bestD = COMET_HOMING_RANGE;
+      for (const o of this.racers) {
+        if (o.id === c.ownerId || o.progress.finished || o.kart.mode !== 'driving') continue;
+        const dx = o.kart.pos.x - c.x, dz = o.kart.pos.z - c.z;
+        const d = Math.hypot(dx, dz);
+        if (d < bestD && dx * c.dirX + dz * c.dirZ > 0) { best = o; bestD = d; }
+      }
+      if (best) {
+        const dx = best.kart.pos.x - c.x, dz = best.kart.pos.z - c.z;
+        const d = Math.hypot(dx, dz) || 1;
+        tx = tx * 0.55 + (dx / d) * 0.45; tz = tz * 0.55 + (dz / d) * 0.45;
+      }
+      const tl = Math.hypot(tx, tz) || 1;
+      c.dirX = c.dirX * 0.7 + (tx / tl) * 0.3; c.dirZ = c.dirZ * 0.7 + (tz / tl) * 0.3;
+      const dl = Math.hypot(c.dirX, c.dirZ) || 1; c.dirX /= dl; c.dirZ /= dl;
+      c.x += c.dirX * COMET_SPEED * dt;
+      c.z += c.dirZ * COMET_SPEED * dt;
+      c.y = (g.gap ? c.y : g.height) + 0.6;
+      if (g.outOfBounds) { c.dead = true; continue; }
+      // Contact.
+      for (const o of this.racers) {
+        if (o.id === c.ownerId || o.kart.mode !== 'driving') continue;
+        const dx = o.kart.pos.x - c.x, dz = o.kart.pos.z - c.z;
+        const d = Math.hypot(dx, dz);
+        if (d < o.kart.h.radius + 1.3 && Math.abs(o.kart.pos.y - c.y) < 2.5) {
+          o.kart.hit(0.95, dx / (d || 1), dz / (d || 1));
+          this.events.push({ kind: 'itemHit', racerId: o.id, value: 1, text: c.ownerId });
+          c.dead = true;
+          break;
+        }
+      }
+    }
+    this.comets = this.comets.filter((c) => !c.dead);
   }
 
   /** Freeze the race into a result record. */

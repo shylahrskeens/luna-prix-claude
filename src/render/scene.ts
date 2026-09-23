@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { AxieMixerService } from './axieMixer';
-import { StarterModelService } from './starterModel';
+import { MascotModelService } from './mascotModel';
 import type { TrackTheme } from '../sim/trackTypes';
 
 /** Three-step ramp. Sampling it as a 1D texture is what turns a smooth Lambert
@@ -172,8 +172,8 @@ export class RenderContext {
   readonly materials = new MaterialLibrary();
   /** Sky Mavis Mixer 3D, booted on the first seat that asks for it. */
   readonly mixer: AxieMixerService;
-  /** The three official starter Axies, loaded on first seat. */
-  readonly starters = new StarterModelService();
+  /** The official mascot models, loaded on first seat. */
+  readonly mascots = new MascotModelService();
   readonly sun: THREE.DirectionalLight;
   readonly ambient: THREE.HemisphereLight;
   quality: SceneQuality;

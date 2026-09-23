@@ -41,32 +41,22 @@ Run) plus Attack, Skill, Stun and Dead. Seated in a kart:
 - a hit or a spin: `Action.IdleGetHit` once per impact
 - finishing off the podium: Stunned until the result screen
 
-## Hosting the pack — the open decision
+## Hosting the pack — decided: a measured subset ships with the build
 
-The pack is **510 MB** (5,821 sealed files) and the manifest alone is 8.3 MB.
-The runtime fetches only the files a character needs, so a player downloads a
-few MB per Axie, not the pack. But the pack must be *hosted*, and
-`.github/workflows/pages.yml` publishes `dist/` only.
+The full pack is 510 MB and never enters the repository. The five drivers
+load a measured subset: `tools/axiepack.list` is the list of pack files the
+dev server actually served (`LUNA_PACK_LOG=<file> npm run dev`, each Axie
+opened in the garage from a fresh origin so nothing came from the browser
+cache), and `node tools/axiepack.mjs` copies those files plus the manifest,
+the integrity receipt and `RIGHTS.md` into `public/assets/axie/`. That is
+77 MB on disk (464 files; 51 MB of it is the animation set for the two body
+types), and it is committed, so the Pages build carries real Axies with no
+second host. `AXIE_ASSET_BASE` is relative (`assets/axie/`) so a sub-path
+deploy finds it; `VITE_AXIE_ASSET_BASE` still overrides it.
 
-`VITE_AXIE_ASSET_BASE` sets the base URL at build time (default
-`/assets/axie/`). Options, in the order I would pick them:
-
-1. **A second GitHub Pages site** for the pack alone, from a repo holding the
-   toolkit's `public/assets/axie` (the RIGHTS notice permits bundling the files
-   a project needs). Set `VITE_AXIE_ASSET_BASE=https://<user>.github.io/<pack-repo>/`.
-   Cost: none. Risk: a 510 MB repo is over GitHub's 1 GB soft limit only if it
-   grows; a Pages site is capped at 1 GB.
-2. **Trim the pack to the three shipped Axies.** `mixer.plan()` lists exactly
-   which files each character needs; a script could copy only those (plus the
-   manifest) into `public/assets/axie/`. That would be small enough for the
-   existing Pages site. Cost: a fetched real Axie could not render until the
-   pack is full again.
-3. Any static host with CORS (`Access-Control-Allow-Origin: *`) — Cloudflare
-   R2, a Railway static service.
-
-Until one of these is done, the live build at
-<https://shylahrskeens.github.io/luna-prix-claude/> has no pack and shows the
-procedural drivers. Nothing breaks; the Mixer simply never upgrades the seat.
+Re-record the list whenever a driver's descriptor changes, or the strict
+assembler will refuse the new part at seat time and the kart keeps its
+procedural driver.
 
 ## Rights
 

@@ -554,7 +554,13 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
       );
       const yaw = Math.atan2(sm.fwd.x, sm.fwd.z);
       chev.position.copy(pos);
-      chev.rotation.set(-Math.PI / 2, 0, -yaw + Math.PI);
+      //  Euler XYZ is applied as Rx·Ry·Rz, so the tip (+Y in the shape) goes
+      //  through Rz(φ) first and then lies flat: it ends up at
+      //  (−sin φ, 0, −cos φ). For that to be the road's forward
+      //  (sin yaw, 0, cos yaw), φ = yaw + π. It used to be −yaw + π, which
+      //  mirrors the arrow across Z — right only on the sections that happen
+      //  to run along Z, and pointing off the road everywhere else.
+      chev.rotation.set(-Math.PI / 2, 0, yaw + Math.PI);
       chev.renderOrder = 3;
       chev.name = `chev${c}`;
       group.add(chev);

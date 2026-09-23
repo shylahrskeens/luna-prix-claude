@@ -391,6 +391,9 @@ table.results td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tbtn.go { right: calc(26px + var(--safe-right)); bottom: calc(30px + var(--safe-bottom)); width: 108px; height: 108px; }
 .tbtn.drift { right: calc(146px + var(--safe-right)); bottom: calc(46px + var(--safe-bottom)); width: 86px; height: 86px; }
 .tbtn.brake { right: calc(40px + var(--safe-right)); bottom: calc(150px + var(--safe-bottom)); width: 72px; height: 72px; font-size: 12px; }
+/* Item and special sit above the stick on the left, where the steering thumb can reach up. */
+.tbtn.item { left: calc(30px + var(--safe-left)); bottom: calc(196px + var(--safe-bottom)); width: 72px; height: 72px; font-size: 12px; }
+.tbtn.special { left: calc(112px + var(--safe-left)); bottom: calc(196px + var(--safe-bottom)); width: 72px; height: 72px; font-size: 11px; }
 
 /* ---------- misc ---------- */
 .kv { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; padding: 5px 0; border-bottom: 1px solid rgba(90,58,30,0.12); }
@@ -481,6 +484,17 @@ label.toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
   border-radius: 3px;
   transition: width .08s linear, background .2s ease;
 }
+/* The item slot: a carved box with the glyph of what you are holding. */
+.item-slot {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px; padding: 4px 8px;
+  border: 2px solid rgba(255, 246, 227, .22);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .18);
+  transition: border-color .2s ease;
+}
+.item-slot.empty { opacity: .6; }
+.item-glyph { width: 24px; text-align: center; font-size: 20px; line-height: 1; }
 
 /* ---------- pictures over prose ---------- */
 /* Card art is a real frame of the game, 16:9, and it comes first. */
@@ -550,3 +564,9 @@ details.more > .more-body { margin-top: 8px; display: flex; flex-direction: colu
   /* The live kart behind a stacked menu is noise, not a preview. */
   .screen.showcase { background: linear-gradient(180deg, rgba(42, 26, 16, 0.90), rgba(42, 26, 16, 0.97)); }
 }
+
+/* ---------- currency and rank chips ---------- */
+.chip.currency { gap: 6px; padding-left: 8px; }
+.chip.currency strong, .chip.rank strong { font-family: var(--display); font-weight: 400; font-size: 15px; letter-spacing: 0.02em; }
+.chip .icon-moon, .chip .icon-medal { display: inline-flex; width: 16px; height: 16px; }
+.chip.rank { gap: 6px; padding-left: 8px; }

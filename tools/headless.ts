@@ -7,6 +7,18 @@
 import { TRACKS, trackById } from '../src/data/tracks/index';
 import { TrackRuntime } from '../src/sim/track';
 import { RaceCore } from '../src/sim/race';
+
+// A/B toggles for bisecting a regression: the sim itself never reads the
+// environment, so these patch the core from the outside.
+if (process.env.LUNA_NO_ITEMS === '1') {
+  (RaceCore.prototype as unknown as { useItem: (r: { item: unknown }) => void }).useItem = function (r) { r.item = null; };
+}
+if (process.env.LUNA_UNIFORM_KARTS === '1') {
+  for (const k of KARTS) if (k.id !== 'kart-dartwing' && k.id !== 'kart-terrapin') k.base = { speed: 72, accel: 70, grip: 70, drift: 70, air: 68, armor: 66 };
+}
+if (process.env.LUNA_NO_SPECIAL === '1') {
+  (RaceCore.prototype as unknown as { fireSpecial: (r: { special: number }) => void }).fireSpecial = function (r) { r.special = 0; };
+}
 import { BotDriver, RIVALS } from '../src/sim/ai';
 import { resolveLoadout, defaultParts } from '../src/sim/loadout';
 import { AXIES } from '../src/data/axies';
@@ -57,7 +69,12 @@ function runRace(trackId: string, laps = 3, seed = 7, verbose = true) {
     for (const r of core.racers) {
       const d = diag.get(r.id)!;
       if (trace && process.env.LUNA_TRACE_RACER === r.name && Math.abs((t * 2) % 1) < DT * 2) {
-        console.log(`    [path] ${t.toFixed(1)}s u=${r.ground.u.toFixed(3)} out=${r.ground.outside.toFixed(1)} v=${r.kart.speed.toFixed(1)} yawErr=${(r.kart.wrongWay ? 'WRONG' : 'ok')} pos=(${r.kart.pos.x.toFixed(0)},${r.kart.pos.z.toFixed(0)}) mode=${r.kart.mode}`);
+        const bot = bots.find((b) => b.racer === r);
+        const dbg = bot ? (bot as unknown as { debug: { aimX: number; aimZ: number; err: number; look: number; lat: number } }).debug : null;
+        const k = r.kart;
+        console.log(`    [path] ${t.toFixed(1)}s u=${r.ground.u.toFixed(3)} out=${r.ground.outside.toFixed(1)} v=${k.speed.toFixed(1)} yawErr=${(k.wrongWay ? 'WRONG' : 'ok')} pos=(${k.pos.x.toFixed(0)},${k.pos.z.toFixed(0)}) mode=${k.mode}`
+          + ` boost=${k.boosting ? k.boostSource + k.boostTier : '-'} spin=${k.spinTimer.toFixed(2)} slow=${k.slowTimer.toFixed(1)} drift=${k.drifting ? 1 : 0} shield=${k.shieldTimer.toFixed(1)}`
+          + (dbg ? ` aim=(${dbg.aimX.toFixed(0)},${dbg.aimZ.toFixed(0)}) err=${dbg.err.toFixed(2)} look=${dbg.look.toFixed(0)} lat=${dbg.lat.toFixed(1)}` : ''));
       }
       if (trace) {
         const laps = r.progress.lapTimes.length;

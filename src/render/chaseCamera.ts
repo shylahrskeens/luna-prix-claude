@@ -48,6 +48,11 @@ export interface ChaseInput {
   shake: number;
   /** Player is holding look-back. */
   lookBack: boolean;
+  /** Road height under the camera's own position, if the caller knows it.
+   *  On a steep descent the road behind the kart is HIGHER than the kart,
+   *  and a camera hung a fixed height above the kart ends up under it,
+   *  looking at the underside of the ramp. */
+  groundY?: number;
 }
 
 export class ChaseCamera {
@@ -101,6 +106,8 @@ export class ChaseCamera {
       s.y + this.height,
       s.z - cy * this.dist + rz * this.lateral,
     );
+    // Never below the road it is hanging over.
+    if (s.groundY !== undefined && this.pos.y < s.groundY + 1.7) this.pos.y = s.groundY + 1.7;
 
     // Look ahead down the road, not at the kart. Blending the kart's own
     // heading with the road's keeps the framing honest when the two disagree,

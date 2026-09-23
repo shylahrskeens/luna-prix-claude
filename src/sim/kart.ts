@@ -30,6 +30,8 @@ export interface KartInput {
   special: boolean;
   /** Fire the charged boost. The meter fills as you race; this spends it. */
   boost?: boolean;
+  /** Use the held item (from a chest). Edge-triggered by the race. */
+  item?: boolean;
 }
 export const NEUTRAL_INPUT: KartInput = { throttle: 0, brake: 0, steer: 0, drift: false, lookBack: false, special: false };
 /** Metres of driving that fill the boost meter from empty to tier three. A
@@ -93,7 +95,7 @@ export class KartRuntime {
 
   boostTime = 0;
   boostTier = 0;
-  boostSource: 'drift' | 'pad' | 'start' | 'trick' | 'ring' | 'special' = 'drift';
+  boostSource: 'drift' | 'pad' | 'start' | 'trick' | 'ring' | 'special' | 'item' = 'drift';
 
   /** Externally supplied slipstream strength, 0..1 (set by the race core). */
   draft = 0;
@@ -209,7 +211,7 @@ export class KartRuntime {
   }
 
   startBoost(tier: number, source: KartRuntime['boostSource']): void {
-    if (this.noBoostTimer > 0 && source !== 'special') return;
+    if (this.noBoostTimer > 0 && source !== 'special' && source !== 'item') return;
     const dur = this.h.boostDuration * (tier === 1 ? 1.0 : tier === 2 ? 1.55 : 2.2);
     // Refresh rather than stack: a pad taken mid-boost extends it, it does not
     // double it. Keeps the boost state legible and uncapped stacking out.

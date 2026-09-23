@@ -20,6 +20,7 @@ import { RenderContext } from '../render/scene';
 import { buildTrackMesh, animateTrack, type TrackVisual } from '../render/trackMesh';
 import { buildScenery } from '../render/scenery';
 import { buildHazards, updateHazards, type HazardVisual } from '../render/hazardMesh';
+import type { GroundInfo } from '../sim/trackTypes';
 import { buildKart, seatAxie, updateKart, disposeKart, LIVERY, type KartRig } from '../render/kartMesh';
 import { ParticleSystem, SpeedLines } from '../render/vfx';
 import { ChaseCamera, COMFORT_CAMERA, DEFAULT_CAMERA } from '../render/chaseCamera';
@@ -90,6 +91,10 @@ export class RaceView {
   private particles: ParticleSystem;
   private speedLines: SpeedLines;
   private camera = new ChaseCamera();
+  /** One glowing ball per live Moon Comet, keyed by the sim's comet id. */
+  private cometMeshes = new Map<number, THREE.Mesh>();
+  /** Scratch ground query for the camera. */
+  private camGround!: GroundInfo;
   private accumulator = 0;
   /** Each kart's pose before the most recent sim step. The renderer blends
    *  from here to the live pose by the accumulator's remainder, so a 120 Hz
@@ -151,6 +156,7 @@ export class RaceView {
     this.scenery = buildScenery(this.track, ctx.materials, ctx.quality.sceneryDensity);
     this.root.add(this.scenery);
     this.hazardVis = buildHazards(this.track, ctx.materials);
+    this.camGround = TrackRuntime.emptyGround();
     this.root.add(this.hazardVis.group);
 
     this.particles = new ParticleSystem(ctx.quality.particleBudget);
@@ -586,8 +592,13 @@ export class RaceView {
     // ---- camera -----------------------------------------------------------
     this.shake = Math.max(0, this.shake - dt * 2.4);
     const pv = this.view(player);
+    // The road under where the camera currently is, so it can stay above it
+    // on the steep descents (the Drop, the cliffs).
+    const camPos = this.ctx.camera.position;
+    const camGround = this.track.ground({ x: camPos.x, y: camPos.y, z: camPos.z }, player.ground.s, this.camGround);
     this.camera.update(this.ctx.camera, {
       dt,
+      groundY: camGround.gap ? undefined : camGround.height,
       x: pv.x, y: pv.y, z: pv.z, yaw: pv.yaw,
       speed: pk.speed, topSpeed: pk.h.topSpeed,
       boosting: pk.boosting, drifting: pk.drifting, driftDir: pk.driftDir,
@@ -617,6 +628,7 @@ export class RaceView {
     const countdown = core.phase === 'countdown' ? -core.time : null;
     animateTrack(this.trackVis, this.clock, countdown);
     updateHazards(this.hazardVis, core.hazards, Math.max(0, core.time));
+    this.syncComets(dt);
     this.particles.update(dt, this.ctx.camera);
 
     const speedFrac = clamp01((pk.speed - 18) / 22);
@@ -642,6 +654,37 @@ export class RaceView {
     });
 
     this.ctx.render();
+  }
+
+  /** Mirror the sim's comets: a glowing ball with a spark trail. */
+  private syncComets(dt: number): void {
+    const core = this.core;
+    const live = new Set<number>();
+    for (const c of core.comets) {
+      live.add(c.id);
+      let m = this.cometMeshes.get(c.id);
+      if (!m) {
+        m = new THREE.Mesh(new THREE.SphereGeometry(0.62, 10, 8), this.ctx.materials.glow('#ffd166', 0.95));
+        const halo = new THREE.Mesh(new THREE.SphereGeometry(0.95, 10, 8), this.ctx.materials.glow('#ff9a3d', 0.35));
+        (halo.material as THREE.Material).transparent = true;
+        m.add(halo);
+        this.root.add(m);
+        this.cometMeshes.set(c.id, m);
+      }
+      m.position.set(c.x, c.y, c.z);
+      m.rotation.y += dt * 9;
+      this.particles.emit({
+        x: c.x - c.dirX * 0.6, y: c.y, z: c.z - c.dirZ * 0.6,
+        color: '#ffd166', count: 2, speed: 1.2, life: 0.35, size: 0.28, spread: 0.5,
+      });
+    }
+    for (const [id, m] of this.cometMeshes) {
+      if (live.has(id)) continue;
+      this.particles.emit({ x: m.position.x, y: m.position.y, z: m.position.z, color: '#ffb347', count: 18, speed: 5, life: 0.5, size: 0.3, spread: 1.5, grow: 1.4 });
+      this.root.remove(m);
+      m.geometry.dispose();
+      this.cometMeshes.delete(id);
+    }
   }
 
   /** Swap the camera to a slow orbit for the results screen. */

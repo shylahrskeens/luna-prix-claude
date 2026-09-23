@@ -30,6 +30,11 @@ export interface ModeRules {
   laps: number;
 }
 
+/** Review build: every circuit and event is open from the first launch. The
+ *  unlock rules (podium for the forest, rating for the arctic and mystic)
+ *  stay in the track data and are what a release would switch back on. */
+export const UNLOCK_EVERYTHING = true;
+
 export const MODE_RULES: Record<Mode, ModeRules> = {
   quickRace: { id: 'quickRace', label: 'Quick Race', statBudget: OPEN_STAT_BUDGET, catchUp: 0.35, ranked: false, assistsAllowed: true, laps: 3 },
   grandPrix: { id: 'grandPrix', label: 'Grand Prix', statBudget: OPEN_STAT_BUDGET, catchUp: 0.25, ranked: false, assistsAllowed: true, laps: 3 },

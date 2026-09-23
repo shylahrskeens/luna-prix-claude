@@ -491,10 +491,22 @@ export class TrackRuntime {
         }
         case 'ring': {
           h.phase = wrap(time * 0.25, 1);
+          // A sweeping ring slides across the line of flight; the anchor is
+          // the centre of its travel.
+          const sw = d.sweep && d.period
+            ? d.sweep * Math.sin((time / d.period + (d.phase ?? 0)) * Math.PI * 2) : 0;
+          h.pos.x = h.anchor.x + h.right.x * sw;
+          h.pos.z = h.anchor.z + h.right.z * sw;
           h.pos.y = h.anchor.y + d.h;
           h.active = false;
           h.radius = d.r;
           h.telegraph = 1;
+          break;
+        }
+        case 'zone': {
+          h.active = false;
+          h.radius = 0;
+          h.telegraph = 0;
           break;
         }
         case 'chest': {
@@ -533,6 +545,9 @@ export class TrackRuntime {
         }
         case 'target': {
           h.phase = wrap(time * 0.2, 1);
+          const sw = d.sweep && d.period ? d.sweep * Math.sin((time / d.period) * Math.PI * 2) : 0;
+          h.pos.x = h.anchor.x + h.right.x * sw;
+          h.pos.z = h.anchor.z + h.right.z * sw;
           h.active = false;
           h.radius = d.rings[0] ?? 6;
           h.telegraph = 1;

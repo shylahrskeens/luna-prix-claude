@@ -70,6 +70,11 @@ function more(label: string, ...content: (Node | string | null)[]): HTMLElement 
   );
 }
 
+/** A crescent for Moon Shards — Lunacia's moon is Atia's heart — and a
+ *  ribboned medal for the division. Inline SVG so they colour with the chip. */
+const MOON_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M15.5 3.2a9 9 0 1 0 5.3 12.4A7 7 0 0 1 15.5 3.2z" fill="#f2c14e" stroke="#7a4f12" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.5 9.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z" fill="#fff6d6"/></svg>';
+const MEDAL_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M7 2h4l1 5-3 1z" fill="#d6473a"/><path d="M17 2h-4l-1 5 3 1z" fill="#2fa8ba"/><circle cx="12" cy="14" r="6.5" fill="#f2c14e" stroke="#7a4f12" stroke-width="1.6"/><circle cx="12" cy="14" r="3.2" fill="#fff6d6"/></svg>';
+
 function topbar(app: AppApi, title: string, backTo?: ScreenName): HTMLElement {
   const p = app.profile;
   const div = divisionFor(p.rating);
@@ -82,8 +87,10 @@ function topbar(app: AppApi, title: string, backTo?: ScreenName): HTMLElement {
       el('div', { class: 'sub', text: title }),
     ),
     el('div', { class: 'spacer' }),
-    chip('Coins', String(p.coins), false, 'topbar-coins'),
-    chip(div.name, String(p.rating), true),
+    el('span', { class: 'chip currency', title: 'Moon Shards — earned racing, spent in the garage' },
+      el('span', { class: 'icon-moon', html: MOON_SVG }), el('strong', { id: 'topbar-coins', text: String(p.coins) })),
+    el('span', { class: 'chip accent rank', title: `${div.name} division · ${p.rating} rating` },
+      el('span', { class: 'icon-medal', html: MEDAL_SVG }), el('span', { text: div.name }), el('strong', { text: String(p.rating) })),
   );
 }
 
@@ -122,6 +129,7 @@ function axieCard(a: AxieDefinition, selected: boolean, onPick: () => void): HTM
     el('div', { class: 'tag', text: a.class }),
     el('div', { class: 'title', text: a.name }),
     el('div', { class: 'sub', text: a.tagline }),
+    el('div', { class: 'hint', text: `Rides the ${KARTS.find((k) => k.id === a.defaultKart)?.name ?? '—'}` }),
     el('div', { style: `height:4px;border-radius:2px;margin:4px 0;background:linear-gradient(90deg,${a.palette.body},${a.palette.accent})` }),
     el('div', { class: 'row', style: 'gap:6px' },
       chip('HP', String(s.hp)), chip('SPD', String(s.speed)),
@@ -135,6 +143,7 @@ function kartCard(k: KartDefinition, selected: boolean, onPick: () => void): HTM
   return el('div', { class: `card${selected ? ' selected' : ''}`, onClick: onPick, role: 'button', tabindex: 0 },
     el('div', { class: 'tag', text: k.archetype }),
     el('div', { class: 'title', text: k.name }),
+    el('div', { class: 'hint', text: `${AXIES.filter((a) => a.defaultKart === k.id).map((a) => a.name).join(', ') || 'Nobody'}'s pick` }),
     el('div', { class: 'sub', text: k.tagline }),
     el('div', { style: `height:4px;border-radius:2px;margin:4px 0;background:linear-gradient(90deg,${k.palette.body},${k.palette.trim})` }),
     more('About', el('div', { class: 'hint', text: k.bio })),
@@ -171,7 +180,7 @@ export function homeScreen(app: AppApi): HTMLElement {
         el('div', { class: 'grid c2 tiles' },
           tile('Ranked', 'Normalised loadouts. Rating moves.', 'img/track-ruin.jpg', () => app.go('trackSelect', { mode: 'ranked' })),
           tile('Time Trial', 'Alone against the clock', 'img/track-cloudforge.jpg', () => app.go('trackSelect', { mode: 'timeTrial' })),
-          tile('Bonus Events', 'Mega Ramp, Luna Launch, Gator Gauntlet', 'img/event-megaramp.jpg', () => app.go('bonusSelect')),
+          tile('Bonus Events', 'Luna Launch and Gator Gauntlet', 'img/event-launch.jpg', () => app.go('bonusSelect')),
           // Multiplayer stays reachable from Settings until a race server is
           // hosted; a tile that leads to "Offline" is not a mode.
           tile('Garage', 'Kart, parts and paint', 'img/garage.jpg', () => app.go('garage')),
@@ -213,6 +222,9 @@ export function axieScreen(app: AppApi): HTMLElement {
     for (const a of AXIES) {
       list.appendChild(axieCard(a, a.id === p.axieId, () => {
         p.axieId = a.id;
+        // Each Axie comes with the chassis that suits its stats. The garage
+        // can still swap it afterwards.
+        p.kartId = a.defaultKart;
         app.sfx('uiSelect');
         app.save();
         app.showcase(true);
@@ -339,7 +351,7 @@ export function garageScreen(app: AppApi): HTMLElement {
             if (ownedLvl === 0) {
               if (!affordable) { app.sfx('uiDenied'); return; }
               const ok = await confirmDialog(app.screenHost, `Buy ${cand.name}?`,
-                `${cand.price} coins. It is fitted straight away, and swapping back to what you had is free.`,
+                `${cand.price} Moon Shards. It is fitted straight away, and swapping back to what you had is free.`,
                 'Buy and fit');
               if (!ok) return;
               p.coins -= cand.price;
@@ -580,14 +592,16 @@ export function trackSelectScreen(app: AppApi, params: Record<string, unknown>):
       el('div', { class: 'col grow scroll' },
         modeRow,
         el('div', { class: 'panel tight' },
-          el('div', { class: 'row' },
-            chip('Laps', String(rules.laps)),
-            chip('Loadout budget', String(rules.statBudget)),
-            chip('Rivals', mode === 'timeTrial' ? 'None' : '7'),
-            chip('Catch-up', rules.catchUp > 0 ? `${Math.round(rules.catchUp * 100)}%` : 'Off'),
-            chip('Assists', rules.assistsAllowed ? 'Allowed' : 'Disabled'),
-            chip('Rating', rules.ranked ? 'At stake' : 'Unaffected', rules.ranked),
-          ),
+          // One plain sentence about what this mode is, not a strip of
+          // engineering chips ("Loadout budget 28" meant nothing to anyone).
+          el('div', { class: 'hint', style: 'font-size:14px;line-height:1.4' },
+            mode === 'timeTrial'
+              ? `Just you and the clock for ${rules.laps} laps. No rivals, so a win here does not count as a podium — but your best lap goes on the board.`
+              : mode === 'ranked'
+              ? `${rules.laps} laps against 7 rivals with the training wheels off: no catch-up, no assists, and your rating goes up or down with the result.`
+              : mode === 'grandPrix'
+              ? `${rules.laps} laps against 7 rivals across the circuits. The pack is helped a little when it falls behind, and your rating is safe.`
+              : `${rules.laps} laps against 7 rivals. Fall behind and the game helps you back into it; your rating is not affected. Podiums here unlock circuits.`),
           mode === 'ranked'
             ? more('What ranked changes', el('div', { class: 'hint', text: 'Ranked locks the rules version, normalises loadouts, turns off catch-up and disables assists. A result with an integrity flag is held back from the board rather than published.' }))
             : null,

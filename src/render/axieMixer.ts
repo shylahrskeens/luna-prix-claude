@@ -19,11 +19,12 @@ import {
 } from '@jaatster/threejs-axie-mixer3d-public';
 import type { AxieDefinition } from '../data/axies';
 
-/** Where the Mixer content pack is served from. In dev, vite.config.ts serves
- *  it from the installed toolkit; a production build must point this at a host
- *  that carries the pack (see docs/MIXER.md). */
+/** Where the Mixer content pack is served from, relative to the page so the
+ *  Pages build under a sub-path finds it. In dev, vite.config.ts streams the
+ *  whole pack from the installed toolkit; the build carries the measured
+ *  subset that tools/axiepack.mjs copies into public/assets/axie/. */
 export const AXIE_ASSET_BASE: string =
-  (import.meta.env?.VITE_AXIE_ASSET_BASE as string | undefined) || '/assets/axie/';
+  (import.meta.env?.VITE_AXIE_ASSET_BASE as string | undefined) || 'assets/axie/';
 
 export type MixerStatus = 'off' | 'idle' | 'loading' | 'ready' | 'failed';
 

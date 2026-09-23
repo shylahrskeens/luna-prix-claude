@@ -23,12 +23,16 @@ export class TouchControls {
     const go = el('div', { class: 'tbtn go', text: 'GO' });
     const drift = el('div', { class: 'tbtn drift', text: 'DRIFT' });
     const brake = el('div', { class: 'tbtn brake', text: 'BRAKE' });
-    this.root = el('div', { id: 'touch' }, this.stick, go, drift, brake);
+    const item = el('div', { class: 'tbtn item', text: 'ITEM' });
+    const special = el('div', { class: 'tbtn special', text: 'SPECIAL' });
+    this.root = el('div', { id: 'touch' }, this.stick, go, drift, brake, item, special);
 
     this.bindStick();
     this.bindButton(go, 'accel');
     this.bindButton(drift, 'drift');
     this.bindButton(brake, 'brake');
+    this.bindButton(item, 'item');
+    this.bindButton(special, 'special');
   }
 
   private bindStick(): void {
@@ -65,7 +69,7 @@ export class TouchControls {
     this.stick.addEventListener('pointercancel', end);
   }
 
-  private bindButton(node: HTMLElement, key: 'accel' | 'brake' | 'drift'): void {
+  private bindButton(node: HTMLElement, key: 'accel' | 'brake' | 'drift' | 'item' | 'special'): void {
     const down = (e: PointerEvent) => {
       this.input.touch[key] = true;
       node.classList.add('held');
@@ -89,6 +93,8 @@ export class TouchControls {
       this.input.touch.accel = false;
       this.input.touch.brake = false;
       this.input.touch.drift = false;
+      this.input.touch.item = false;
+      this.input.touch.special = false;
       this.input.touch.steer = 0;
     }
   }

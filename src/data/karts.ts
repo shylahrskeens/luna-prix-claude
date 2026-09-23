@@ -57,6 +57,9 @@ export interface KartDefinition {
   bio: string;
   /** Base stats before the Axie and any parts are applied. */
   base: StatBlock;
+  /** What the vehicle is: a kart on four wheels, a motorcycle, or a hover
+   *  glider. Physics is shared; the body decides the model and its idle motion. */
+  body: 'kart' | 'bike' | 'hover' | 'quad' | 'sled';
   /** Physical dimensions, metres — drives the model and the collision radius. */
   size: { length: number; width: number; height: number; wheelRadius: number; wheelbase: number };
   sockets: SeatSockets;
@@ -69,6 +72,7 @@ export interface KartDefinition {
 export const KARTS: KartDefinition[] = [
   {
     id: 'kart-dartwing',
+    body: 'kart',
     name: 'Dartwing',
     archetype: 'agile',
     tagline: 'Turns in before you finish the thought.',
@@ -88,11 +92,12 @@ export const KARTS: KartDefinition[] = [
   },
   {
     id: 'kart-moonshard',
+    body: 'bike',
     name: 'Moonshard',
     archetype: 'balanced',
     tagline: 'No weak sector.',
     bio: 'The tuning baseline. Moonshard has no standout number and no hole either, which makes it the kart to learn a new track on and the hardest one to argue with once a lap is memorised.',
-    base: { speed: 72, accel: 70, grip: 70, drift: 70, air: 68, armor: 66 },
+    base: { speed: 72, accel: 76, grip: 64, drift: 74, air: 70, armor: 60 },
     size: { length: 2.55, width: 1.52, height: 0.82, wheelbase: 1.72, wheelRadius: 0.33 },
     sockets: {
       seat: [0, 0.42, -0.14],
@@ -107,6 +112,7 @@ export const KARTS: KartDefinition[] = [
   },
   {
     id: 'kart-terrapin',
+    body: 'hover',
     name: 'Terrapin',
     archetype: 'power',
     tagline: 'Arrives, and stays arrived.',
@@ -121,6 +127,46 @@ export const KARTS: KartDefinition[] = [
       exhaust: [0.44, 0.44, -1.28],
     },
     palette: { body: '#3fbf7f', trim: '#d9f7c0', metal: '#2a3630' },
+    compatibleSlots: ['chassis', 'engine', 'tires', 'suspension', 'boost', 'aero', 'paint'],
+    schemaVersion: 3,
+  },
+  {
+    id: 'kart-dunerunner',
+    body: 'quad',
+    name: 'Dunerunner',
+    archetype: 'balanced',
+    tagline: 'Four fat tyres and no manners.',
+    bio: 'A quad bike on balloon tyres, tuned to the Moonshard baseline so the choice is the ride, not the numbers. It sits the driver up high with the bars in hand and squats hard on the landings.',
+    base: { speed: 72, accel: 68, grip: 84, drift: 58, air: 66, armor: 68 },
+    size: { length: 2.35, width: 1.62, height: 0.90, wheelbase: 1.50, wheelRadius: 0.40 },
+    sockets: {
+      seat: [0, 0.60, -0.10],
+      handle: [0, 0.86, 0.44],
+      pedal: [0, 0.30, 0.60],
+      cameraLook: [0, 0.80, 0.30],
+      exhaust: [0.30, 0.44, -1.05],
+    },
+    palette: { body: '#f2a33a', trim: '#3a3f4b', metal: '#4a4f5b' },
+    compatibleSlots: ['chassis', 'engine', 'tires', 'suspension', 'boost', 'aero', 'paint'],
+    schemaVersion: 3,
+  },
+  {
+    id: 'kart-frostsled',
+    body: 'sled',
+    name: 'Frostsled',
+    archetype: 'balanced',
+    tagline: 'Skis up front, a track behind.',
+    bio: 'A snow racer: two steering skis and a driven rear track, tuned to the Moonshard baseline. It looks born for Winterblue and it runs the same everywhere else.',
+    base: { speed: 72, accel: 62, grip: 66, drift: 86, air: 60, armor: 70 },
+    size: { length: 2.70, width: 1.40, height: 0.86, wheelbase: 1.80, wheelRadius: 0.32 },
+    sockets: {
+      seat: [0, 0.52, -0.20],
+      handle: [0, 0.80, 0.42],
+      pedal: [0, 0.26, 0.60],
+      cameraLook: [0, 0.76, 0.30],
+      exhaust: [0.26, 0.42, -1.20],
+    },
+    palette: { body: '#5fc8e8', trim: '#f4f9ff', metal: '#3a4a58' },
     compatibleSlots: ['chassis', 'engine', 'tires', 'suspension', 'boost', 'aero', 'paint'],
     schemaVersion: 3,
   },

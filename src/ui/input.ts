@@ -13,6 +13,8 @@ export type Device = 'keyboard' | 'gamepad' | 'touch';
 export interface TouchState {
   /** The class special button. */
   special: boolean;
+  /** The item button. */
+  item: boolean;
   /** -1..1 from the virtual stick. */
   steer: number;
   accel: boolean;
@@ -25,7 +27,7 @@ export class InputManager {
   private keys = new Set<string>();
   private settings: Settings;
   device: Device = 'keyboard';
-  touch: TouchState = { steer: 0, accel: false, brake: false, drift: false, lookBack: false, special: false };
+  touch: TouchState = { steer: 0, accel: false, brake: false, drift: false, lookBack: false, special: false, item: false };
   /** Raised once per press, consumed by the UI. */
   private pressed = new Set<string>();
   private driftToggleState = false;
@@ -129,7 +131,7 @@ export class InputManager {
       brake = Math.max(brake, lt > dz ? lt : 0, pad.buttons[1]?.pressed ? 1 : 0);
       if (pad.buttons[5]?.pressed || pad.buttons[4]?.pressed) driftRaw = true;
       if (pad.buttons[2]?.pressed) boost = true;
-      if (pad.buttons[3]?.pressed) lookBack = true;
+      if (pad.buttons[8]?.pressed) lookBack = true;
       if (pad.buttons[12]?.pressed) throttle = 1;
       if (pad.buttons[13]?.pressed) brake = 1;
       if (pad.buttons[14]?.pressed) steer = -1;
@@ -173,7 +175,8 @@ export class InputManager {
     //  caught this. Only a human looking at a screen could.
     steer = clamp(-steer * s.steerSensitivity * (s.invertSteering ? -1 : 1), -1, 1);
     const special = this.keys.has(this.bind('special')) || this.keys.has('KeyE') || this.touch.special || !!pad?.buttons[4]?.pressed;
-    return { throttle: clamp01(throttle), brake: clamp01(brake), steer, drift, lookBack, special, boost };
+    const item = this.keys.has(this.bind('item') ?? 'KeyF') || this.keys.has('KeyF') || this.touch.item || !!pad?.buttons[3]?.pressed;
+    return { throttle: clamp01(throttle), brake: clamp01(brake), steer, drift, lookBack, special, boost, item };
   }
 
   /** Release a held drift toggle, e.g. on respawn. */
@@ -206,7 +209,8 @@ export function controlCard(device: Device, binds: Record<string, string>): { ke
       { key: 'Left stick', label: 'Steer' },
       { key: 'RB / LB / X', label: 'Hop, then hold to drift' },
       { key: 'RB in the air', label: 'Trick' },
-      { key: 'Y', label: 'Look back' },
+      { key: 'Y', label: 'Use the item from a chest' },
+      { key: 'Back', label: 'Look back' },
       { key: 'LB', label: 'Your class special' },
     ];
   }
@@ -217,6 +221,7 @@ export function controlCard(device: Device, binds: Record<string, string>): { ke
       { key: 'BRAKE', label: 'Brake and reverse' },
       { key: 'DRIFT', label: 'Hop, then hold to drift' },
       { key: 'DRIFT airborne', label: 'Trick' },
+      { key: 'ITEM', label: 'Use the item from a chest' },
       { key: 'SPECIAL', label: 'Your class special' },
     ];
   }
@@ -238,6 +243,7 @@ export function controlCard(device: Device, binds: Record<string, string>): { ke
     { key: both('drift'), label: 'Hop, then hold to drift' },
     { key: pretty(binds.boost ?? 'ShiftLeft'), label: 'Fire the boost (it charges as you race)' },
     { key: `${pretty(binds.drift)} in the air`, label: 'Trick' },
+    { key: pretty(binds.item ?? 'KeyF'), label: 'Use the item from a chest' },
     { key: pretty(binds.special ?? 'KeyE'), label: 'Your class special' },
     { key: pretty(binds.lookBack), label: 'Look back' },
     { key: pretty(binds.reset), label: 'Reset to the track' },

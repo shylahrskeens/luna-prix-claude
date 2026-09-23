@@ -274,19 +274,91 @@ export function buildHazards(track: TrackRuntime, mats: MaterialLibrary): Hazard
         break;
       }
       case 'ring': {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(d.r, 0.42, 6, 18), mats.glow(theme.accent, 0.92));
-        ring.position.y = d.h;
+        //  The root is moved to the sim's h.pos every frame, and h.pos already
+        //  carries the ring's height — so the hoop sits at the root's origin.
+        //  (It used to be offset by d.h as well, which drew every ring at
+        //  twice the height the sim scored it at.)
+        const colour = d.bonus ? '#ff5f7a' : theme.accent;
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(d.r, d.bonus ? 0.55 : 0.42, 6, 18), mats.glow(colour, 0.92));
         ring.name = 'ringBand';
         root.add(ring);
         warn.push(ring);
+        if (d.bonus) {
+          // A bullseye: concentric discs the kart flies through. It sweeps
+          // side to side, so it has to read as a thing worth chasing.
+          const cols = ['#ffffff', '#ff5f7a', '#ffffff', '#ffd23f'];
+          for (let i = 0; i < 4; i++) {
+            const rr = d.r * (1 - i * 0.24);
+            const disc = new THREE.Mesh(new THREE.RingGeometry(Math.max(0, rr - d.r * 0.22), rr, 28), mats.glow(cols[i], i === 3 ? 0.95 : 0.55));
+            disc.material = disc.material.clone();
+            (disc.material as THREE.Material).side = THREE.DoubleSide;
+            (disc.material as THREE.Material).transparent = true;
+            (disc.material as THREE.Material).opacity = 0.62;
+            disc.position.z = i * 0.02;
+            root.add(disc);
+          }
+        }
         // Four posts of light so the ring reads as a gate from a distance and
         // you can judge its height against the ground.
         for (let i = 0; i < 4; i++) {
           const a = (i / 4) * Math.PI * 2;
           const post = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), mats.glow('#ffffff', 0.8));
-          post.position.set(Math.cos(a) * d.r, d.h + Math.sin(a) * d.r, 0);
+          post.position.set(Math.cos(a) * d.r, Math.sin(a) * d.r, 0);
           root.add(post);
         }
+        // A line of light dropped to the ground, so the height of the ring is
+        // legible from the ramp.
+        const drop = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, d.h, 5), mats.glow(colour, 0.35));
+        drop.material = drop.material.clone();
+        (drop.material as THREE.Material).transparent = true;
+        (drop.material as THREE.Material).opacity = 0.35;
+        drop.position.y = -d.h / 2;
+        root.add(drop);
+        break;
+      }
+      case 'zone': {
+        //  A landing strip painted on the ground: striped edges, chevrons
+        //  down the middle and the word across it, all flat and unlit.
+        const strip = new THREE.Mesh(new THREE.PlaneGeometry(d.w, d.len), mats.glow('#22303f', 0.9));
+        strip.material = strip.material.clone();
+        (strip.material as THREE.Material).transparent = true;
+        (strip.material as THREE.Material).opacity = 0.55;
+        strip.rotation.x = -Math.PI / 2; strip.position.y = 0.05; strip.renderOrder = 1;
+        root.add(strip);
+        const edgeGeo = new THREE.PlaneGeometry(1.2, d.len);
+        for (const side of [-1, 1]) {
+          const edge = new THREE.Mesh(edgeGeo, mats.glow('#ffd23f', 0.9));
+          edge.rotation.x = -Math.PI / 2; edge.position.set(side * (d.w / 2 - 0.6), 0.06, 0); edge.renderOrder = 2;
+          root.add(edge);
+        }
+        // Hazard stripes on the leading edge.
+        for (let i = 0; i < Math.floor(d.w / 2); i++) {
+          const bar = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 3), mats.glow(i % 2 ? '#ffd23f' : '#2b2f3a', 0.9));
+          bar.rotation.x = -Math.PI / 2; bar.rotation.z = -0.5;
+          bar.position.set(-d.w / 2 + 1 + i * 2, 0.07, -d.len / 2 + 2); bar.renderOrder = 2;
+          root.add(bar);
+        }
+        // Chevrons pointing down the strip.
+        const chev = new THREE.Shape();
+        chev.moveTo(-3, -1.6); chev.lineTo(0, 1.2); chev.lineTo(3, -1.6); chev.lineTo(3, -3.2); chev.lineTo(0, -0.4); chev.lineTo(-3, -3.2); chev.closePath();
+        const chevGeo = new THREE.ShapeGeometry(chev);
+        for (let i = 0; i < Math.floor(d.len / 12); i++) {
+          const c = new THREE.Mesh(chevGeo, mats.glow('#fff6e3', 0.8));
+          c.rotation.x = -Math.PI / 2; c.rotation.z = Math.PI; c.position.set(0, 0.07, -d.len / 2 + 8 + i * 12); c.renderOrder = 2;
+          root.add(c);
+        }
+        // The word, painted big enough to read from the top of the arc.
+        const c = document.createElement('canvas'); c.width = 1024; c.height = 192;
+        const g = c.getContext('2d')!;
+        g.font = '150px "Lilita One", "Nunito", sans-serif';
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.lineWidth = 16; g.strokeStyle = '#1a1208'; g.strokeText(d.label, 512, 100);
+        g.fillStyle = '#fff6e3'; g.fillText(d.label, 512, 100);
+        const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+        const wordMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+        const word = new THREE.Mesh(new THREE.PlaneGeometry(d.w * 0.92, d.w * 0.92 * 192 / 1024), wordMat);
+        word.rotation.x = -Math.PI / 2; word.rotation.z = Math.PI; word.position.set(0, 0.08, -d.len / 2 + d.w * 0.5); word.renderOrder = 3;
+        root.add(word);
         break;
       }
       case 'stack': {

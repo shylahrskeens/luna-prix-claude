@@ -1,0 +1,1049 @@
+{
+  "schemaVersion": 1,
+  "body": "normal",
+  "set": "full",
+  "coordinateSpace": "target-glb-local-v1",
+  "clips": [
+    {
+      "sourceName": "Action.AttackCombo",
+      "runtimeName": "full:Action.AttackCombo",
+      "duration": 1.633333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "d1a41c631ddcac240e58dcf3847607cc61abfae4ba4db196ff9d9406e69c42de",
+      "payloadUrl": "/assets/axie/animations/payload/d1a41c631ddcac240e58dcf3847607cc61abfae4ba4db196ff9d9406e69c42de.axanim",
+      "sourceAssetId": "883f669605007d846bccb87e01655e38"
+    },
+    {
+      "sourceName": "Action.AttackHead",
+      "runtimeName": "full:Action.AttackHead",
+      "duration": 0.633333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "8dc92e9f639c756dd542eb908dd283648f165396dabe818acfd80447c1146500",
+      "payloadUrl": "/assets/axie/animations/payload/8dc92e9f639c756dd542eb908dd283648f165396dabe818acfd80447c1146500.axanim",
+      "sourceAssetId": "aca9bbd8bf7e6d54fbfc5e79b5e9d5d9"
+    },
+    {
+      "sourceName": "Action.AttackRange",
+      "runtimeName": "full:Action.AttackRange",
+      "duration": 0.633333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "d2bab12e230c63ebcaadb5bd091df1d8df6ace4df1ecc825469997e3ce483531",
+      "payloadUrl": "/assets/axie/animations/payload/d2bab12e230c63ebcaadb5bd091df1d8df6ace4df1ecc825469997e3ce483531.axanim",
+      "sourceAssetId": "102e182cf93132c4baaf89f9544c61fc"
+    },
+    {
+      "sourceName": "Action.CutTree",
+      "runtimeName": "full:Action.CutTree",
+      "duration": 1.133333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "d5deb5bb3124d1f7af83eb2ab8cb0760f03c43c47b877fa4af7627a0d779913a",
+      "payloadUrl": "/assets/axie/animations/payload/d5deb5bb3124d1f7af83eb2ab8cb0760f03c43c47b877fa4af7627a0d779913a.axanim",
+      "sourceAssetId": "75b0ecbde17f30e43ab3d7019110db4c"
+    },
+    {
+      "sourceName": "Action.HitTree",
+      "runtimeName": "full:Action.HitTree",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "a4b9b74e4f4e2dbf3bd4566714af14fb2c5adc487f9a99b2d86242f575c77a1e",
+      "payloadUrl": "/assets/axie/animations/payload/a4b9b74e4f4e2dbf3bd4566714af14fb2c5adc487f9a99b2d86242f575c77a1e.axanim",
+      "sourceAssetId": "9c72af2b5641fac4cafff11bf7c470ea"
+    },
+    {
+      "sourceName": "Action.IdleCarryItem",
+      "runtimeName": "full:Action.IdleCarryItem",
+      "duration": 1.966666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "bd7ab16c0f7a9e7078744ad81c03bf16e627be7834ec3714247b34ab3d216f10",
+      "payloadUrl": "/assets/axie/animations/payload/bd7ab16c0f7a9e7078744ad81c03bf16e627be7834ec3714247b34ab3d216f10.axanim",
+      "sourceAssetId": "a6fbee9b62de9cc4890768767aa7bf6a"
+    },
+    {
+      "sourceName": "Action.IdleGetHit",
+      "runtimeName": "full:Action.IdleGetHit",
+      "duration": 0.633333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "cc319f0b3a4632e1078c2b55e8b8333d2b09faba6628b3c46105c37141e23fda",
+      "payloadUrl": "/assets/axie/animations/payload/cc319f0b3a4632e1078c2b55e8b8333d2b09faba6628b3c46105c37141e23fda.axanim",
+      "sourceAssetId": "59242d45d51ac234097110799a9ce87c"
+    },
+    {
+      "sourceName": "Action.LootItem",
+      "runtimeName": "full:Action.LootItem",
+      "duration": 1.466666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "8cbb7aa5886cb17f2645b842e1f79ac30d3b199ca29c512a6d67906ea661a0dc",
+      "payloadUrl": "/assets/axie/animations/payload/8cbb7aa5886cb17f2645b842e1f79ac30d3b199ca29c512a6d67906ea661a0dc.axanim",
+      "sourceAssetId": "b9c5516f3eedd794a98f875d412b0a8b"
+    },
+    {
+      "sourceName": "Action.PourWater",
+      "runtimeName": "full:Action.PourWater",
+      "duration": 1.133333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "62e89c353c748736816aa6525d0ec0830182e20f4e8a10ee452e82e004730e7a",
+      "payloadUrl": "/assets/axie/animations/payload/62e89c353c748736816aa6525d0ec0830182e20f4e8a10ee452e82e004730e7a.axanim",
+      "sourceAssetId": "7afffc9fc7ec771429987ae24bbee624"
+    },
+    {
+      "sourceName": "Action.RunAttack",
+      "runtimeName": "full:Action.RunAttack",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "418fdec4019142acd77232f26dc9ab89cad73e2c2218129e3d3ed7a90ffb3f7e",
+      "payloadUrl": "/assets/axie/animations/payload/418fdec4019142acd77232f26dc9ab89cad73e2c2218129e3d3ed7a90ffb3f7e.axanim",
+      "sourceAssetId": "5392cc357b78d5549ab2284122996d08"
+    },
+    {
+      "sourceName": "Action.RunCarryItem",
+      "runtimeName": "full:Action.RunCarryItem",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "f55b1171d422d8b33324f0c82080cb98ab88b3c207c6e0349b4fb3de3140a0d4",
+      "payloadUrl": "/assets/axie/animations/payload/f55b1171d422d8b33324f0c82080cb98ab88b3c207c6e0349b4fb3de3140a0d4.axanim",
+      "sourceAssetId": "d8228cc57f8e7d5428da8b1c29823211"
+    },
+    {
+      "sourceName": "Action.Shoveling",
+      "runtimeName": "full:Action.Shoveling",
+      "duration": 1.466666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "be45500786730647a2525f69c7a51b60c7e9d122794e79cf6e72ace0ffa208f3",
+      "payloadUrl": "/assets/axie/animations/payload/be45500786730647a2525f69c7a51b60c7e9d122794e79cf6e72ace0ffa208f3.axanim",
+      "sourceAssetId": "352fa2d2a1de861459ca7d5bdd2c5142"
+    },
+    {
+      "sourceName": "Action.StoneHarvest",
+      "runtimeName": "full:Action.StoneHarvest",
+      "duration": 1.133333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "4ebb2d87b30cadf3d254c16ca99d9367fb1b497dd397505bf4153272171c2569",
+      "payloadUrl": "/assets/axie/animations/payload/4ebb2d87b30cadf3d254c16ca99d9367fb1b497dd397505bf4153272171c2569.axanim",
+      "sourceAssetId": "047ecf4f7901bb048a4c361303bfb3a6"
+    },
+    {
+      "sourceName": "Action.WalkAttack",
+      "runtimeName": "full:Action.WalkAttack",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "e4f9b2e9bb84495d0086c96f40fb26a5ad146255904b081d713a6c2b9bc5c1ab",
+      "payloadUrl": "/assets/axie/animations/payload/e4f9b2e9bb84495d0086c96f40fb26a5ad146255904b081d713a6c2b9bc5c1ab.axanim",
+      "sourceAssetId": "e57563d4fcb42ff4ba73a2e8d74904c0"
+    },
+    {
+      "sourceName": "Action.WalkCarryItem",
+      "runtimeName": "full:Action.WalkCarryItem",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "6b544a0260149007400d18663702207ee370d5012f1e86ff7b64423257715e1e",
+      "payloadUrl": "/assets/axie/animations/payload/6b544a0260149007400d18663702207ee370d5012f1e86ff7b64423257715e1e.axanim",
+      "sourceAssetId": "5692c8ebb7229634692e43f502f5d77b"
+    },
+    {
+      "sourceName": "Axe.Attack",
+      "runtimeName": "full:Axe.Attack",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "3f6529e3844570b40a0b28484dbf951580beaa708d9e92af72af9874fe58c90c",
+      "payloadUrl": "/assets/axie/animations/payload/3f6529e3844570b40a0b28484dbf951580beaa708d9e92af72af9874fe58c90c.axanim",
+      "sourceAssetId": "bb880986dbf5aca47b8468c3a7249562"
+    },
+    {
+      "sourceName": "Axe.Idle",
+      "runtimeName": "full:Axe.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "3807dbf265ee71d2189436d8f0271385a83767d2aa8b94f98d82a8a738cf2696",
+      "payloadUrl": "/assets/axie/animations/payload/3807dbf265ee71d2189436d8f0271385a83767d2aa8b94f98d82a8a738cf2696.axanim",
+      "sourceAssetId": "1a363bcdb0851cb408f90d71ae5ee7ef"
+    },
+    {
+      "sourceName": "Axe.Run",
+      "runtimeName": "full:Axe.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "bbacb245dd65725eabac92fa96dc82613045940541f2e63debeab9fc11eeef6b",
+      "payloadUrl": "/assets/axie/animations/payload/bbacb245dd65725eabac92fa96dc82613045940541f2e63debeab9fc11eeef6b.axanim",
+      "sourceAssetId": "d2ada18ae5ac3a14a96ffdc34329a956"
+    },
+    {
+      "sourceName": "Axe.Skill",
+      "runtimeName": "full:Axe.Skill",
+      "duration": 4.3,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "20c71bfcd30c06e67a36a2e054de6142d73cec252af2804ec034c7109b506d6d",
+      "payloadUrl": "/assets/axie/animations/payload/20c71bfcd30c06e67a36a2e054de6142d73cec252af2804ec034c7109b506d6d.axanim",
+      "sourceAssetId": "0295ca45114dd934ab9216e6f9e1fe8c"
+    },
+    {
+      "sourceName": "Axe.Walk",
+      "runtimeName": "full:Axe.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "db7ddbd18124f97ef6f6ab0c9fc97d17c964a6fb4864a43658392b328c90291f",
+      "payloadUrl": "/assets/axie/animations/payload/db7ddbd18124f97ef6f6ab0c9fc97d17c964a6fb4864a43658392b328c90291f.axanim",
+      "sourceAssetId": "0d74eaa9c1b41b74194c24cc0a4f3ac0"
+    },
+    {
+      "sourceName": "Bow.Attack",
+      "runtimeName": "full:Bow.Attack",
+      "duration": 0.833333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "b6887197c10ef11143ec0d18da4366897228531d661de01de6400ca1478ebe20",
+      "payloadUrl": "/assets/axie/animations/payload/b6887197c10ef11143ec0d18da4366897228531d661de01de6400ca1478ebe20.axanim",
+      "sourceAssetId": "4bf3de46099f10e4aa29af6528001a1d"
+    },
+    {
+      "sourceName": "Bow.Idle",
+      "runtimeName": "full:Bow.Idle",
+      "duration": 2.025,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "33a696a3da090c236c47b4ce39415d73d10ad491c8dc4a76b91cca3ce4282c1f",
+      "payloadUrl": "/assets/axie/animations/payload/33a696a3da090c236c47b4ce39415d73d10ad491c8dc4a76b91cca3ce4282c1f.axanim",
+      "sourceAssetId": "28e9a8c818e396648acb6251c84a1a19"
+    },
+    {
+      "sourceName": "Bow.Run",
+      "runtimeName": "full:Bow.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "48370e7ef32786f21a8a1b722233e21dc4596c1b0cee02f9798dfe257cae3684",
+      "payloadUrl": "/assets/axie/animations/payload/48370e7ef32786f21a8a1b722233e21dc4596c1b0cee02f9798dfe257cae3684.axanim",
+      "sourceAssetId": "6fb79f1731b7f5549893b1038892fea2"
+    },
+    {
+      "sourceName": "Bow.Skill",
+      "runtimeName": "full:Bow.Skill",
+      "duration": 2.633333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "685d5a189eb6a5e78a2047c9345a50efd424d144ef50be03f217a90bd2a05e61",
+      "payloadUrl": "/assets/axie/animations/payload/685d5a189eb6a5e78a2047c9345a50efd424d144ef50be03f217a90bd2a05e61.axanim",
+      "sourceAssetId": "736cb8f05c7b3d243ae37a16b313ed97"
+    },
+    {
+      "sourceName": "Bow.Walk",
+      "runtimeName": "full:Bow.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "17c69283a6d2d10e67dce36eda22c5947b85f96c9a616f0bd8df071afe957abc",
+      "payloadUrl": "/assets/axie/animations/payload/17c69283a6d2d10e67dce36eda22c5947b85f96c9a616f0bd8df071afe957abc.axanim",
+      "sourceAssetId": "7ac1a74fca5b9884dae12c6816bf4cc4"
+    },
+    {
+      "sourceName": "Brush.Attack",
+      "runtimeName": "full:Brush.Attack",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "69be1c38efd3cb35a4c2a22a13685b618051e94b8c6f3697e3df8fefd26e1465",
+      "payloadUrl": "/assets/axie/animations/payload/69be1c38efd3cb35a4c2a22a13685b618051e94b8c6f3697e3df8fefd26e1465.axanim",
+      "sourceAssetId": "023a772764bf48c478f8ac2f17ec7b30"
+    },
+    {
+      "sourceName": "Brush.Idle",
+      "runtimeName": "full:Brush.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "13718c92503a5f8d5e4a07b05bd83e615a6baa4be8129e8d0058c155bad772b9",
+      "payloadUrl": "/assets/axie/animations/payload/13718c92503a5f8d5e4a07b05bd83e615a6baa4be8129e8d0058c155bad772b9.axanim",
+      "sourceAssetId": "a74d6eabffaea97429d5f5589d50155d"
+    },
+    {
+      "sourceName": "Brush.Run",
+      "runtimeName": "full:Brush.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "13c2fa161a77bae29b0a318a1186658aad233bddb9ec31520298bf40c9ccb712",
+      "payloadUrl": "/assets/axie/animations/payload/13c2fa161a77bae29b0a318a1186658aad233bddb9ec31520298bf40c9ccb712.axanim",
+      "sourceAssetId": "d51acc895c4806d408928094632cff8f"
+    },
+    {
+      "sourceName": "Brush.Walk",
+      "runtimeName": "full:Brush.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "bf0e87cb72e60aeaf316e46ca0a9a31b2ecd5f43b843ad13136072d141d4672a",
+      "payloadUrl": "/assets/axie/animations/payload/bf0e87cb72e60aeaf316e46ca0a9a31b2ecd5f43b843ad13136072d141d4672a.axanim",
+      "sourceAssetId": "fc0858d56326e184c9f645a6e92d57f1"
+    },
+    {
+      "sourceName": "Cannon.Attack",
+      "runtimeName": "full:Cannon.Attack",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "f6df885713c9301fa2cc31814a5d8a8373d552c057946a8f707f92c28b374efe",
+      "payloadUrl": "/assets/axie/animations/payload/f6df885713c9301fa2cc31814a5d8a8373d552c057946a8f707f92c28b374efe.axanim",
+      "sourceAssetId": "9a2d0ebf2d9fa92498e74fc261f03f89"
+    },
+    {
+      "sourceName": "Cannon.Idle",
+      "runtimeName": "full:Cannon.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "71e755c9f2e543913084786f405d240a6ad047cd44aa9f69cfb4f2e3e8281301",
+      "payloadUrl": "/assets/axie/animations/payload/71e755c9f2e543913084786f405d240a6ad047cd44aa9f69cfb4f2e3e8281301.axanim",
+      "sourceAssetId": "4ca641b70cd78234cbc410d0f856efc3"
+    },
+    {
+      "sourceName": "Cannon.Run",
+      "runtimeName": "full:Cannon.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "b7f35a71efbe0185e3d29a6abac350c9b86889fdc1a3cf7c8cf9f6afba369d04",
+      "payloadUrl": "/assets/axie/animations/payload/b7f35a71efbe0185e3d29a6abac350c9b86889fdc1a3cf7c8cf9f6afba369d04.axanim",
+      "sourceAssetId": "886d45accc95b95429445c6539c1c94d"
+    },
+    {
+      "sourceName": "Cannon.Skill",
+      "runtimeName": "full:Cannon.Skill",
+      "duration": 1.466666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "d822656543c6c8c52fad1ef2d08ccce24035a4a4c7a324c09dee24f881f3f3c6",
+      "payloadUrl": "/assets/axie/animations/payload/d822656543c6c8c52fad1ef2d08ccce24035a4a4c7a324c09dee24f881f3f3c6.axanim",
+      "sourceAssetId": "b23090d87351e884e9b16cc57e9f7822"
+    },
+    {
+      "sourceName": "Cannon.Walk",
+      "runtimeName": "full:Cannon.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "be32a80a939203b0fc7ead3d6df6488b259d86cda3a915699da819cd58c2fd23",
+      "payloadUrl": "/assets/axie/animations/payload/be32a80a939203b0fc7ead3d6df6488b259d86cda3a915699da819cd58c2fd23.axanim",
+      "sourceAssetId": "7a6dffc179563b240beb4c09489ebc4d"
+    },
+    {
+      "sourceName": "Dagger.Attack",
+      "runtimeName": "full:Dagger.Attack",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "1678bddaab8852bd89c8d4671788466237ec8c25c3865582e3156c92dff1b7e2",
+      "payloadUrl": "/assets/axie/animations/payload/1678bddaab8852bd89c8d4671788466237ec8c25c3865582e3156c92dff1b7e2.axanim",
+      "sourceAssetId": "4070d55aed8becb43a6548b2aa5ddb8b"
+    },
+    {
+      "sourceName": "Dagger.Idle",
+      "runtimeName": "full:Dagger.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "9beba78669c179f5c3925c51920ed6383e07e7ac3d884f546c2129096e52bf5c",
+      "payloadUrl": "/assets/axie/animations/payload/9beba78669c179f5c3925c51920ed6383e07e7ac3d884f546c2129096e52bf5c.axanim",
+      "sourceAssetId": "0208574d825a3734589cbf9eb806bc3f"
+    },
+    {
+      "sourceName": "Dagger.Run",
+      "runtimeName": "full:Dagger.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "6ee0208c4d17a7727a4e846cd6a2ad3afb88bd7f484fc6acbfe90d01aa49dd66",
+      "payloadUrl": "/assets/axie/animations/payload/6ee0208c4d17a7727a4e846cd6a2ad3afb88bd7f484fc6acbfe90d01aa49dd66.axanim",
+      "sourceAssetId": "2a0f93b965814ad44b0354de28c22fa5"
+    },
+    {
+      "sourceName": "Dagger.Skill",
+      "runtimeName": "full:Dagger.Skill",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "0deee3621f413ae24f45fbb05fb67f877ae04ec1d143131f77e0a5c6cfee3135",
+      "payloadUrl": "/assets/axie/animations/payload/0deee3621f413ae24f45fbb05fb67f877ae04ec1d143131f77e0a5c6cfee3135.axanim",
+      "sourceAssetId": "477e94e2061960845994eb6523f96185"
+    },
+    {
+      "sourceName": "Dagger.Walk",
+      "runtimeName": "full:Dagger.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "b605a0843aa1dd6aba311cf441853474f5ac90134ac9386952772df37306745f",
+      "payloadUrl": "/assets/axie/animations/payload/b605a0843aa1dd6aba311cf441853474f5ac90134ac9386952772df37306745f.axanim",
+      "sourceAssetId": "ec6430cd73f7ed846860cfdb4661bb4f"
+    },
+    {
+      "sourceName": "Default.Dead",
+      "runtimeName": "full:Default.Dead",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "913a43054118e9081782f19bc31338bdef81683007968007e919d80d89b2dfa6",
+      "payloadUrl": "/assets/axie/animations/payload/913a43054118e9081782f19bc31338bdef81683007968007e919d80d89b2dfa6.axanim",
+      "sourceAssetId": "c245f579bcb014343991de623273f046"
+    },
+    {
+      "sourceName": "Default.Idle",
+      "runtimeName": "full:Default.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "4809b8f678fb4243f876c5d4d019531be14ef620c9b257041ad0396d4081ed3d",
+      "payloadUrl": "/assets/axie/animations/payload/4809b8f678fb4243f876c5d4d019531be14ef620c9b257041ad0396d4081ed3d.axanim",
+      "sourceAssetId": "37962d110fba0fa40ab134bceae82de1"
+    },
+    {
+      "sourceName": "Default.Run",
+      "runtimeName": "full:Default.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "a4b6cf05dce4b763eb6846d48603992744357a9c3026abb4254252678e45c582",
+      "payloadUrl": "/assets/axie/animations/payload/a4b6cf05dce4b763eb6846d48603992744357a9c3026abb4254252678e45c582.axanim",
+      "sourceAssetId": "2e10fc079a716f946b447b28cb681632"
+    },
+    {
+      "sourceName": "Default.Stun",
+      "runtimeName": "full:Default.Stun",
+      "duration": 2,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "aaf17787ef40d8d8f714f65cb4a286cbcc5d6465caca2d1e73be467f939f4eca",
+      "payloadUrl": "/assets/axie/animations/payload/aaf17787ef40d8d8f714f65cb4a286cbcc5d6465caca2d1e73be467f939f4eca.axanim",
+      "sourceAssetId": "0bf5e122f17fc704b93b465e8a5bda8c"
+    },
+    {
+      "sourceName": "Default.Walk",
+      "runtimeName": "full:Default.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "ca51249c20341247fe055c6893ad4bd165eed44ec5048cbde1a017cc6493877b",
+      "payloadUrl": "/assets/axie/animations/payload/ca51249c20341247fe055c6893ad4bd165eed44ec5048cbde1a017cc6493877b.axanim",
+      "sourceAssetId": "9451970eb8590b04081625ca3b2fbda1"
+    },
+    {
+      "sourceName": "Flag.Attack",
+      "runtimeName": "full:Flag.Attack",
+      "duration": 1.466666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "8e7cd68f8f59d6ecdfadbc6d4a15ec3d0219862730e0141381ca6d10c43fde16",
+      "payloadUrl": "/assets/axie/animations/payload/8e7cd68f8f59d6ecdfadbc6d4a15ec3d0219862730e0141381ca6d10c43fde16.axanim",
+      "sourceAssetId": "2dc10217c85a06847b6d64db3c39714c"
+    },
+    {
+      "sourceName": "Flag.Idle",
+      "runtimeName": "full:Flag.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "4a29123e57ceddd45a601949ac3621d671a92929787b464cb51339028a3baf45",
+      "payloadUrl": "/assets/axie/animations/payload/4a29123e57ceddd45a601949ac3621d671a92929787b464cb51339028a3baf45.axanim",
+      "sourceAssetId": "28f30193e901fe74b887e28230f9948f"
+    },
+    {
+      "sourceName": "Flag.Run",
+      "runtimeName": "full:Flag.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "0acab7835d6cef015383eeaad588a004996ab60e3b411bf07d27c81062434653",
+      "payloadUrl": "/assets/axie/animations/payload/0acab7835d6cef015383eeaad588a004996ab60e3b411bf07d27c81062434653.axanim",
+      "sourceAssetId": "5c2980a163eadc542af982926b9c2fc9"
+    },
+    {
+      "sourceName": "Flag.Skill",
+      "runtimeName": "full:Flag.Skill",
+      "duration": 5.3,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "ce0d87fec3349bf616be5fc7376ce2a90766c774ee126e3a7a6fd0db4c50ef2d",
+      "payloadUrl": "/assets/axie/animations/payload/ce0d87fec3349bf616be5fc7376ce2a90766c774ee126e3a7a6fd0db4c50ef2d.axanim",
+      "sourceAssetId": "180b4307acbb7a747aa33f39e4824cdb"
+    },
+    {
+      "sourceName": "Flag.Walk",
+      "runtimeName": "full:Flag.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "43931317b4b1803e2c83eecd2152227702acf19c7a864a9e8a39798e94f66a77",
+      "payloadUrl": "/assets/axie/animations/payload/43931317b4b1803e2c83eecd2152227702acf19c7a864a9e8a39798e94f66a77.axanim",
+      "sourceAssetId": "55f9c4148e3c20140bc039f7547e51c7"
+    },
+    {
+      "sourceName": "Flute.Attack",
+      "runtimeName": "full:Flute.Attack",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "e69618297fdc5619a92bd27da5c9b2ae537bafbfaa0050c24819e6c4303de449",
+      "payloadUrl": "/assets/axie/animations/payload/e69618297fdc5619a92bd27da5c9b2ae537bafbfaa0050c24819e6c4303de449.axanim",
+      "sourceAssetId": "e2487a5af6ed7a1499fe767f3a6efdbf"
+    },
+    {
+      "sourceName": "Flute.Idle",
+      "runtimeName": "full:Flute.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "91fcec277cf33d54843add87e8a57eb7ee70ecd25748080428356a78b5771e24",
+      "payloadUrl": "/assets/axie/animations/payload/91fcec277cf33d54843add87e8a57eb7ee70ecd25748080428356a78b5771e24.axanim",
+      "sourceAssetId": "606026ad39b03c049a3b828872376090"
+    },
+    {
+      "sourceName": "Flute.Run",
+      "runtimeName": "full:Flute.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "98c6f5e586a5e74adfb5e80b35be039088040715e7831fffd601fe87f3e774cf",
+      "payloadUrl": "/assets/axie/animations/payload/98c6f5e586a5e74adfb5e80b35be039088040715e7831fffd601fe87f3e774cf.axanim",
+      "sourceAssetId": "200c0049947d129468857065b02ac3d0"
+    },
+    {
+      "sourceName": "Flute.Skill",
+      "runtimeName": "full:Flute.Skill",
+      "duration": 1.466666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "0c28db9343caeb9a4494fb9362cf5d3a2a4d5baf4e66954e783183d84f64df3a",
+      "payloadUrl": "/assets/axie/animations/payload/0c28db9343caeb9a4494fb9362cf5d3a2a4d5baf4e66954e783183d84f64df3a.axanim",
+      "sourceAssetId": "058c0762419fb964fa54aa9c54117d10"
+    },
+    {
+      "sourceName": "Flute.Walk",
+      "runtimeName": "full:Flute.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "ebc1af944a0529e170a618c8d5cebbbea8818442c73350a95277fb4a5e13f882",
+      "payloadUrl": "/assets/axie/animations/payload/ebc1af944a0529e170a618c8d5cebbbea8818442c73350a95277fb4a5e13f882.axanim",
+      "sourceAssetId": "69b4714ac18341446af520d07e18be50"
+    },
+    {
+      "sourceName": "Gauntlet.Attack",
+      "runtimeName": "full:Gauntlet.Attack",
+      "duration": 1.133333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "21aee1f696877852281c2fb758ff165f88aebf155ec3bfc66a57b80f36cdbeab",
+      "payloadUrl": "/assets/axie/animations/payload/21aee1f696877852281c2fb758ff165f88aebf155ec3bfc66a57b80f36cdbeab.axanim",
+      "sourceAssetId": "217edcd319f923a4fa7aadf639fc71a0"
+    },
+    {
+      "sourceName": "Gauntlet.Idle",
+      "runtimeName": "full:Gauntlet.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "77b502b5857ae9f5d6fcc7b8090db7e23101ca96baf65658f54702ce927491cb",
+      "payloadUrl": "/assets/axie/animations/payload/77b502b5857ae9f5d6fcc7b8090db7e23101ca96baf65658f54702ce927491cb.axanim",
+      "sourceAssetId": "edbd647045075754aa760ddecf93d80e"
+    },
+    {
+      "sourceName": "Gauntlet.Run",
+      "runtimeName": "full:Gauntlet.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "d7f1f9b017f3dac364a4b1c40806745b2fd47c65ddb0555565248ed9b9dd4dbe",
+      "payloadUrl": "/assets/axie/animations/payload/d7f1f9b017f3dac364a4b1c40806745b2fd47c65ddb0555565248ed9b9dd4dbe.axanim",
+      "sourceAssetId": "52dceeea37dc9254593917374b944726"
+    },
+    {
+      "sourceName": "Gauntlet.Skill",
+      "runtimeName": "full:Gauntlet.Skill",
+      "duration": 1.633333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "ae3cb6a8355d6bba2e5b20db652477bd57c7bfae4a90e8b55033755551f045da",
+      "payloadUrl": "/assets/axie/animations/payload/ae3cb6a8355d6bba2e5b20db652477bd57c7bfae4a90e8b55033755551f045da.axanim",
+      "sourceAssetId": "c46d59a8a90a65b46bcb841d49e7e8b2"
+    },
+    {
+      "sourceName": "Gauntlet.Walk",
+      "runtimeName": "full:Gauntlet.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "05f125c76501fb2d6c5f171538bbbf4941ee43707a7dffd299acc024ca116f1c",
+      "payloadUrl": "/assets/axie/animations/payload/05f125c76501fb2d6c5f171538bbbf4941ee43707a7dffd299acc024ca116f1c.axanim",
+      "sourceAssetId": "8bc938e0de741354c9cbafadd735d26a"
+    },
+    {
+      "sourceName": "Hammer.Attack",
+      "runtimeName": "full:Hammer.Attack",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "e9ce55625a1d3fb7b9035fa6f39270deaaf0dcb21a5d213b94e432b1eb3d1efa",
+      "payloadUrl": "/assets/axie/animations/payload/e9ce55625a1d3fb7b9035fa6f39270deaaf0dcb21a5d213b94e432b1eb3d1efa.axanim",
+      "sourceAssetId": "87d3fe553280af54b9a329aba3774f84"
+    },
+    {
+      "sourceName": "Hammer.Idle",
+      "runtimeName": "full:Hammer.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "d51f06fce3ac03bbf6ea683141ad261ebb1d5de70d4148cfa7889adcc5f7bc99",
+      "payloadUrl": "/assets/axie/animations/payload/d51f06fce3ac03bbf6ea683141ad261ebb1d5de70d4148cfa7889adcc5f7bc99.axanim",
+      "sourceAssetId": "fa135c9b509921f4488850c93e502edb"
+    },
+    {
+      "sourceName": "Hammer.Run",
+      "runtimeName": "full:Hammer.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "f70f448c6f27bcacd14f008298aed45e29b29da56549ca8766357bc180724b74",
+      "payloadUrl": "/assets/axie/animations/payload/f70f448c6f27bcacd14f008298aed45e29b29da56549ca8766357bc180724b74.axanim",
+      "sourceAssetId": "83662c2ec85b4fe4f89e011dd267c476"
+    },
+    {
+      "sourceName": "Hammer.Skill",
+      "runtimeName": "full:Hammer.Skill",
+      "duration": 1.8,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "fdc99b33f3249c1ef1f89b057ded8388e8208c7edb0114083456940328afafba",
+      "payloadUrl": "/assets/axie/animations/payload/fdc99b33f3249c1ef1f89b057ded8388e8208c7edb0114083456940328afafba.axanim",
+      "sourceAssetId": "2c0a4198657a44b488767ae79ab8c06f"
+    },
+    {
+      "sourceName": "Hammer.Walk",
+      "runtimeName": "full:Hammer.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "4cf97c3feb194a281da0bfd0cd905992d850447c2bffcaa616316b03d3f824a8",
+      "payloadUrl": "/assets/axie/animations/payload/4cf97c3feb194a281da0bfd0cd905992d850447c2bffcaa616316b03d3f824a8.axanim",
+      "sourceAssetId": "3dfdc6b95746076499434a70451293ab"
+    },
+    {
+      "sourceName": "Lantern.Attack",
+      "runtimeName": "full:Lantern.Attack",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "23829f449b22f9c26c96f3b3b621ca5b5e10043bda4b2bf528d50c1755ca6c1c",
+      "payloadUrl": "/assets/axie/animations/payload/23829f449b22f9c26c96f3b3b621ca5b5e10043bda4b2bf528d50c1755ca6c1c.axanim",
+      "sourceAssetId": "540e9222822824a438d9887e0aadbf28"
+    },
+    {
+      "sourceName": "Lantern.Idle",
+      "runtimeName": "full:Lantern.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "8e418ba751a366f5ffc41f7c2f74a5b3463125f8e53c263124d335749ed421e9",
+      "payloadUrl": "/assets/axie/animations/payload/8e418ba751a366f5ffc41f7c2f74a5b3463125f8e53c263124d335749ed421e9.axanim",
+      "sourceAssetId": "432a72381e79036449fa8ef3f9b3652d"
+    },
+    {
+      "sourceName": "Lantern.Run",
+      "runtimeName": "full:Lantern.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "f17bafb04d7417258326a87db24bf0150358149b94de1c4ec92d8374640b9d2c",
+      "payloadUrl": "/assets/axie/animations/payload/f17bafb04d7417258326a87db24bf0150358149b94de1c4ec92d8374640b9d2c.axanim",
+      "sourceAssetId": "f17a522bccd9c3441a3726eff92afeaa"
+    },
+    {
+      "sourceName": "Lantern.Skill",
+      "runtimeName": "full:Lantern.Skill",
+      "duration": 1.466666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "27299679e8f05a8149b9803471d0282e2d8473ef7f303c82b04ac7afaf4e8727",
+      "payloadUrl": "/assets/axie/animations/payload/27299679e8f05a8149b9803471d0282e2d8473ef7f303c82b04ac7afaf4e8727.axanim",
+      "sourceAssetId": "1161207dd95b90a438d2e00b8ddc6795"
+    },
+    {
+      "sourceName": "Lantern.Walk",
+      "runtimeName": "full:Lantern.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "2916e0da1e3fb15a934871d514701a63d25dd4fe13542a830fb66b8dee317ad7",
+      "payloadUrl": "/assets/axie/animations/payload/2916e0da1e3fb15a934871d514701a63d25dd4fe13542a830fb66b8dee317ad7.axanim",
+      "sourceAssetId": "3052b82269aa3824894bcb543e125490"
+    },
+    {
+      "sourceName": "Mala.Attack",
+      "runtimeName": "full:Mala.Attack",
+      "duration": 1.466666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "b88918d7a638cae96265f71dbc3ffff327e8202ff34904585bfbf53dee2f975e",
+      "payloadUrl": "/assets/axie/animations/payload/b88918d7a638cae96265f71dbc3ffff327e8202ff34904585bfbf53dee2f975e.axanim",
+      "sourceAssetId": "52268e16532a78e42bbd4b475df8d4be"
+    },
+    {
+      "sourceName": "Mala.Idle",
+      "runtimeName": "full:Mala.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "a72b0347eb8544f80629a4f83821f83da6a0c7343c4a8e33826479d2a91409c1",
+      "payloadUrl": "/assets/axie/animations/payload/a72b0347eb8544f80629a4f83821f83da6a0c7343c4a8e33826479d2a91409c1.axanim",
+      "sourceAssetId": "f48aa4c7274fe384a9804707590cf74c"
+    },
+    {
+      "sourceName": "Mala.Run",
+      "runtimeName": "full:Mala.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "8037d4cdcfdf4b6d0fd04c853c896b8abd5710fb1b89e1675273f015bbe372ef",
+      "payloadUrl": "/assets/axie/animations/payload/8037d4cdcfdf4b6d0fd04c853c896b8abd5710fb1b89e1675273f015bbe372ef.axanim",
+      "sourceAssetId": "9ac50cf8a078705469a743cab31d8bfb"
+    },
+    {
+      "sourceName": "Mala.Skill",
+      "runtimeName": "full:Mala.Skill",
+      "duration": 1.8,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "64c63be91506e07c065e4806bacb03f13e9bd5208ab88e4d236126318f1fe4db",
+      "payloadUrl": "/assets/axie/animations/payload/64c63be91506e07c065e4806bacb03f13e9bd5208ab88e4d236126318f1fe4db.axanim",
+      "sourceAssetId": "85c1692880e80d448b7b07e587742a9e"
+    },
+    {
+      "sourceName": "Mala.Walk",
+      "runtimeName": "full:Mala.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "962462aa271374699532825d1290817fdca4638f10a6da2d5cb72364b35d264d",
+      "payloadUrl": "/assets/axie/animations/payload/962462aa271374699532825d1290817fdca4638f10a6da2d5cb72364b35d264d.axanim",
+      "sourceAssetId": "ee43f4294b565ca4fa4c4e9ed362e864"
+    },
+    {
+      "sourceName": "Spear.Attack",
+      "runtimeName": "full:Spear.Attack",
+      "duration": 1.466666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "f7cdaf27e5c772af5c249b82357b4f0fc734783bb181cbc60a75684aa43b323b",
+      "payloadUrl": "/assets/axie/animations/payload/f7cdaf27e5c772af5c249b82357b4f0fc734783bb181cbc60a75684aa43b323b.axanim",
+      "sourceAssetId": "bbadce003aa1f6b48ad41c9b04b6c05f"
+    },
+    {
+      "sourceName": "Spear.Idle",
+      "runtimeName": "full:Spear.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "42ffb54289f081c2a3828be56a2a0e68763e97c986dfcf3f87a843e2077517eb",
+      "payloadUrl": "/assets/axie/animations/payload/42ffb54289f081c2a3828be56a2a0e68763e97c986dfcf3f87a843e2077517eb.axanim",
+      "sourceAssetId": "8624ff4ed8575cb4b954816d7f1840aa"
+    },
+    {
+      "sourceName": "Spear.Run",
+      "runtimeName": "full:Spear.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "458f802eea97d94faab9c4f0dfdcb802affd62080fbeb69c84a7b8f5165cdb73",
+      "payloadUrl": "/assets/axie/animations/payload/458f802eea97d94faab9c4f0dfdcb802affd62080fbeb69c84a7b8f5165cdb73.axanim",
+      "sourceAssetId": "c90477735c25fa84199417af12a977b5"
+    },
+    {
+      "sourceName": "Spear.Skill",
+      "runtimeName": "full:Spear.Skill",
+      "duration": 1.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "4301449639b1354d199d36306a7d1e30b8f0dfd94a85886ce76705690ce31bf5",
+      "payloadUrl": "/assets/axie/animations/payload/4301449639b1354d199d36306a7d1e30b8f0dfd94a85886ce76705690ce31bf5.axanim",
+      "sourceAssetId": "002e497c32d0d1e46822ca226ebdf570"
+    },
+    {
+      "sourceName": "Spear.Walk",
+      "runtimeName": "full:Spear.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "7821de15c94ae78592b852764062c26020b1ea880ec16d5ca2121829c4fbc20e",
+      "payloadUrl": "/assets/axie/animations/payload/7821de15c94ae78592b852764062c26020b1ea880ec16d5ca2121829c4fbc20e.axanim",
+      "sourceAssetId": "b997edf8ec71c6e49a615bb35f921930"
+    },
+    {
+      "sourceName": "Staff.Attack",
+      "runtimeName": "full:Staff.Attack",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "f0b50c6a8bb674640cd166d4cec68b609dc22e319bd0af4b87e79bf7f617c8ce",
+      "payloadUrl": "/assets/axie/animations/payload/f0b50c6a8bb674640cd166d4cec68b609dc22e319bd0af4b87e79bf7f617c8ce.axanim",
+      "sourceAssetId": "10b1b7e3dd3ea2441a20278ee9d7556c"
+    },
+    {
+      "sourceName": "Staff.Idle",
+      "runtimeName": "full:Staff.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "845346a32df3e1e8a59ac783d60cad3aed95a499201bf97413420b3e1e3126e3",
+      "payloadUrl": "/assets/axie/animations/payload/845346a32df3e1e8a59ac783d60cad3aed95a499201bf97413420b3e1e3126e3.axanim",
+      "sourceAssetId": "d72457a7d053067498d08bc8cd85bd27"
+    },
+    {
+      "sourceName": "Staff.Run",
+      "runtimeName": "full:Staff.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "b9fbcc047b0e92b7d012d9fc6ba2a0598fef1bce991cea56a094c3dc62e4b86f",
+      "payloadUrl": "/assets/axie/animations/payload/b9fbcc047b0e92b7d012d9fc6ba2a0598fef1bce991cea56a094c3dc62e4b86f.axanim",
+      "sourceAssetId": "f51a50333f0fda5439987cbfba026fac"
+    },
+    {
+      "sourceName": "Staff.Skill",
+      "runtimeName": "full:Staff.Skill",
+      "duration": 2.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "a23ae60cd1812f4f042b176f23ee92e008dd7561ebbeb40984d35a74dd3b81aa",
+      "payloadUrl": "/assets/axie/animations/payload/a23ae60cd1812f4f042b176f23ee92e008dd7561ebbeb40984d35a74dd3b81aa.axanim",
+      "sourceAssetId": "4302a016cbe576a43afb953c7d637eeb"
+    },
+    {
+      "sourceName": "Staff.Walk",
+      "runtimeName": "full:Staff.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "389204e4f21027cdea13cf8fa5371bfe726fe16a8990af987552108378c371bf",
+      "payloadUrl": "/assets/axie/animations/payload/389204e4f21027cdea13cf8fa5371bfe726fe16a8990af987552108378c371bf.axanim",
+      "sourceAssetId": "42bc6fe152e32d546b681b021141b00c"
+    },
+    {
+      "sourceName": "Sword.Attack",
+      "runtimeName": "full:Sword.Attack",
+      "duration": 1.233333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "dc160d9a90212b5cf83f09c74b62d8bb558237246b464560c98ae1d896179a86",
+      "payloadUrl": "/assets/axie/animations/payload/dc160d9a90212b5cf83f09c74b62d8bb558237246b464560c98ae1d896179a86.axanim",
+      "sourceAssetId": "0971f6523fcbd744baaaff6e7f13f6f4"
+    },
+    {
+      "sourceName": "Sword.Idle",
+      "runtimeName": "full:Sword.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "32a27a696ccaade5c8b2b9f9e5f935bd938d3d2338e4bc3f87368300932c5665",
+      "payloadUrl": "/assets/axie/animations/payload/32a27a696ccaade5c8b2b9f9e5f935bd938d3d2338e4bc3f87368300932c5665.axanim",
+      "sourceAssetId": "2c072584b51d3c448a67ee24ac152231"
+    },
+    {
+      "sourceName": "Sword.Run",
+      "runtimeName": "full:Sword.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "072a91ffc9f0d41c13205708833c2382f210793af988f228502f7d44ca182514",
+      "payloadUrl": "/assets/axie/animations/payload/072a91ffc9f0d41c13205708833c2382f210793af988f228502f7d44ca182514.axanim",
+      "sourceAssetId": "33340d32c755b6747908b59ae711abcd"
+    },
+    {
+      "sourceName": "Sword.Skill",
+      "runtimeName": "full:Sword.Skill",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "c3df03f2dc9a91d63b808dbcf58a1d6913983cc4973257aca92d6ebd7dadc4d3",
+      "payloadUrl": "/assets/axie/animations/payload/c3df03f2dc9a91d63b808dbcf58a1d6913983cc4973257aca92d6ebd7dadc4d3.axanim",
+      "sourceAssetId": "4578c9a7318b2c443b68e336b5823398"
+    },
+    {
+      "sourceName": "Sword.Walk",
+      "runtimeName": "full:Sword.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "0ceaa6c97cd296d73d1a48c2a6bb32d5b05d00866196cd45682a2034981f86f8",
+      "payloadUrl": "/assets/axie/animations/payload/0ceaa6c97cd296d73d1a48c2a6bb32d5b05d00866196cd45682a2034981f86f8.axanim",
+      "sourceAssetId": "900f6c8a3e6aa944aa69e748a8d44edc"
+    },
+    {
+      "sourceName": "Talisman.Attack",
+      "runtimeName": "full:Talisman.Attack",
+      "duration": 0.8,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "774e693407f31d730ebf20423d9655dc89ae85cb318ae530449e20b8f8e67d23",
+      "payloadUrl": "/assets/axie/animations/payload/774e693407f31d730ebf20423d9655dc89ae85cb318ae530449e20b8f8e67d23.axanim",
+      "sourceAssetId": "6b59c2bc843aa484480c6c1162dcdc03"
+    },
+    {
+      "sourceName": "Talisman.Idle",
+      "runtimeName": "full:Talisman.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "076e57107922da7a937b7652e88b2d4ed3fca274ae6d0027b2c9d3775259de94",
+      "payloadUrl": "/assets/axie/animations/payload/076e57107922da7a937b7652e88b2d4ed3fca274ae6d0027b2c9d3775259de94.axanim",
+      "sourceAssetId": "7a49dbf9739ea1a4fae8e429f8017c02"
+    },
+    {
+      "sourceName": "Talisman.Run",
+      "runtimeName": "full:Talisman.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "7bb20c685a6a4bf268ddf7149fa1d0c6809c472768f0342d2a4ac2066cc51dd9",
+      "payloadUrl": "/assets/axie/animations/payload/7bb20c685a6a4bf268ddf7149fa1d0c6809c472768f0342d2a4ac2066cc51dd9.axanim",
+      "sourceAssetId": "9c437c51a2135af4d8c0d8d810c52d94"
+    },
+    {
+      "sourceName": "Talisman.Skill",
+      "runtimeName": "full:Talisman.Skill",
+      "duration": 2.633333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "e95f5a246e731149d29efe96369e17a9e556cd03df1f7fff9a41470e0032e5c0",
+      "payloadUrl": "/assets/axie/animations/payload/e95f5a246e731149d29efe96369e17a9e556cd03df1f7fff9a41470e0032e5c0.axanim",
+      "sourceAssetId": "b51087fda7d74ba49bfb5bae814082e2"
+    },
+    {
+      "sourceName": "Talisman.Walk",
+      "runtimeName": "full:Talisman.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "330b8b29964320442c55fd3eb6da7e8a37e2bd750e85e57d38139bc4a4f7da21",
+      "payloadUrl": "/assets/axie/animations/payload/330b8b29964320442c55fd3eb6da7e8a37e2bd750e85e57d38139bc4a4f7da21.axanim",
+      "sourceAssetId": "3ff87ce610660e44191462d0c5b0eb59"
+    },
+    {
+      "sourceName": "Tome.Attack",
+      "runtimeName": "full:Tome.Attack",
+      "duration": 1.3,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "736bc18bf8ca0494e042c28d6e97262661591b149035c23d5beb35ee445b7919",
+      "payloadUrl": "/assets/axie/animations/payload/736bc18bf8ca0494e042c28d6e97262661591b149035c23d5beb35ee445b7919.axanim",
+      "sourceAssetId": "f2f76dd6dd0081b4a8b5943885910692"
+    },
+    {
+      "sourceName": "Tome.Idle",
+      "runtimeName": "full:Tome.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "337b734329f75f5848f8b36cf9abb9cb3c7575e1ef9af7e2489ad9ad4f426a15",
+      "payloadUrl": "/assets/axie/animations/payload/337b734329f75f5848f8b36cf9abb9cb3c7575e1ef9af7e2489ad9ad4f426a15.axanim",
+      "sourceAssetId": "94a674b137ddfef449c70bfbe76a00c3"
+    },
+    {
+      "sourceName": "Tome.Run",
+      "runtimeName": "full:Tome.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "29212987dd01e7a6416300bff9356e2823edd0474ce32282a6e8387470a5c3b1",
+      "payloadUrl": "/assets/axie/animations/payload/29212987dd01e7a6416300bff9356e2823edd0474ce32282a6e8387470a5c3b1.axanim",
+      "sourceAssetId": "200e10232c9d001458614463562568b8"
+    },
+    {
+      "sourceName": "Tome.Skill",
+      "runtimeName": "full:Tome.Skill",
+      "duration": 2.633333333333,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "511f09ccb7003e94e64e41beb88e58373f1bb0a3c95959fe0411d2ffc98ea936",
+      "payloadUrl": "/assets/axie/animations/payload/511f09ccb7003e94e64e41beb88e58373f1bb0a3c95959fe0411d2ffc98ea936.axanim",
+      "sourceAssetId": "209093ae59d5fce42ace4463d6e15920"
+    },
+    {
+      "sourceName": "Tome.Walk",
+      "runtimeName": "full:Tome.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "e74b36511cf424ff0f73417e2c9eb148e1186712642cb2c8da886fdd7b6ed28d",
+      "payloadUrl": "/assets/axie/animations/payload/e74b36511cf424ff0f73417e2c9eb148e1186712642cb2c8da886fdd7b6ed28d.axanim",
+      "sourceAssetId": "6509040635fc08f4eb1974bc5653aae7"
+    },
+    {
+      "sourceName": "Whip.Attack",
+      "runtimeName": "full:Whip.Attack",
+      "duration": 0.966666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "4d8dabfbc8f736a08f7a60a8c127fc556c3640e5de57f9b2c1607641226f83f6",
+      "payloadUrl": "/assets/axie/animations/payload/4d8dabfbc8f736a08f7a60a8c127fc556c3640e5de57f9b2c1607641226f83f6.axanim",
+      "sourceAssetId": "aad4cf3379997d44ca86e2b6446c67fb"
+    },
+    {
+      "sourceName": "Whip.Idle",
+      "runtimeName": "full:Whip.Idle",
+      "duration": 2.033333333333,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "091726fcc29086c615c6b7b3b7fd2eaf55f0a391ad3d4bcfd091dd67e5ca75d6",
+      "payloadUrl": "/assets/axie/animations/payload/091726fcc29086c615c6b7b3b7fd2eaf55f0a391ad3d4bcfd091dd67e5ca75d6.axanim",
+      "sourceAssetId": "353f0c6480eada641b50265f699e2451"
+    },
+    {
+      "sourceName": "Whip.Run",
+      "runtimeName": "full:Whip.Run",
+      "duration": 0.666666666667,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "b82f04b2cd9412475ed16e9b245e77f5598d23afe9b8ad3009dd021d46fe4652",
+      "payloadUrl": "/assets/axie/animations/payload/b82f04b2cd9412475ed16e9b245e77f5598d23afe9b8ad3009dd021d46fe4652.axanim",
+      "sourceAssetId": "46e0eeaa54c978c40917b26e05f9cf44"
+    },
+    {
+      "sourceName": "Whip.Skill",
+      "runtimeName": "full:Whip.Skill",
+      "duration": 4.291666666667,
+      "trackCount": 44,
+      "looping": false,
+      "contentHash": "9451772b43bf2ffeb484dc4d033855c132177c3442840ce14ad4f173df4f2a0f",
+      "payloadUrl": "/assets/axie/animations/payload/9451772b43bf2ffeb484dc4d033855c132177c3442840ce14ad4f173df4f2a0f.axanim",
+      "sourceAssetId": "671a87632c465e445960a4aec3c5792b"
+    },
+    {
+      "sourceName": "Whip.Walk",
+      "runtimeName": "full:Whip.Walk",
+      "duration": 1,
+      "trackCount": 44,
+      "looping": true,
+      "contentHash": "a5b2c3c6d25f8be89e6a2bc7faafc9a84ebf0166a98699e27fa8910960a801ef",
+      "payloadUrl": "/assets/axie/animations/payload/a5b2c3c6d25f8be89e6a2bc7faafc9a84ebf0166a98699e27fa8910960a801ef.axanim",
+      "sourceAssetId": "f0d92b79e56b0854b85d25678a89c78e"
+    }
+  ],
+  "contentHash": "576868620c12748a3eca92c8ed7056d75a57871cfe5cfa44e9c46f797f34ee31"
+}

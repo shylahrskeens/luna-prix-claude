@@ -57,6 +57,12 @@ export interface AxieDefinition {
   id: string;
   name: string;
   class: AxieClass;
+  /** The chassis this Axie is paired with by default: the one whose base
+   *  stats cover the class's weakest contribution (Beast/Bing → the agile
+   *  Dartwing; Bird's low HP → the armoured Terrapin; Bug's low speed → the
+   *  Moonshard; Aquatic's low morale (drift/air) → the Frostsled; Reptile's
+   *  low skill (grip) → the Dunerunner). Picking the Axie picks this too. */
+  defaultKart: string;
   parts: AxiePart[];
   /** Colour identity used by the procedural model and the UI. */
   palette: { body: string; accent: string; shade: string };
@@ -79,11 +85,10 @@ export interface AxieDefinition {
   mixer: MixerDescriptor;
   /** How the Mixer character sits: metres scale, seat-socket offset, pitch. */
   mixerSeat: { scale: number; offset: [number, number, number]; pitch: number };
-  /** The official starter model this driver IS (Sky Mavis starter assets).
-   *  Seated in preference to the Mixer build when present. Unset for now:
-   *  the published glb files carry no texture and their UV layout does not
-   *  match the PNG in the same repository, so they render grey or scrambled. */
-  starter?: { id: 'buba' | 'puffy' | 'pomodoro'; scale: number; offset: [number, number, number]; pitch: number };
+  /** The official mascot model this driver IS — a self-contained glb from
+   *  the Axie 3D asset pack (jaatster/axie-3d-assets). Seated in preference
+   *  to the Mixer build; the Mixer descriptor stays as the fallback. */
+  mascot?: { file: string; scale: number; offset: [number, number, number]; pitch: number; yaw: number };
   /** Where this definition came from, for the asset/IP audit trail. */
   source: 'mock-local';
   schemaVersion: number;
@@ -160,13 +165,15 @@ const mk = (type: PartType, name: string, cls: AxieClass, special: string | null
   name, class: cls, type, specialGenes: special,
 });
 
-const BUBA_PARTS: AxiePart[] = [
+// Bing — Beast, the white pup with the ice-cream cone (Atia's Legacy trainee
+// soldier; cards: Puppy, Toy Ball, Cone Shell, Shiba).
+const BING_PARTS: AxiePart[] = [
   mk('eyes', 'Puppy', 'Beast'),
-  mk('ears', 'Nut Cracker', 'Beast'),
-  mk('horn', 'Little Branch', 'Plant'),
-  mk('mouth', 'Axie Kiss', 'Bird'),
-  mk('back', 'Ronin', 'Beast'),
-  mk('tail', 'Hare', 'Beast'),
+  mk('ears', 'Puppy', 'Beast'),
+  mk('horn', 'Cone Shell', 'Aquatic'),
+  mk('mouth', 'Shiba', 'Beast'),
+  mk('back', 'Toy Ball', 'Beast'),
+  mk('tail', 'Shiba', 'Beast'),
 ];
 const PUFFY_PARTS: AxiePart[] = [
   mk('eyes', 'Gero', 'Aquatic'),
@@ -187,7 +194,29 @@ const POMODORO_PARTS: AxiePart[] = [
   mk('tail', 'Gravel Ant', 'Bug'),
 ];
 
-/** The three mock drivers.
+// Momo — Bird. Pink, with feathery ears and a big-sister bow (her cards:
+// Feathery Dart, Big Sister, Lil Bro, Death Shower, Feathery Earrings).
+const MOMO_PARTS: AxiePart[] = [
+  mk('eyes', 'Mavis', 'Bird'),
+  mk('ears', 'Feathery Earrings', 'Bird'),
+  mk('horn', 'Feather Spear', 'Bird'),
+  mk('mouth', 'Little Owl', 'Bird'),
+  mk('back', 'Balloon', 'Bird'),
+  mk('tail', 'Feather Fan', 'Bird'),
+];
+// Venoki — Reptile. Purple, poisonous, a death-shroom on the back and a
+// centipede tail (her cards: Funky, Chemical Fang, Venom Hall, Poison Tube,
+// Death Shroom, Centipede, Poison Vial).
+const VENOKI_PARTS: AxiePart[] = [
+  mk('eyes', 'Gecko', 'Reptile'),
+  mk('ears', 'Funky', 'Reptile'),
+  mk('horn', 'Poison Tube', 'Reptile'),
+  mk('mouth', 'Chemical Fang', 'Reptile'),
+  mk('back', 'Death Shroom', 'Plant'),
+  mk('tail', 'Centipede', 'Bug'),
+];
+
+/** The five drivers: the three Origins starters and the two Season 5 ones.
  *
  *  Named for the three models in the official Axie 3D starter toolkit so the
  *  real FBX + animation set drops straight into these definitions. Class, parts
@@ -196,21 +225,24 @@ const POMODORO_PARTS: AxiePart[] = [
  */
 export const AXIES: AxieDefinition[] = [
   {
-    id: 'mock-buba',
-    name: 'Buba',
+    id: 'mock-bing',
+    defaultKart: 'kart-dartwing',
+    name: 'Bing',
     class: 'Beast',
-    parts: BUBA_PARTS,
-    palette: { body: '#8f8a80', accent: '#e9d84a', shade: '#4a4640' },
-    tagline: 'All nerve, no brakes.',
-    bio: 'Buba races the way Buba does everything: flat out and sideways. The highest Morale in the field turns every long drift into a bigger payoff, and the Beast temperament means the boost hits harder when it finally lets go.',
+    parts: BING_PARTS,
+    palette: { body: '#e9e4d6', accent: '#e9d84a', shade: '#8a7a66' },
+    tagline: 'Trainee soldier. All nerve, no brakes.',
+    bio: 'Bing races the way a pup chases a ball: flat out and sideways. The highest Morale in the field turns every long drift into a bigger payoff, and the Beast temperament means the boost hits harder when it finally lets go.',
     rig: { scale: 0.92, seatOffset: [0, 0.34, -0.08], seatPitch: -0.06, bounds: [0.42, 0.40, 0.46] },
-    mixer: mixerFor(BUBA_PARTS, 'normal', 1 /* beast 544f44: Buba's grey */, { eyes: 4, mouth: 2, ears: 6, horn: 4, back: 8, tail: 2 }),
+    mixer: mixerFor(BING_PARTS, 'normal', 0 /* beast fdfcf2: white */, { eyes: 4, mouth: 2, ears: 6, horn: 4, back: 8, tail: 2 }),
     mixerSeat: { scale: 0.62, offset: [0, 0.16, -0.10], pitch: 0 },
+    mascot: { file: 'axies/mascots/bing.glb', scale: 0.52, offset: [0, 0.12, -0.04], pitch: 0, yaw: 0 },
     source: 'mock-local',
     schemaVersion: 4,
   },
   {
     id: 'mock-puffy',
+    defaultKart: 'kart-frostsled',
     name: 'Puffy',
     class: 'Aquatic',
     parts: PUFFY_PARTS,
@@ -225,6 +257,7 @@ export const AXIES: AxieDefinition[] = [
   },
   {
     id: 'mock-pomodoro',
+    defaultKart: 'kart-moonshard',
     name: 'Pomodoro',
     class: 'Bug',
     parts: POMODORO_PARTS,
@@ -234,10 +267,44 @@ export const AXIES: AxieDefinition[] = [
     rig: { scale: 0.95, seatOffset: [0, 0.35, -0.09], seatPitch: -0.05, bounds: [0.44, 0.41, 0.47] },
     mixer: mixerFor(POMODORO_PARTS, 'sumo', 19 /* bug ff606c */, { eyes: 10, mouth: 4, ears: 12, horn: 6, back: 4, tail: 8 }),
     mixerSeat: { scale: 0.64, offset: [0, 0.17, -0.11], pitch: 0 },
+    mascot: { file: 'axies/mascots/pomodoro.glb', scale: 0.56, offset: [0, 0.13, -0.05], pitch: 0, yaw: 0 },
     source: 'mock-local',
     schemaVersion: 4,
   },
 ];
+
+AXIES.push(
+  {
+    id: 'mock-momo',
+    defaultKart: 'kart-terrapin',
+    name: 'Momo',
+    class: 'Bird',
+    parts: MOMO_PARTS,
+    palette: { body: '#ff9ec2', accent: '#fff0f6', shade: '#c2557f' },
+    tagline: 'Big sister energy.',
+    bio: 'Momo is the fastest thing in the air: Bird speed and Updraft hang time turn every jump into a shortcut, and a Feathery Dart of a class special that gets her clear of a scrap.',
+    rig: { scale: 0.88, seatOffset: [0, 0.32, -0.06], seatPitch: -0.04, bounds: [0.40, 0.38, 0.44] },
+    mixer: mixerFor(MOMO_PARTS, 'normal', 24 /* bird ff99b0 */, { eyes: 2, mouth: 8, ears: 4, horn: 6, back: 10, tail: 2 }),
+    mixerSeat: { scale: 0.60, offset: [0, 0.15, -0.08], pitch: 0 },
+    source: 'mock-local',
+    schemaVersion: 4,
+  },
+  {
+    id: 'mock-venoki',
+    defaultKart: 'kart-dunerunner',
+    name: 'Venoki',
+    class: 'Reptile',
+    parts: VENOKI_PARTS,
+    palette: { body: '#a86fd0', accent: '#e8c8ff', shade: '#5a2f7a' },
+    tagline: 'Everything she touches wilts.',
+    bio: 'Venoki holds grip on the loose stuff — dirt, mud, ice — where everyone else is sliding, and her Poison Vial special leaves a slick behind her that the pack has to steer around.',
+    rig: { scale: 0.92, seatOffset: [0, 0.34, -0.08], seatPitch: -0.06, bounds: [0.42, 0.40, 0.46] },
+    mixer: mixerFor(VENOKI_PARTS, 'normal', 30 /* reptile 9967fb */, { eyes: 10, mouth: 4, ears: 8, horn: 12, back: 6, tail: 4 }),
+    mixerSeat: { scale: 0.62, offset: [0, 0.16, -0.10], pitch: 0 },
+    source: 'mock-local',
+    schemaVersion: 4,
+  },
+);
 
 export function axieById(id: string): AxieDefinition {
   const a = AXIES.find((x) => x.id === id);

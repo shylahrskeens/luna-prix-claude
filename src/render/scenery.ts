@@ -154,17 +154,135 @@ function multi(group: THREE.Group, matrices: THREE.Matrix4[], parts: [THREE.Buff
   addScatters(group, parts.map(([geo, mat]) => ({ geo, mat, matrices })));
 }
 
-/** A town along the road: cottages close on both sides, lantern posts on the
- *  verge, hedges between them, cream paving under it all, the way Atia's
- *  Legacy villages sit around a plaza. Two per land, away from the jumps. */
-function addTowns(group: THREE.Group, track: TrackRuntime, mats: MaterialLibrary, rng: Rng, roof: string, wall: string, paving: string): void {
+/** Building kinds for the towns. Each is a list of parts (geometry + which
+ *  palette slot colours it) so one kind can be instanced in one draw per
+ *  part. They are different SHAPES at different heights — a cottage, a
+ *  two-storey house with a gable and a balcony, a round tower, a shop with
+ *  an awning and a sign, a long hall, a round thatched hut — because a row
+ *  of one house repeated reads as a texture, not a town. */
+type Slot = 'wall' | 'roof' | 'trim' | 'dark' | 'wood' | 'glass' | 'thatch';
+interface BuildingKind { parts: [THREE.BufferGeometry, Slot][]; footprint: number }
+
+function gableRoof(w: number, len: number, h: number, y: number): THREE.BufferGeometry {
+  // A triangular prism: a 3-sided cylinder lying along Z, scaled to the span.
+  const g = new THREE.CylinderGeometry(1, 1, len, 3, 1, false);
+  g.rotateX(Math.PI / 2); g.rotateZ(Math.PI); // ridge up
+  g.scale(w * 0.62, h, 1);
+  g.translate(0, y + h * 0.5, 0);
+  return g;
+}
+function box(w: number, h: number, d: number, x: number, y: number, z: number): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); return g;
+}
+function windows(cols: number, rows: number, w: number, h: number, y0: number, z: number, span: number, dy = 2.6): THREE.BufferGeometry[] {
+  const out: THREE.BufferGeometry[] = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const x = cols === 1 ? 0 : -span / 2 + (span / (cols - 1)) * c;
+    out.push(box(w, h, 0.12, x, y0 + r * dy, z));
+  }
+  return out;
+}
+function merged(list: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  // Merge by hand (no utils import): concatenate non-indexed copies.
+  const parts = list.map((g) => g.index ? g.toNonIndexed() : g);
+  let count = 0; for (const g of parts) count += g.attributes.position.count;
+  const pos = new Float32Array(count * 3), nor = new Float32Array(count * 3);
+  let o = 0;
+  for (const g of parts) {
+    pos.set(g.attributes.position.array as Float32Array, o * 3);
+    if (g.attributes.normal) nor.set(g.attributes.normal.array as Float32Array, o * 3);
+    o += g.attributes.position.count;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  return out;
+}
+
+function buildingKinds(): BuildingKind[] {
+  const kinds: BuildingKind[] = [];
+  // 1. Cottage: the classic — square, pointed roof, chimney, door.
+  {
+    const body = box(5, 4.5, 5, 0, 2.25, 0);
+    const roof = new THREE.ConeGeometry(4.6, 4.2, 4); roof.rotateY(Math.PI / 4); roof.translate(0, 4.5 + 2.1, 0);
+    const chimney = box(0.7, 2.2, 0.7, 1.4, 6.2, -1.2);
+    const door = box(1.1, 2.0, 0.2, 0, 1.0, 2.55);
+    kinds.push({ footprint: 5, parts: [[body, 'wall'], [roof, 'roof'], [chimney, 'dark'], [door, 'wood'], [merged(windows(2, 1, 0.9, 1.0, 2.8, 2.56, 2.6)), 'glass']] });
+  }
+  // 2. Two-storey house: tall, gable roof, a balcony, rows of windows.
+  {
+    const body = box(6, 8, 5.5, 0, 4, 0);
+    const roof = gableRoof(6.6, 6.6, 3.2, 8);
+    const balcony = box(4.2, 0.3, 1.2, 0, 4.2, 3.2);
+    const rail = merged([box(4.2, 0.9, 0.12, 0, 4.8, 3.75), box(0.12, 0.9, 1.2, -2.1, 4.8, 3.2), box(0.12, 0.9, 1.2, 2.1, 4.8, 3.2)]);
+    const door = box(1.1, 2.1, 0.2, 0, 1.05, 2.8);
+    const win = merged([...windows(3, 1, 0.9, 1.1, 2.4, 2.8, 4.0), ...windows(3, 1, 0.9, 1.1, 6.2, 2.8, 4.0)]);
+    kinds.push({ footprint: 6, parts: [[body, 'wall'], [roof, 'roof'], [balcony, 'wood'], [rail, 'trim'], [door, 'wood'], [win, 'glass']] });
+  }
+  // 3. Round tower: the tallest thing in town, with a conical cap and a flag.
+  {
+    const body = new THREE.CylinderGeometry(2.3, 2.6, 11, 10); body.translate(0, 5.5, 0);
+    const band = new THREE.CylinderGeometry(2.7, 2.7, 0.5, 10); band.translate(0, 11, 0);
+    const cap = new THREE.ConeGeometry(3.0, 4.5, 10); cap.translate(0, 11.25 + 2.25, 0);
+    const pole = new THREE.CylinderGeometry(0.06, 0.06, 2.4, 4); pole.translate(0, 14.7, 0);
+    const flag = box(1.3, 0.7, 0.05, 0.7, 15.4, 0);
+    const win = merged([box(0.7, 1.2, 0.12, 0, 4, 2.55), box(0.7, 1.2, 0.12, 0, 8, 2.55), box(0.12, 1.2, 0.7, 2.55, 6, 0)]);
+    const door = box(1.0, 2.0, 0.2, 0, 1.0, 2.6);
+    kinds.push({ footprint: 5.5, parts: [[body, 'wall'], [band, 'trim'], [cap, 'roof'], [pole, 'dark'], [flag, 'trim'], [win, 'glass'], [door, 'wood']] });
+  }
+  // 4. Shop: wide and low, flat roof with a parapet, an awning and a sign.
+  {
+    const body = box(8, 3.8, 5, 0, 1.9, 0);
+    const parapet = merged([box(8.4, 0.5, 5.4, 0, 4.05, 0), box(8.6, 0.25, 5.6, 0, 4.3, 0)]);
+    const awning = box(6.5, 0.18, 1.8, 0, 2.9, 3.3); awning.rotateX(0.18); awning.translate(0, 0.2, 0);
+    const posts = merged([box(0.12, 2.6, 0.12, -3.1, 1.3, 4.1), box(0.12, 2.6, 0.12, 3.1, 1.3, 4.1)]);
+    const sign = box(4.0, 1.0, 0.16, 0, 4.9, 2.4);
+    const glass = merged([box(2.4, 1.8, 0.12, -2.2, 1.8, 2.56), box(2.4, 1.8, 0.12, 2.2, 1.8, 2.56)]);
+    const door = box(1.1, 2.2, 0.2, 0, 1.1, 2.56);
+    kinds.push({ footprint: 8, parts: [[body, 'wall'], [parapet, 'trim'], [awning, 'roof'], [posts, 'dark'], [sign, 'wood'], [glass, 'glass'], [door, 'wood']] });
+  }
+  // 5. Long hall: a barn or a meeting house — long, with a big gable and a
+  //    lantern on the ridge.
+  {
+    const body = box(6, 5, 11, 0, 2.5, 0);
+    const roof = gableRoof(6.8, 12, 3.6, 5);
+    const lantern = merged([box(1.2, 1.2, 1.2, 0, 9.0, 0), box(1.6, 0.3, 1.6, 0, 9.75, 0)]);
+    const doors = box(2.6, 3.2, 0.2, 0, 1.6, 5.55);
+    const win = merged([...windows(3, 1, 0.8, 1.0, 3.2, 3.05, 7.5)]);
+    kinds.push({ footprint: 6.5, parts: [[body, 'wall'], [roof, 'roof'], [lantern, 'trim'], [doors, 'wood'], [win, 'glass']] });
+  }
+  // 6. Round hut: low, thatched, a doorway — the savannah's own.
+  {
+    const body = new THREE.CylinderGeometry(3.0, 3.1, 2.6, 10); body.translate(0, 1.3, 0);
+    const roof = new THREE.ConeGeometry(4.0, 3.2, 10); roof.translate(0, 2.6 + 1.6, 0);
+    const knot = new THREE.SphereGeometry(0.35, 6, 5); knot.translate(0, 4.3, 0);
+    const door = box(1.0, 1.8, 0.2, 0, 0.9, 3.05);
+    kinds.push({ footprint: 6, parts: [[body, 'wall'], [roof, 'thatch'], [knot, 'dark'], [door, 'wood']] });
+  }
+  return kinds;
+}
+
+/** A town along the road: buildings of six different kinds and heights,
+ *  set back on both sides, lantern posts on the verge, hedges and benches
+ *  between them, cream paving under it all — the way Atia's Legacy villages
+ *  sit around a plaza. Two per land, away from the jumps. */
+function addTowns(group: THREE.Group, track: TrackRuntime, mats: MaterialLibrary, rng: Rng, roof: string, wall: string, paving: string, extra: Partial<Record<Slot, string>> = {}): void {
   const L = track.lapLength;
-  const h = houseGeo();
+  const kinds = buildingKinds();
+  const palette: Record<Slot, string> = {
+    wall, roof, trim: extra.trim ?? '#fff3dc', dark: '#4a3a30', wood: '#6a4a30', glass: '#2a3a55', thatch: extra.thatch ?? '#c9a35a',
+    ...extra,
+  };
+  // A second wall and roof colour so the street is not one paint job.
+  const altWall = extra.wall ?? '#e6d2b4';
+  const altRoof = extra.roof ?? '#7a5a4a';
   const lantern = new THREE.CylinderGeometry(0.08, 0.12, 3.2, 6); lantern.translate(0, 1.6, 0);
   const lamp = new THREE.SphereGeometry(0.32, 8, 6); lamp.translate(0, 3.35, 0);
   const hedge = new THREE.IcosahedronGeometry(1.1, 1); hedge.translate(0, 0.9, 0);
   const bench = new THREE.BoxGeometry(1.8, 0.35, 0.6); bench.translate(0, 0.55, 0);
-  const houses: THREE.Matrix4[] = [], lanterns: THREE.Matrix4[] = [], hedges: THREE.Matrix4[] = [], benches: THREE.Matrix4[] = [];
+  const perKind: THREE.Matrix4[][] = kinds.map(() => []);
+  const perKindAlt: THREE.Matrix4[][] = kinds.map(() => []);
+  const lanterns: THREE.Matrix4[] = [], hedges: THREE.Matrix4[] = [], benches: THREE.Matrix4[] = [];
   const spots = [0.06, 0.52].map((u) => u * L);
   for (const centre of spots) {
     // Skip a town that would land on a gap or a branch join.
@@ -175,29 +293,48 @@ function addTowns(group: THREE.Group, track: TrackRuntime, mats: MaterialLibrary
     pave.rotation.x = -Math.PI / 2;
     pave.position.set(sm0.pos.x, sm0.pos.y - 0.35, sm0.pos.z);
     group.add(pave);
-    for (let d = -44; d <= 44; d += 11) {
-      const sm = track.main.sample(centre + d);
-      const yaw = Math.atan2(sm.fwd.x, sm.fwd.z);
-      for (const side of [-1, 1] as const) {
-        // Houses face the road, set back past the verge; every third slot is a hedge instead.
-        const slot = Math.round((d + 44) / 11) + (side > 0 ? 1 : 0);
-        const lat = side * (sm.w + 9 + rng.range(0, 2));
+    for (const side of [-1, 1] as const) {
+      // Walk down the street placing buildings by their own footprint, so a
+      // shop takes more frontage than a hut and nothing overlaps.
+      let d = -48;
+      let slot = 0;
+      while (d <= 48) {
+        const sm = track.main.sample(centre + d);
+        const yaw = Math.atan2(sm.fwd.x, sm.fwd.z);
+        const kindIdx = slot % 5 === 3 ? -1 : Math.floor(rng.next() * kinds.length);
+        const kind = kindIdx >= 0 ? kinds[kindIdx] : null;
+        const front = kind ? kind.footprint + 2.5 : 6.5;
+        const lat = side * (sm.w + 9 + rng.range(0, 3));
         const pos = new THREE.Vector3(sm.pos.x + sm.right.x * lat, sm.pos.y, sm.pos.z + sm.right.z * lat);
-        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw + (side > 0 ? -Math.PI / 2 : Math.PI / 2), 0));
-        if (slot % 3 === 2) {
+        // Face the road, with a few degrees of slop so the street is not a ruler.
+        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw + (side > 0 ? -Math.PI / 2 : Math.PI / 2) + rng.range(-0.08, 0.08), 0));
+        if (!kind) {
           for (let k = 0; k < 3; k++) hedges.push(new THREE.Matrix4().compose(pos.clone().addScaledVector(new THREE.Vector3(sm.fwd.x, 0, sm.fwd.z), (k - 1) * 2.2), new THREE.Quaternion(), new THREE.Vector3(1, rng.range(0.8, 1.1), 1)));
           benches.push(new THREE.Matrix4().compose(pos.clone().addScaledVector(new THREE.Vector3(sm.right.x, 0, sm.right.z), -side * 3.5), q, new THREE.Vector3(1, 1, 1)));
         } else {
-          houses.push(new THREE.Matrix4().compose(pos, q, new THREE.Vector3(rng.range(0.9, 1.15), rng.range(0.9, 1.2), rng.range(0.9, 1.15))));
+          // Each building its own height and width, and every other one in
+          // the second paint job.
+          const m = new THREE.Matrix4().compose(pos, q, new THREE.Vector3(rng.range(0.9, 1.15), rng.range(0.85, 1.3), rng.range(0.9, 1.15)));
+          (rng.next() < 0.5 ? perKind : perKindAlt)[kindIdx].push(m);
         }
-        if (d % 22 === 0) {
+        if (slot % 2 === 0) {
           const ll = side * (sm.w + 2.2);
           lanterns.push(new THREE.Matrix4().compose(new THREE.Vector3(sm.pos.x + sm.right.x * ll, sm.pos.y, sm.pos.z + sm.right.z * ll), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)));
         }
+        d += front;
+        slot++;
       }
     }
   }
-  multi(group, houses, [[h.body, mats.toon(wall)], [h.roof, mats.toon(roof)], [h.chimney, mats.toon('#8a6a55')], [h.door, mats.toon('#6a4a30')]]);
+  const matFor = (slot: Slot, alt: boolean): THREE.Material =>
+    slot === 'wall' ? mats.toon(alt ? altWall : palette.wall)
+    : slot === 'roof' ? mats.toon(alt ? altRoof : palette.roof)
+    : slot === 'glass' ? mats.glow(palette.glass, 1)
+    : mats.toon(palette[slot]);
+  kinds.forEach((kind, i) => {
+    if (perKind[i].length) multi(group, perKind[i], kind.parts.map(([g, slot]) => [g, matFor(slot, false)] as [THREE.BufferGeometry, THREE.Material]));
+    if (perKindAlt[i].length) multi(group, perKindAlt[i], kind.parts.map(([g, slot]) => [g, matFor(slot, true)] as [THREE.BufferGeometry, THREE.Material]));
+  });
   multi(group, lanterns, [[lantern, mats.toon('#5a4a3a')], [lamp, mats.glow('#ffe08a', 1)]]);
   addScatters(group, [{ geo: hedge, mat: mats.toon('#5fb85a'), matrices: hedges }, { geo: bench, mat: mats.toon('#a07d52'), matrices: benches }]);
 }
@@ -277,7 +414,7 @@ export function buildScenery(track: TrackRuntime, mats: MaterialLibrary, density
     multi(group, bandScatter(track, rng, d(120), 1.3, 22, 0.2, () => rng.range(0.7, 1.5)), [[SHROOM_STEM, mats.toon('#f1e6d2')], [SHROOM_CAP, mats.toon('#e8523f')]]);
     multi(group, bandScatter(track, rng, d(70), 1.4, 2.2, 0, () => 1), [[POST, mats.toon('#8a6a45')], [RAIL, mats.toon('#a07d52')]]);
     addScatters(group, [{ geo: ROCK, mat: mats.toon('#8f9a8a'), matrices: bandScatter(track, rng, d(90), 3, 40, 0.4, () => rng.range(0.6, 1.8), 0.5) }]);
-    addTowns(group, track, mats, rng, '#d9553f', '#f3e3c8', '#e6d3b0');
+    addTowns(group, track, mats, rng, '#d9553f', '#f3e3c8', '#e6d3b0', { wall: '#dfc9a0', roof: '#6f8f4a', trim: '#fff3dc' });
   } else if (theme.scenery === 'mystic') {
     // Hazymoon: pink, lavender and violet blob trees, purple mushrooms, blue-
     // roofed cottages, crystal shards, purple ponds, the old columns.
@@ -300,7 +437,7 @@ export function buildScenery(track: TrackRuntime, mats: MaterialLibrary, density
       { geo: floatShard, mat: mats.glow('#e0a8ff', 0.85), matrices: bandScatter(track, rng, d(50), 6, 50, 4, () => rng.range(0.6, 1.6)) },
       { geo: ROCK, mat: mats.toon('#7a6a90'), matrices: bandScatter(track, rng, d(80), 3, 40, 0.4, () => rng.range(0.6, 1.8), 0.5) },
     ]);
-    addTowns(group, track, mats, rng, '#4f8fe0', '#f3e3d8', '#d8b7e8');
+    addTowns(group, track, mats, rng, '#4f8fe0', '#f3e3d8', '#d8b7e8', { wall: '#cbb7de', roof: '#8a5fc9', trim: '#f3e8ff', thatch: '#9a86c0' });
   } else if (theme.scenery === 'savannah') {
     // Goldenwind: baobabs with fat trunks, palms, cacti with pink tops,
     // sandstone mesas, boulders, dry grass, crop plots and a watering hole.
@@ -329,7 +466,7 @@ export function buildScenery(track: TrackRuntime, mats: MaterialLibrary, density
     multi(group, bandScatter(track, rng, d(50), 1.4, 2.2, 0, () => 1), [[POST, mats.toon('#8a6a45')], [RAIL, mats.toon('#a07d52')]]);
     const pond = pondGeo(8);
     multi(group, bandScatter(track, rng, d(5), 20, 60, 0, () => rng.range(0.9, 1.5)), [[pond.water, mats.toon('#4fa8d9', { flat: false })], [pond.rim, mats.toon('#c9a860')], [pond.pad, mats.toon('#6fae3c')]]);
-    addTowns(group, track, mats, rng, '#3f8fd0', '#f3e3c8', '#e0c48a');
+    addTowns(group, track, mats, rng, '#c9743f', '#f3e3c8', '#e0c48a', { wall: '#d9b98a', roof: '#a3763e', trim: '#fff0d0', thatch: '#c9a35a' });
   } else if (theme.scenery === 'arctic') {
     // Winterblue: ice floes in the sky with snow-capped pines, teal and pink
     // blob trees, ice crystals, snow-roofed cottages and a frozen airship.

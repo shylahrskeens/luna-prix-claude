@@ -13,6 +13,7 @@ import type { RaceCore, Racer } from '../sim/race';
 import type { TrackRuntime } from '../sim/track';
 import { controlCard, type Device } from './input';
 import { SPECIALS } from '../data/specials';
+import { ITEMS } from '../data/items';
 
 export interface HudOptions {
   hudScale: number;
@@ -31,6 +32,9 @@ export class Hud {
   private boostLabel: HTMLElement;
   private specialFill: HTMLElement;
   private specialLabel: HTMLElement;
+  private itemSlot: HTMLElement;
+  private itemGlyph: HTMLElement;
+  private itemLabel: HTMLElement;
   private centre: HTMLElement;
   private warnEl: HTMLElement;
   private sectorEl: HTMLElement;
@@ -57,6 +61,9 @@ export class Hud {
     this.boostLabel = el('div', { class: 'hint', style: 'margin-top:4px' });
     this.specialFill = el('div', { class: 'special-fill' });
     this.specialLabel = el('div', { class: 'hint', style: 'margin-top:3px' });
+    this.itemGlyph = el('div', { class: 'item-glyph' });
+    this.itemLabel = el('div', { class: 'hint' });
+    this.itemSlot = el('div', { class: 'item-slot empty' }, this.itemGlyph, this.itemLabel);
     this.centre = el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:9vh;text-align:center' });
     this.warnEl = el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:10px' });
     this.sectorEl = el('div', { class: 'hint', style: 'letter-spacing:0.12em;text-transform:uppercase' });
@@ -93,6 +100,7 @@ export class Hud {
           this.boostLabel,
           el('div', { style: 'margin-top:8px' }, special),
           this.specialLabel,
+          this.itemSlot,
         ),
       ),
       el('div', { class: 'hud-c' }, this.centre, this.warnEl),
@@ -246,6 +254,16 @@ export class Hud {
       ? `${sp.name.toUpperCase()} READY — ${(binds.special || 'KeyE').replace(/^Key/, '')}`
       : `${sp.name.toUpperCase()} ${Math.round(charge * 100)}%`;
     this.specialLabel.style.color = ready ? 'var(--good, #5fd8e8)' : 'var(--muted)';
+
+    // The item slot: what you are holding and how to fire it.
+    const it = player.item ? ITEMS[player.item] : null;
+    this.itemSlot.classList.toggle('empty', !it);
+    this.itemGlyph.textContent = it ? it.glyph : '▢';
+    this.itemGlyph.style.color = it ? it.color : '';
+    this.itemSlot.style.borderColor = it ? it.color : '';
+    const useKey = device === 'touch' ? 'TAP ITEM' : device === 'gamepad' ? 'Y' : prettyKey(binds.item ?? 'KeyF');
+    this.itemLabel.textContent = it ? `${it.name.toUpperCase()} — ${useKey}` : 'ITEM — grab a chest';
+    this.itemLabel.style.color = it ? it.color : 'var(--muted)';
 
     this.sectorEl.textContent = core.track.zoneAt(player.ground.u)?.label ?? core.track.def.name;
 

@@ -7,6 +7,8 @@
  */
 import { SCHEMA_VERSION, RULES_VERSION, divisionFor } from '../data/rules';
 import { DEFAULT_LOADOUT, partById, type SlotId } from '../data/parts';
+import { UNLOCK_EVERYTHING } from '../data/rules';
+import { TRACKS } from '../data/tracks';
 import { AXIES } from '../data/axies';
 import { KARTS } from '../data/karts';
 import { DEFAULT_MIX, type MixSettings } from '../audio/audio';
@@ -85,6 +87,7 @@ export const DEFAULT_KEYBINDS: Record<string, string> = {
   drift: 'Space',
   boost: 'ShiftLeft',
   special: 'KeyE',
+  item: 'KeyF',
   lookBack: 'KeyQ',
   reset: 'KeyR',
   pause: 'Escape',
@@ -109,7 +112,7 @@ export function newProfile(): Profile {
     podiums: 0,
     owned: Object.fromEntries(Object.values(DEFAULT_LOADOUT).map((id) => [id, 1])),
     axieId: AXIES[0].id,
-    kartId: KARTS[1].id,
+    kartId: AXIES[0].defaultKart,   // Bing in the Dartwing
     parts: defaultParts(),
     unlockedTracks: ['canopy'],
     records: [],
@@ -172,7 +175,9 @@ function validate(p: Profile): Profile {
     assists: { ...base.settings.assists, ...(p.settings?.assists ?? {}) },
     keybinds: { ...DEFAULT_KEYBINDS, ...(p.settings?.keybinds ?? {}) },
   };
-  if (!AXIES.some((a) => a.id === p.axieId)) p.axieId = base.axieId;
+  // A driver that no longer exists (Buba became Bing) resets the entry to
+  // the default pairing: Bing in the Dartwing.
+  if (!AXIES.some((a) => a.id === p.axieId)) { p.axieId = base.axieId; p.kartId = base.kartId; }
   if (!KARTS.some((k) => k.id === p.kartId)) p.kartId = base.kartId;
   const parts = defaultParts();
   for (const slot of Object.keys(parts) as SlotId[]) {
@@ -196,6 +201,10 @@ function validate(p: Profile): Profile {
   p.records = Array.isArray(p.records) ? p.records.filter((r) => r && typeof r.trackId === 'string') : [];
   p.bonus = Array.isArray(p.bonus) ? p.bonus.filter((r) => r && typeof r.eventId === 'string') : [];
   p.unlockedTracks = Array.isArray(p.unlockedTracks) && p.unlockedTracks.length ? p.unlockedTracks : ['canopy'];
+  // Binds added after a profile was saved get their defaults.
+  if (p.settings && p.settings.keybinds) for (const [k, v] of Object.entries(DEFAULT_KEYBINDS)) if (!p.settings.keybinds[k]) p.settings.keybinds[k] = v;
+  // The review build opens everything, including profiles saved before it.
+  if (UNLOCK_EVERYTHING) for (const t of TRACKS) if (!p.unlockedTracks.includes(t.id)) p.unlockedTracks.push(t.id);
   return p;
 }
 

@@ -79,7 +79,12 @@ export type HazardDef =
   | { kind: 'roller';  s: number; lat: number; period: number; phase: number; travel: number; r: number }
   | { kind: 'turbine'; s: number; lat: number; strength: number; len: number }
   | { kind: 'bumper';  s: number; lat: number; r: number }
-  | { kind: 'ring';    s: number; lat: number; h: number; r: number }
+  /** A hoop in the air. `sweep`/`period` make it slide side to side (a
+   *  moving bonus target); `bonus` marks it as one, drawn as a bullseye and
+   *  worth `points` flat instead of the chain payout. */
+  | { kind: 'ring';    s: number; lat: number; h: number; r: number; sweep?: number; period?: number; phase?: number; bonus?: boolean; points?: number }
+  /** Paint on the ground: a labelled landing strip. No collision, no score. */
+  | { kind: 'zone';    s: number; lat: number; w: number; len: number; label: string }
   /** Something to jump OVER. Solid: clip it and the run is over. */
   | { kind: 'stack';   s: number; lat: number; w: number; h: number; len: number; style?: 'crates' | 'bus' | 'gator' | 'logs' | 'drums' | 'cargo' | 'boulders'; points?: number }
   /** A land boss beside the road: it winds up, then slams a fist or a foot
@@ -92,7 +97,7 @@ export type HazardDef =
   | { kind: 'chest';   s: number; lat: number }
   /** A landing target painted on the ground. Scores by which ring you land in;
    *  no collision, because the target is the reward, not the obstacle. */
-  | { kind: 'target';  s: number; lat: number; rings: number[]; points?: number[] };
+  | { kind: 'target';  s: number; lat: number; rings: number[]; points?: number[]; sweep?: number; period?: number };
 
 export interface BranchDef {
   id: string;
