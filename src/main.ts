@@ -409,9 +409,13 @@ class App implements AppApi {
 
     const view = new RaceView(this.ctx, {
       trackId: def.track.id, mode: 'bonus', laps: 1,
-      fieldSize: 1, seed: 1, difficulty: 1, soloGhost: true,
+      // The boss gauntlet runs with two rival Axies; the launch is a solo flight.
+      fieldSize: def.kind === 'gauntlet' ? 3 : 1, seed: 1, difficulty: 1, soloGhost: def.kind !== 'gauntlet',
     }, this.profile, this.input, {
       onKartEvent: (racer, e) => this.bonus?.onKartEvent(racer, e),
+      // Race events too: item pickups and boss hits are what the gauntlet is
+      // scored on, and the toasts for them come from the same handler.
+      onRaceEvent: (e) => this.onRaceEvent(e),
     });
     view.setResetKey(this.profile.settings.keybinds.reset);
     this.race = view;
@@ -424,9 +428,10 @@ class App implements AppApi {
     this.hud.prompt(def.tagline, 5);
   }
 
-  private onRaceEvent(e: { kind: string; value: number; racerId: string }): void {
+  private onRaceEvent(e: { kind: string; value: number; racerId: string; text?: string }): void {
     const view = this.race;
     if (!view) return;
+    this.bonus?.onRaceEvent(e);
     const player = view.player;
     if (e.kind === 'countdown' && e.value > 0) audio.sfx('countdown');
     if (e.kind === 'go') { audio.sfx('go'); this.hud.toast('GO', 0.9, 'var(--good)'); }
@@ -443,6 +448,7 @@ class App implements AppApi {
       if (it && e.value === 1) { audio.sfx(it.kind === 'surge' ? 'boostStart' : it.kind === 'bubble' ? 'checkpoint' : 'hop'); this.hud.toast(it.name.toUpperCase(), 0.9, it.color); }
     }
     if (e.kind === 'itemHit') { audio.sfx('spin'); this.hud.toast('HIT BY A MOON COMET', 1.4, 'var(--warm)'); }
+    if (e.kind === 'bossHit') { audio.sfx('hazardHit', 1); this.hud.toast('KILNBANE HIT', 1.0, 'var(--good)'); }
     if (e.kind === 'checkpoint' && e.value >= 0) audio.sfx('checkpoint');
     if (e.kind === 'finish') {
       audio.sfx('finish');

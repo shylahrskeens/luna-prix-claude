@@ -69,17 +69,29 @@ const leap = (name: string, rampLen: number, rise: number, voidLen: number, drop
 ];
 
 const GAUNTLET_SEGS: RouteSeg[] = [
-  island(60, 'start'),
-  ...leap('A', 16, 4.2, 7, 3.0), island(46, 'isleA'),
+  island(70, 'start'),
+  ...leap('A', 16, 4.2, 7, 3.0), island(56, 'isleA'),
   { t: 'turn', angle: 38, radius: 34, w: 6.5, mark: 'bendA' },
-  ...leap('B', 16, 4.2, 8, 3.2), island(42, 'isleB'),
+  ...leap('B', 16, 4.2, 8, 3.2), island(52, 'isleB'),
   { t: 'turn', angle: -46, radius: 30, w: 6.5, mark: 'bendB' },
-  ...leap('C', 16, 4.4, 9, 3.4), island(40, 'isleC'),
+  ...leap('C', 16, 4.4, 9, 3.4), island(60, 'isleC'),
   { t: 'turn', angle: 34, radius: 38, w: 6.5, mark: 'bendC' },
-  ...leap('D', 17, 4.8, 10, 3.6), island(44, 'isleD'),
+  ...leap('D', 17, 4.8, 10, 3.6), island(54, 'isleD'),
   { t: 'turn', angle: -30, radius: 40, w: 7, mark: 'bendD' },
-  // The final leap, over the big one.
-  ...leap('E', 20, 6.0, 13, 4.5), island(90, 'finish'),
+  // The first encounter with Kilnbane, on a wide island.
+  ...leap('E', 18, 5.0, 11, 3.8), island(80, 'isleE'),
+  { t: 'turn', angle: 52, radius: 36, w: 7, mark: 'bendE' },
+  ...leap('F', 16, 4.4, 9, 3.4), island(56, 'isleF'),
+  { t: 'turn', angle: -40, radius: 34, w: 6.5, mark: 'bendF' },
+  ...leap('G', 17, 4.8, 10, 3.6), island(58, 'isleG'),
+  { t: 'turn', angle: 44, radius: 32, w: 6.5, mark: 'bendG' },
+  // The second encounter.
+  ...leap('H', 18, 5.2, 11, 3.8), island(84, 'isleH'),
+  { t: 'turn', angle: -36, radius: 38, w: 7, mark: 'bendH' },
+  ...leap('I', 17, 4.8, 10, 3.6), island(56, 'isleI'),
+  { t: 'turn', angle: 30, radius: 40, w: 7, mark: 'bendI' },
+  // The final leap, over the big one, and the last stand at the dock.
+  ...leap('J', 20, 6.0, 13, 4.5), island(140, 'finish'),
 ];
 
 const gRoute = buildRouteFull(GAUNTLET_SEGS, { width: 6.5, spacing: 5, start: [0, 12, 0], heading: 0, closed: false });
@@ -97,8 +109,8 @@ const leapZones = (name: string, label: string) => [
 export const GAUNTLET_TRACK: TrackDefinition = {
   id: 'event-gauntlet',
   name: 'Gator Gauntlet',
-  subtitle: 'Island chain • time and clean jumps',
-  setPiece: 'Five leaps, four sets of jaws, no room to be wrong twice.',
+  subtitle: 'Island chain • ten leaps, a boss, five hearts',
+  setPiece: 'Ten leaps over the jaws, chests on every island, and Kilnbane waiting three times.',
   difficulty: 3,
   laps: 1,
   closed: false,
@@ -114,9 +126,16 @@ export const GAUNTLET_TRACK: TrackDefinition = {
     ...leapZones('B', 'Second Leap'),
     ...leapZones('C', 'Third Leap'),
     ...leapZones('D', 'Fourth Leap'),
-    ...leapZones('E', 'The Big One'),
+    ...leapZones('E', 'Fifth Leap'),
+    ...leapZones('F', 'Sixth Leap'),
+    ...leapZones('G', 'Seventh Leap'),
+    ...leapZones('H', 'Eighth Leap'),
+    ...leapZones('I', 'Ninth Leap'),
+    ...leapZones('J', 'The Big One'),
+    { ...span(GM.isleE, 0, 1), surface: 'dirt', wall: 'both', shoulder: 3, label: 'Kilnbane' },
+    { ...span(GM.isleH, 0, 1), surface: 'dirt', wall: 'both', shoulder: 3, label: 'Kilnbane' },
     { ...span(GM.start, 0, 1), surface: 'road', wall: 'both', shoulder: 2.5, label: 'Launch Dock' },
-    { ...span(GM.finish, 0, 1), surface: 'road', wall: 'both', shoulder: 3, label: 'Finish Dock' },
+    { ...span(GM.finish, 0, 1), surface: 'road', wall: 'both', shoulder: 3, label: 'Last Stand' },
   ],
   boostPads: [
     { s: at(GM.start, 0.60), lat: 0, len: 14, w: 5 },
@@ -124,19 +143,69 @@ export const GAUNTLET_TRACK: TrackDefinition = {
     { s: at(GM.isleB, 0.45), lat: 0, len: 12, w: 4.5 },
     { s: at(GM.isleC, 0.45), lat: 0, len: 12, w: 4.5 },
     { s: at(GM.isleD, 0.40), lat: 0, len: 14, w: 5 },
+    { s: at(GM.isleE, 0.30), lat: 0, len: 12, w: 5 },
+    { s: at(GM.isleF, 0.45), lat: 0, len: 12, w: 4.5 },
+    { s: at(GM.isleG, 0.45), lat: 0, len: 12, w: 4.5 },
+    { s: at(GM.isleH, 0.30), lat: 0, len: 12, w: 5 },
+    { s: at(GM.isleI, 0.40), lat: 0, len: 14, w: 5 },
+    { s: at(GM.finish, 0.15), lat: 0, len: 14, w: 5 },
   ],
   branches: [],
   hazards: [
+    // ---- chests on every island: the ammunition ---------------------------
+    { kind: 'chest', s: at(GM.start, 0.35), lat: -1.8 },
+    { kind: 'chest', s: at(GM.start, 0.35), lat: 1.8 },
+    { kind: 'chest', s: at(GM.isleA, 0.70), lat: 0 },
+    { kind: 'chest', s: at(GM.isleB, 0.70), lat: -1.5 },
+    { kind: 'chest', s: at(GM.isleC, 0.25), lat: 1.5 },
+    { kind: 'chest', s: at(GM.isleC, 0.70), lat: -1.5 },
+    { kind: 'chest', s: at(GM.isleD, 0.65), lat: 0 },
+    { kind: 'chest', s: at(GM.isleE, 0.12), lat: -1.8 },
+    { kind: 'chest', s: at(GM.isleE, 0.12), lat: 1.8 },
+    { kind: 'chest', s: at(GM.isleF, 0.70), lat: 0 },
+    { kind: 'chest', s: at(GM.isleG, 0.25), lat: -1.5 },
+    { kind: 'chest', s: at(GM.isleG, 0.70), lat: 1.5 },
+    { kind: 'chest', s: at(GM.isleH, 0.12), lat: -1.8 },
+    { kind: 'chest', s: at(GM.isleH, 0.12), lat: 1.8 },
+    { kind: 'chest', s: at(GM.isleI, 0.65), lat: 0 },
+    { kind: 'chest', s: at(GM.finish, 0.08), lat: -1.8 },
+    { kind: 'chest', s: at(GM.finish, 0.08), lat: 1.8 },
+    // ---- the gators: two or three sets of jaws in every gap ---------------
     { kind: 'gator', s: at(GM.gapA, 0.5), lat: -2.0, period: 2.6, phase: 0.0, reach: 3.4, scale: 1.0 },
+    { kind: 'gator', s: at(GM.gapA, 0.5), lat: 2.2, period: 2.6, phase: 0.5, reach: 3.2, scale: 0.9 },
     { kind: 'gator', s: at(GM.gapB, 0.45), lat: 1.8, period: 2.3, phase: 0.35, reach: 3.4, scale: 1.05 },
     { kind: 'gator', s: at(GM.gapB, 0.70), lat: -2.2, period: 3.0, phase: 0.6, reach: 3.4, scale: 1.0 },
     { kind: 'gator', s: at(GM.gapC, 0.5), lat: 0.0, period: 2.1, phase: 0.2, reach: 3.8, scale: 1.1 },
+    { kind: 'gator', s: at(GM.gapC, 0.8), lat: -2.6, period: 2.7, phase: 0.7, reach: 3.2, scale: 0.9 },
     { kind: 'gator', s: at(GM.gapD, 0.40), lat: -2.4, period: 2.5, phase: 0.5, reach: 3.8, scale: 1.05 },
     { kind: 'gator', s: at(GM.gapD, 0.72), lat: 2.4, period: 2.8, phase: 0.1, reach: 3.8, scale: 1.05 },
+    { kind: 'gator', s: at(GM.gapE, 0.5), lat: 0.0, period: 2.4, phase: 0.0, reach: 4.2, scale: 1.3 },
+    { kind: 'gator', s: at(GM.gapE, 0.8), lat: 2.8, period: 2.9, phase: 0.5, reach: 3.2, scale: 0.9 },
+    { kind: 'gator', s: at(GM.gapF, 0.45), lat: -2.0, period: 2.2, phase: 0.3, reach: 3.4, scale: 1.0 },
+    { kind: 'gator', s: at(GM.gapF, 0.75), lat: 2.0, period: 2.6, phase: 0.8, reach: 3.4, scale: 1.0 },
+    { kind: 'gator', s: at(GM.gapG, 0.3), lat: 2.4, period: 2.5, phase: 0.1, reach: 3.6, scale: 1.05 },
+    { kind: 'gator', s: at(GM.gapG, 0.55), lat: -2.4, period: 2.5, phase: 0.6, reach: 3.6, scale: 1.05 },
+    { kind: 'gator', s: at(GM.gapG, 0.8), lat: 0.5, period: 3.1, phase: 0.35, reach: 3.2, scale: 0.9 },
+    { kind: 'gator', s: at(GM.gapH, 0.5), lat: 0.0, period: 2.6, phase: 0.0, reach: 4.4, scale: 1.4 },
+    { kind: 'gator', s: at(GM.gapH, 0.8), lat: -2.8, period: 2.9, phase: 0.5, reach: 3.2, scale: 0.9 },
+    { kind: 'gator', s: at(GM.gapI, 0.4), lat: 2.2, period: 2.4, phase: 0.2, reach: 3.6, scale: 1.0 },
+    { kind: 'gator', s: at(GM.gapI, 0.7), lat: -2.2, period: 2.7, phase: 0.7, reach: 3.6, scale: 1.0 },
     // The big one at the end, twice the size and on a slow, obvious cycle.
-    { kind: 'gator', s: at(GM.gapE, 0.5), lat: 0.0, period: 3.4, phase: 0.0, reach: 5.5, scale: 2.0 },
+    { kind: 'gator', s: at(GM.gapJ, 0.5), lat: 0.0, period: 3.4, phase: 0.0, reach: 5.5, scale: 2.0 },
+    // ---- Kilnbane: three encounters, one health bar ----------------------
+    // The pot golem stands off the verge and hammers the road. A Moon Comet
+    // fired at it takes a bar off; six bars and it goes down. Reach the dock
+    // with any left and the run is lost.
+    { kind: 'boss', s: at(GM.isleE, 0.55), lat: -13, period: 5.0, phase: 0.0, slamLat: -1.5, reach: 2.8, style: 'kilnbane' },
+    { kind: 'boss', s: at(GM.isleH, 0.55), lat: 13, period: 4.6, phase: 0.4, slamLat: 1.5, reach: 2.8, style: 'kilnbane' },
+    { kind: 'boss', s: at(GM.finish, 0.55), lat: -13, period: 4.2, phase: 0.2, slamLat: -1.0, reach: 3.0, style: 'kilnbane' },
+    // ---- the rest of the menagerie ----------------------------------------
+    { kind: 'roller', s: at(GM.isleC, 0.50), lat: 0, period: 3.4, phase: 0.2, travel: 2.6, r: 1.5 },
+    { kind: 'roller', s: at(GM.isleG, 0.50), lat: 0, period: 3.0, phase: 0.6, travel: 2.6, r: 1.5 },
+    { kind: 'stack', s: at(GM.isleF, 0.40), lat: -2.2, w: 1.6, h: 1.3, len: 2.4, style: 'logs' },
+    { kind: 'stack', s: at(GM.isleI, 0.30), lat: 2.2, w: 1.6, h: 1.3, len: 2.4, style: 'logs' },
     { kind: 'bumper', s: at(GM.isleB, 0.75), lat: -3.4, r: 1.6 },
-    { kind: 'bumper', s: at(GM.isleC, 0.72), lat: 3.4, r: 1.6 },
+    { kind: 'bumper', s: at(GM.isleD, 0.80), lat: 3.4, r: 1.6 },
   ],
   theme: {
     sky: ['#6fbfe0', '#e8f0c0'],
@@ -389,17 +458,18 @@ export const BONUS_EVENTS: BonusEventDefinition[] = [
   {
     id: 'gauntlet',
     name: 'Gator Gauntlet',
-    tagline: 'Five leaps. Four sets of jaws. One clean run.',
+    tagline: 'Ten leaps. Twenty sets of jaws. One boss. Five hearts.',
     brief:
-      'Chain the jumps without a reset. Every gator runs a fixed cycle you can learn, and passing close to an open ' +
-      'set of jaws pays a near-miss bonus that comes straight off your time. A reset costs six seconds — far more ' +
-      'than waiting half a beat for the jaws to drop ever will.',
+      'A long island chain over the swamp with two or three gators in every gap, and Kilnbane the pot golem waiting on the wide islands. ' +
+      'You have five hearts: a bite, a slam, a boulder, a rival\'s comet costs one (a fall costs six seconds instead). Kilnbane has six bars, and only a Moon Comet fired at it takes one off — ' +
+      'so grab the chest on every island and fire at the golem while it is in range. Two rival Axies run the chain with you and will use their items too. ' +
+      'Reach the dock with the boss still standing and the run is lost; bring it down and your time is the score, minus near misses, plus six seconds a reset.',
     kind: 'gauntlet',
     track: GAUNTLET_TRACK,
     higherIsBetter: false,
     unit: 's',
-    medals: { bronze: 42, silver: 35, gold: 30 },
-    timeLimit: 120,
+    medals: { bronze: 120, silver: 100, gold: 85 },
+    timeLimit: 240,
     unlock: null,
   },
 ];

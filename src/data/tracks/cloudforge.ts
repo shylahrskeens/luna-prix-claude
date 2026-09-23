@@ -42,7 +42,13 @@ const SEGS: RouteSeg[] = [
   { t: 'turn', angle: -55, radius: 34, w: 10, mark: 'chicaneB' },
   { t: 'straight', len: 60, dy: 4, w: 12 },
   { t: 'turn', angle: 95, radius: 76, dy: -6, bank: 8, mark: 'dockSweeper' },
-  { t: 'straight', len: 100, w: 13, mark: 'dockStraight' },
+  // The crane hop: between two gantries at the start of the dock straight,
+  // with the whole straight to land on.
+  { t: 'straight', len: 14, dy: 4.0, w: 13, mark: 'craneRamp' },
+  { t: 'straight', len: 6, dy: 1.4, w: 13, mark: 'craneGapA' },
+  { t: 'straight', len: 8, dy: -4.8, w: 13, mark: 'craneGapB' },
+  { t: 'straight', len: 22, dy: -0.6, w: 13, mark: 'craneLanding' },
+  { t: 'straight', len: 90, w: 13, mark: 'dockStraight' },
   { t: 'turn', angle: -45, radius: 60, mark: 't9' },
   { t: 'straight', len: 25, dy: 2 },
   // The cranes: a right-left between the dock cranes.
@@ -80,7 +86,7 @@ export const CLOUDFORGE_SEGS = SEGS;
 export const CLOUDFORGE: TrackDefinition = {
   id: 'cloudforge',
   name: 'Arctic Skyway',
-  subtitle: 'Winterblue arctic sky • 1.7 km • 17 turns • 2 jumps',
+  subtitle: 'Winterblue arctic sky • 1.8 km • 17 turns • 3 jumps',
   setPiece: 'The hangar launch — over a moored airship and through a boost ring.',
   difficulty: 3,
   laps: 3,
@@ -108,6 +114,10 @@ export const CLOUDFORGE: TrackDefinition = {
     { ...span(M.gantryGapA, 0, 1), gap: true, wall: 'none', shoulder: 1.5, label: 'Gantry Hop' },
     { ...span(M.gantryGapB, 0, 1), gap: true, wall: 'none', shoulder: 1.5, label: 'Gantry Hop' },
     { ...span(M.gantryLanding, 0, 1), surface: 'metal', wall: 'both', shoulder: 1.2, label: 'Gantry Hop' },
+    { ...span(M.craneRamp, 0, 1), surface: 'metal', wall: 'both', shoulder: 1.2, label: 'Crane Hop' },
+    { ...span(M.craneGapA, 0, 1), gap: true, wall: 'none', shoulder: 1.5, label: 'Crane Hop' },
+    { ...span(M.craneGapB, 0, 1), gap: true, wall: 'none', shoulder: 1.5, label: 'Crane Hop' },
+    { ...span(M.craneLanding, 0, 1), surface: 'metal', wall: 'both', shoulder: 1.2, label: 'Crane Hop' },
     { ...span(M.forgeEssA, 0, 1), surface: 'road', wall: 'both', shoulder: 1.6, label: 'Forge Esses' },
     { ...span(M.forgeEssB, 0, 1), surface: 'road', wall: 'both', shoulder: 1.6, label: 'Forge Esses' },
     { ...span(M.cranesA, 0, 1), surface: 'metal', wall: 'both', shoulder: 1.2, label: 'The Cranes' },
@@ -126,6 +136,8 @@ export const CLOUDFORGE: TrackDefinition = {
     { s: at(M.corkscrew, 0.5), lat: 0, len: 12, w: 5 },
     { s: 0.3, lat: 0, len: 14, w: 5, branch: 'outer-rail' },
     { s: 0.7, lat: 0, len: 14, w: 5, branch: 'outer-rail' },
+    { s: at(M.t1, 0.85), lat: -3.5, len: 14, w: 5 },
+    { s: at(M.finalSweep, 0.5), lat: 0, len: 16, w: 6 },
   ],
   branches: [
     {
@@ -159,6 +171,11 @@ export const CLOUDFORGE: TrackDefinition = {
     { kind: 'chest', s: at(M.dockStraight, 0.15), lat: 0 },
     // A frost Kilnbane guards the dock straight from an ice floe.
     { kind: 'boss', s: at(M.dockStraight, 0.50), lat: 15, period: 6.0, phase: 0.5, slamLat: 2.5, reach: 2.6, style: 'kilnbane' },
+    // A second golem on the forge straight, working the other side.
+    { kind: 'boss', s: at(M.forgeStraight, 0.78), lat: -15, period: 5.6, phase: 0.1, slamLat: -2.5, reach: 2.6, style: 'kilnbane' },
+    { kind: 'stack', s: at(M.finalSweep, 0.35), lat: -4.5, w: 2.2, h: 1.5, len: 2.8, style: 'cargo' },
+    { kind: 'stack', s: at(M.finalSweep, 0.65), lat: 4.5, w: 2.2, h: 1.5, len: 2.8, style: 'cargo' },
+    { kind: 'roller', s: at(M.t1, 0.5), lat: 0, period: 4.0, phase: 0.6, travel: 6.5, r: 2.0 },
     // Cargo crates on the dock straight and between the cranes. Solid.
     { kind: 'stack', s: at(M.dockStraight, 0.30), lat: 4.6, w: 2.4, h: 1.6, len: 3.0, style: 'cargo' },
     { kind: 'stack', s: at(M.dockStraight, 0.62), lat: -4.6, w: 2.4, h: 1.6, len: 3.0, style: 'cargo' },

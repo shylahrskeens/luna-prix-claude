@@ -46,11 +46,13 @@ it to the floor. Bug takes the leader's boost away. Reptile goes four seconds
 where nothing can touch it. Mech runs a long flat overdrive. Rivals have theirs
 too, so the corner in front of you is never only about the corner.
 
-Three bonus events reuse the same kart and ask different questions. Mega Ramp
-is a long runway, five boost pads and one launch, with four hoops hanging down
-the flight path worth twelve metres each. Gator Gauntlet asks how clean you can
-keep a chain of five leaps. Luna Launch is a stunt yard with rings, obstacles
-and a target to land on.
+Two bonus events reuse the same kart and ask different questions. Luna Launch
+is a 220 m drop, a kicker and one very long flight over a cliff: twelve rings
+placed on the measured arc, four sweeping bullseyes, a painted landing zone with
+a moving target, and points for every metre flown. Gator Gauntlet is a boss
+battle: ten leaps over two or three gators each, a chest on every island, five
+hearts, two rival Axies, and Kilnbane the pot golem waiting three times with one
+health bar that only Moon Comets from the chests can take down.
 
 Everything is generated — models, tracks, effects, audio. There are no
 imported assets.
@@ -166,7 +168,7 @@ contributors.
 | 0:22–0:30 | The alternate-line sign, the vine bridge, rejoining ahead of two rivals. |
 | 0:30–0:38 | Ruin: the reactor spiral, then the bridge break with panels dropping. |
 | 0:38–0:46 | Cloudforge: out of the hangar, over the airship, through the ring, onto the banked bridge. |
-| 0:46–0:52 | Mega Ramp: three pads, the launch, a trick, the landing, the distance number. |
+| 0:46–0:52 | Luna Launch: the drop, the kicker, rings on the arc, a bullseye, the landing zone. |
 | 0:52–0:57 | Results: P1, rank movement, a track unlocking. |
 | 0:57–1:00 | Title card. |
 

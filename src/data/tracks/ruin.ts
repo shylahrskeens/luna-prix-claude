@@ -22,7 +22,15 @@ const SEGS: RouteSeg[] = [
   // you) need the sight line to brake for a tightening downhill left.
   { t: 'straight', len: 40 },
   { t: 'turn', angle: -80, radius: 40, dy: -6, w: 11, mark: 'gateTurn' },
-  { t: 'straight', len: 70, dy: -8, w: 10, mark: 'causeway' },
+  { t: 'straight', len: 26, dy: -1, w: 10, mark: 'causeway' },
+  // The fallen-column hop, in the middle of the causeway: a long, mild run
+  // on both sides, because bots (and people) land a jump flat out. Gator-pit
+  // proportions (ramp, a climbing first void segment that holds the tangent
+  // up, then the drop), each segment at least one node spacing long.
+  { t: 'straight', len: 16, dy: 5.0, w: 11, mark: 'columnRamp' },
+  { t: 'straight', len: 8, dy: 2.0, w: 11, mark: 'columnGapA' },
+  { t: 'straight', len: 10, dy: -6.0, w: 11, mark: 'columnGapB' },
+  { t: 'straight', len: 40, dy: -8.0, w: 10, mark: 'columnLanding' },
   { t: 'turn', angle: 50, radius: 45, mark: 't3' },
   { t: 'straight', len: 50, w: 11 },
   { t: 'turn', angle: -80, radius: 38, dy: -10, bank: 10, w: 10, mark: 'spiralA' },
@@ -81,7 +89,7 @@ export const RUIN_SEGS = SEGS;
 export const RUIN: TrackDefinition = {
   id: 'ruin',
   name: 'Mystic Ruins Rally',
-  subtitle: 'Hazymoon mystic ruins • 1.4 km • 20 turns • 2 jumps',
+  subtitle: 'Hazymoon mystic ruins • 1.5 km • 20 turns • 3 jumps',
   setPiece: 'The reactor spiral — thirty metres down into a timed bridge break.',
   difficulty: 4,
   laps: 3,
@@ -114,18 +122,24 @@ export const RUIN: TrackDefinition = {
     { ...span(M.altarRamp, 0, 1), surface: 'metal', wall: 'none', shoulder: 1.2, label: 'Altar Leap' },
     { ...span(M.altarGapA, 0, 1), gap: true, wall: 'none', shoulder: 1.0, label: 'Altar Leap' },
     { ...span(M.altarGapB, 0, 1), gap: true, wall: 'none', shoulder: 1.0, label: 'Altar Leap' },
+    { ...span(M.columnRamp, 0, 1), surface: 'road', wall: 'both', shoulder: 1.6, label: 'Column Hop' },
+    { ...span(M.columnGapA, 0, 1), gap: true, wall: 'none', shoulder: 2.0, label: 'Column Hop' },
+    { ...span(M.columnGapB, 0, 1), gap: true, wall: 'none', shoulder: 2.0, label: 'Column Hop' },
+    { ...span(M.columnLanding, 0, 1), surface: 'road', wall: 'both', shoulder: 1.6, label: 'Column Hop' },
     { ...span(M.altarLanding, 0, 1), surface: 'metal', wall: 'none', shoulder: 1.2, label: 'Altar Leap' },
     { ...span(M.powerSurge, 0, 1), surface: 'road', wall: 'both', shoulder: 3.0, label: 'Power Surge' },
     { ...span(M.gateTurn, 0, 1), surface: 'road', wall: 'both', shoulder: 2.0, label: 'Temple Descent' },
   ],
   boostPads: [
     { s: at(M.startStraight, 0.60), lat: 0, len: 12, w: 6 },
-    { s: at(M.causeway, 0.45), lat: 0, len: 14, w: 5 },
+    { s: at(M.causeway, 0.40), lat: 0, len: 12, w: 5 },
     { s: at(M.chamberExit, 0.55), lat: 0, len: 16, w: 6 },
     { s: at(M.bridgeApproach, 0.55), lat: 0, len: 14, w: 7 },
     { s: at(M.powerSurge, 0.30), lat: 0, len: 16, w: 7 },
     { s: at(M.powerSurge, 0.68), lat: 0, len: 16, w: 7 },
     { s: 0.5, lat: 0, len: 10, w: 5, branch: 'precision-tunnel' },
+    { s: at(M.t1, 0.8), lat: 3.0, len: 12, w: 5 },
+    { s: at(M.t5, 0.5), lat: 0, len: 12, w: 5 },
   ],
   branches: [
     {
@@ -156,9 +170,13 @@ export const RUIN: TrackDefinition = {
     { kind: 'chest', s: at(M.startStraight, 0.80), lat: -3.5 },
     { kind: 'chest', s: at(M.startStraight, 0.80), lat: 0 },
     { kind: 'chest', s: at(M.startStraight, 0.80), lat: 3.5 },
-    { kind: 'chest', s: at(M.chamberExit, 0.75), lat: 0 },
+    { kind: 'chest', s: at(M.chamberExit, 0.40), lat: 0 },
     // Kilnbane, the pot golem, holds the power-surge straight.
     { kind: 'boss', s: at(M.powerSurge, 0.62), lat: 15, period: 5.5, phase: 0.3, slamLat: 2.5, reach: 2.6, style: 'kilnbane' },
+    // The tree golem guards the climb out of the crypt.
+    { kind: 'boss', s: at(M.t7, 0.5), lat: -15, period: 6.2, phase: 0.6, slamLat: -2.5, reach: 2.6, style: 'ent' },
+    { kind: 'stack', s: at(M.cryptA, 0.5), lat: -4.6, w: 1.8, h: 1.5, len: 3.0, style: 'drums' },
+    { kind: 'roller', s: at(M.t5, 0.5), lat: 0, period: 3.6, phase: 0.2, travel: 5.5, r: 1.9 },
     // Fallen pillar drums along the edges of the surge straight. Solid: the
     // wide line through the last sector costs a moment of care.
     { kind: 'stack', s: at(M.powerSurge, 0.40), lat: 4.9, w: 1.8, h: 1.5, len: 3.0, style: 'drums' },
@@ -167,8 +185,10 @@ export const RUIN: TrackDefinition = {
     { kind: 'bumper', s: at(M.ruinEssB, 0.5), lat: 8.5, r: 2.0 },
     // Rotating temple gates. The opening sweeps across the road, so the line
     // through the gate is different every lap but never random.
-    { kind: 'gate', s: at(M.causeway, 0.55), lat: 0, period: 5.2, phase: 0.0, span: 7.5 },
-    { kind: 'gate', s: at(M.chamberExit, 0.28), lat: 0, period: 4.4, phase: 0.35, span: 7.5 },
+    { kind: 'gate', s: at(M.columnLanding, 0.70), lat: 0, period: 5.2, phase: 0.0, span: 7.5 },
+    // Well down the exit straight: bots line up for a gate 20 m early, and
+    // at the spiral's mouth that put them into the wall.
+    { kind: 'gate', s: at(M.chamberExit, 0.80), lat: 0, period: 4.4, phase: 0.35, span: 7.5 },
     // Collapsing bridge panels on a four-second cycle.
     { kind: 'panel', s: at(M.bridgeApproach, 0.55), lat: 0, period: 4.0, phase: 0.0, w: 10, len: 6 },
     { kind: 'panel', s: at(M.brokenBridge, 0.45), lat: 0, period: 4.0, phase: 0.5, w: 10, len: 6 },

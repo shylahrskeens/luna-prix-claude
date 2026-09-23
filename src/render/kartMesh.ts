@@ -536,6 +536,87 @@ export function buildKart(
     }
   }
 
+  // ---- the detail pass ------------------------------------------------------
+  // Small parts every body gets, so a kart read up close has the fine detail
+  // a toy has: bolts along the panels, brake discs and callipers behind the
+  // wheels, a tow hook, a whip antenna with a pennant, a brake-light strip,
+  // and a class badge. Then a few per body below.
+  {
+    const bolt = new THREE.SphereGeometry(0.018, 6, 5);
+    const boltMat = chrome;
+    const boltRow = (x: number, y: number, z0: number, z1: number, n: number) => {
+      for (let i = 0; i < n; i++) put(new THREE.Mesh(bolt, boltMat), x, y, z0 + ((z1 - z0) * i) / Math.max(1, n - 1));
+    };
+    if (def.body === 'kart') {
+      for (const side of [-1, 1] as const) boltRow(side * width * 0.53, height * 0.50, -length * 0.20, length * 0.20, 5);
+      boltRow(0, height * 0.76, -length * 0.44, -length * 0.30, 3);
+    } else if (def.body === 'hover') {
+      for (const side of [-1, 1] as const) boltRow(side * width * 0.39, height * 0.72, -length * 0.30, length * 0.30, 6);
+    } else if (def.body === 'sled') {
+      for (const side of [-1, 1] as const) boltRow(side * width * 0.23, height * 0.74, -length * 0.30, length * 0.30, 6);
+    } else {
+      for (const side of [-1, 1] as const) boltRow(side * width * 0.19, height * 0.50, -length * 0.20, length * 0.20, 4);
+    }
+    // Brake discs and callipers inside every spinning wheel.
+    for (const wh of wheels) {
+      if (!(wh.mesh.geometry instanceof THREE.CylinderGeometry)) continue;
+      const r = (wh.mesh.geometry.parameters.radiusTop as number) * 0.62;
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.02, 16), chrome);
+      disc.rotation.z = Math.PI / 2;
+      wh.holder.add(disc);
+      const cal = new THREE.Mesh(new THREE.BoxGeometry(0.05, r * 0.5, r * 0.28), mats.toon('#d14a3a'));
+      cal.position.set(0, r * 0.55, r * 0.4);
+      wh.holder.add(cal);
+    }
+    // Tow hook at the back, antenna with a pennant, brake-light strip.
+    put(new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 6, 12), chrome), 0, height * 0.30, -length * 0.50).rotation.y = Math.PI / 2;
+    const mast = put(cyl(0.008, 0.008, height * 0.9, 4, dark), -width * 0.30, height * 1.20, -length * 0.36);
+    mast.rotation.x = 0.12;
+    const pennant = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.09), mats.glow(trimColor, 1));
+    (pennant.material as THREE.Material).side = THREE.DoubleSide;
+    put(pennant, -width * 0.30 + 0.08, height * 1.62, -length * 0.38);
+    put(rbox(width * 0.40, 0.025, 0.02, 0.01, mats.glow('#ff3b3b')), 0, height * 0.66, -length * 0.50);
+    // Class badge: a little enamel disc on the nose in the trim colour.
+    put(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.015, 12), trimPaint), 0, height * 0.62, length * 0.44).rotation.x = Math.PI / 2 - 0.5;
+    // Per body: the parts that make the silhouette its own.
+    if (def.body === 'bike') {
+      // Chain and rear sprocket, foot pegs, a brake disc on the front fork.
+      const wr = wheelRadius * 1.25;
+      put(new THREE.Mesh(new THREE.TorusGeometry(wr * 0.42, 0.02, 6, 20), dark), width * 0.10, wr, -wheelbase * 0.5).rotation.y = Math.PI / 2;
+      put(rbox(0.02, wr * 0.10, wheelbase * 0.62, 0.005, dark), width * 0.10, wr * 1.2, -wheelbase * 0.2);
+      put(rbox(0.02, wr * 0.10, wheelbase * 0.62, 0.005, dark), width * 0.10, wr * 0.75, -wheelbase * 0.2);
+      for (const side of [-1, 1] as const) put(cyl(0.02, 0.02, 0.16, 6, chrome), side * width * 0.20, height * 0.36, -length * 0.05).rotation.z = Math.PI / 2;
+      for (const side of [-1, 1] as const) { const m = put(cyl(0.010, 0.010, 0.14, 5, chrome), side * width * 0.24, height * 1.10, wheelbase * 0.5 - 0.26); m.rotation.z = side * 0.6; put(rbox(0.07, 0.045, 0.02, 0.01, dark), side * width * 0.30, height * 1.16, wheelbase * 0.5 - 0.26); }
+    } else if (def.body === 'quad') {
+      // A winch on the front rack, a spare tyre and a jerry can on the back.
+      put(cyl(0.06, 0.06, width * 0.22, 8, dark), 0, height * 0.66, length * 0.40).rotation.z = Math.PI / 2;
+      put(new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.01, 5, 10), chrome), 0, height * 0.60, length * 0.50).rotation.x = Math.PI / 2;
+      const spare = new THREE.Mesh(new THREE.TorusGeometry(wheelRadius * 0.62, wheelRadius * 0.30, 8, 14), tyreMat);
+      spare.rotation.x = Math.PI / 2; put(spare, -width * 0.12, height * 0.66 + wheelRadius * 0.30, -length * 0.40);
+      put(rbox(0.16, 0.22, 0.10, 0.02, mats.toon('#d14a3a')), width * 0.16, height * 0.76, -length * 0.40);
+      // A snorkel up the side of the engine.
+      put(cyl(0.025, 0.025, height * 0.6, 6, dark), width * 0.25, height * 0.86, length * 0.02);
+    } else if (def.body === 'sled') {
+      // Grab rails, a stowed pack behind the seat, ski runner blades.
+      for (const side of [-1, 1] as const) put(cyl(0.015, 0.015, length * 0.30, 6, chrome), side * width * 0.24, height * 0.80, -length * 0.22).rotation.x = Math.PI / 2;
+      put(rbox(width * 0.26, 0.16, 0.18, 0.05, mats.toon('#6b4e2e')), 0, height * 0.86, -length * 0.40);
+      put(rbox(width * 0.20, 0.03, 0.03, 0.01, trimPaint), 0, height * 0.95, -length * 0.40);
+      for (const sx of [-1, 1] as const) put(rbox(0.03, 0.03, 0.9, 0.005, dark), sx * width * 0.42, 0.02, wheelbase * 0.5);
+    } else if (def.body === 'hover') {
+      // Landing skids under the hull and vent louvres on the spine.
+      for (const side of [-1, 1] as const) {
+        put(rbox(0.05, 0.03, length * 0.34, 0.01, dark), side * width * 0.24, height * 0.02, 0);
+        for (const sz of [-1, 1] as const) put(cyl(0.02, 0.02, height * 0.14, 5, dark), side * width * 0.24, height * 0.10, sz * length * 0.14);
+      }
+      for (let i = 0; i < 4; i++) put(rbox(width * 0.30, 0.012, 0.03, 0.005, dark), 0, height * 0.715, -length * 0.06 - i * 0.07);
+    } else {
+      // The kart: a roll hoop behind the seat and a fire extinguisher on the sill.
+      const hoop = new THREE.Mesh(new THREE.TorusGeometry(width * 0.22, 0.03, 6, 14, Math.PI), chrome);
+      hoop.rotation.y = Math.PI / 2; put(hoop, 0, height * 0.98, -length * 0.27);
+      put(cyl(0.035, 0.035, 0.22, 8, mats.toon('#d14a3a')), width * 0.30, height * 0.30, length * 0.05).rotation.x = Math.PI / 2;
+    }
+  }
+
   // ---- sockets ------------------------------------------------------------
   const sockets = {
     seat: socket(chassis, def.sockets.seat),

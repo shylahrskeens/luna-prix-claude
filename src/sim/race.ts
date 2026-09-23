@@ -135,7 +135,8 @@ export interface Comet {
 export interface RaceEvent {
   kind: 'lap' | 'finish' | 'overtake' | 'checkpoint' | 'countdown' | 'go' | 'lastLap' | 'integrity' | 'special' | 'chest'
     | 'item'      // value 0 = picked up, 1 = used; text = the item kind
-    | 'itemHit';  // racerId = who was hit; text = who fired
+    | 'itemHit'   // racerId = who was hit; text = who fired
+    | 'bossHit';  // racerId = who fired; value = hazard index of the boss
   racerId: string;
   value: number;
   text?: string;
@@ -823,10 +824,31 @@ export class RaceCore {
         const d = Math.hypot(dx, dz);
         if (d < bestD && dx * c.dirX + dz * c.dirZ > 0) { best = o; bestD = d; }
       }
-      if (best) {
+      // A boss beside the road is a target too: the comet bends toward its
+      // feet (the figure stands a few metres off the verge) once it is close.
+      let bossIdx = -1, bossX = 0, bossZ = 0, bossD = COMET_HOMING_RANGE;
+      for (let i = 0; i < this.hazards.length; i++) {
+        const h = this.hazards[i];
+        if (h.def.kind !== 'boss') continue;
+        const side = Math.sign(h.def.lat) || 1;
+        const fx = h.anchor.x - h.right.x * side * 6, fz = h.anchor.z - h.right.z * side * 6;
+        const dx = fx - c.x, dz = fz - c.z;
+        const d = Math.hypot(dx, dz);
+        if (d < bossD && dx * c.dirX + dz * c.dirZ > -2) { bossIdx = i; bossX = fx; bossZ = fz; bossD = d; }
+      }
+      if (best && (bossIdx < 0 || Math.hypot(best.kart.pos.x - c.x, best.kart.pos.z - c.z) < bossD)) {
         const dx = best.kart.pos.x - c.x, dz = best.kart.pos.z - c.z;
         const d = Math.hypot(dx, dz) || 1;
         tx = tx * 0.55 + (dx / d) * 0.45; tz = tz * 0.55 + (dz / d) * 0.45;
+      } else if (bossIdx >= 0) {
+        const dx = bossX - c.x, dz = bossZ - c.z;
+        const d = Math.hypot(dx, dz) || 1;
+        tx = tx * 0.4 + (dx / d) * 0.6; tz = tz * 0.4 + (dz / d) * 0.6;
+        if (d < 4.5) {
+          this.events.push({ kind: 'bossHit', racerId: c.ownerId, value: bossIdx });
+          c.dead = true;
+          continue;
+        }
       }
       const tl = Math.hypot(tx, tz) || 1;
       c.dirX = c.dirX * 0.7 + (tx / tl) * 0.3; c.dirZ = c.dirZ * 0.7 + (tz / tl) * 0.3;
@@ -834,7 +856,7 @@ export class RaceCore {
       c.x += c.dirX * COMET_SPEED * dt;
       c.z += c.dirZ * COMET_SPEED * dt;
       c.y = (g.gap ? c.y : g.height) + 0.6;
-      if (g.outOfBounds) { c.dead = true; continue; }
+      if (g.outOfBounds && bossIdx < 0) { c.dead = true; continue; }
       // Contact.
       for (const o of this.racers) {
         if (o.id === c.ownerId || o.kart.mode !== 'driving') continue;

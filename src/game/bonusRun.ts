@@ -59,6 +59,14 @@ export class BonusRun {
   private stackPoints = 0;
   private hitStack = false;
   private touchdownS = -1;
+
+  // --- boss gauntlet state ---
+  /** Player hearts; a bite, a slam, a boulder or a fall costs one. */
+  private hearts = 5;
+  private hurtCooldown = 0;
+  private bossHp = 6;
+  private bossHits = 0;
+  private itemsUsed = 0;
   private targetPoints = 0;
   private targetRingName = 'missed';
 
@@ -89,8 +97,32 @@ export class BonusRun {
       if (e.kind === 'hardLand') this.landingQuality = Math.min(this.landingQuality, 1 - 0.34 * clamp01(e.value));
       if (e.kind === 'hazardHit' && e.value >= 1) this.hitStack = true;
     } else {
-      if (e.kind === 'respawnStart') this.resets++;
+      if (e.kind === 'respawnStart') this.resets++;   // a fall costs time, not a heart
+      if (e.kind === 'hazardHit' && e.value >= 0.5) this.hurt('hit');
     }
+  }
+
+  /** Race-level events the boss battle listens for. */
+  onRaceEvent(e: { kind: string; racerId: string; value: number; text?: string }): void {
+    if (this.def.kind !== 'gauntlet') return;
+    const me = this.view.player;
+    if (e.kind === 'bossHit' && e.racerId === me.id && this.bossHp > 0) {
+      this.bossHp--;
+      this.bossHits++;
+    }
+    if (e.kind === 'item' && e.racerId === me.id && e.value === 1) this.itemsUsed++;
+    if (e.kind === 'itemHit' && e.racerId === me.id) this.hurt('comet');
+  }
+
+  private hurt(_why: string): void {
+    if (this.hurtCooldown > 0 || this.phase === 'scored' || this.phase === 'failed') return;
+    this.hearts = Math.max(0, this.hearts - 1);
+    this.hurtCooldown = 1.4;
+  }
+
+  /** The boss's health bar and the player's hearts, for the HUD. */
+  get battle(): { hearts: number; bossHp: number; bossMax: number } | null {
+    return this.def.kind === 'gauntlet' ? { hearts: this.hearts, bossHp: this.bossHp, bossMax: 6 } : null;
   }
 
   update(dt: number): void {
@@ -110,9 +142,15 @@ export class BonusRun {
     {
       this.phase = 'run';
       const t = Math.max(0, core.time);
+      this.hurtCooldown = Math.max(0, this.hurtCooldown - dt);
+      const hearts = '♥'.repeat(this.hearts) + '♡'.repeat(5 - this.hearts);
+      const bossBar = '█'.repeat(this.bossHp) + '░'.repeat(6 - this.bossHp);
       this.live.primary = `${t.toFixed(2)} s`;
-      this.live.secondary = `${this.gapsCleared}/${track.gaps.length} leaps · ${this.resets} resets`;
-      this.live.hint = this.nearMiss > 0 ? `-${this.nearMiss.toFixed(1)}s near miss` : 'Learn the bite cycles';
+      this.live.secondary = `${hearts} · KILNBANE ${bossBar} · ${this.gapsCleared}/${track.gaps.length} leaps`;
+      this.live.hint = this.bossHp <= 0 ? 'BOSS DOWN — RUN FOR THE DOCK'
+        : player.item ? `FIRE THE ${player.item === 'comet' ? 'COMET AT THE BOSS' : player.item.toUpperCase()}`
+        : this.nearMiss > 0 ? `-${this.nearMiss.toFixed(1)}s near miss` : 'Grab chests — comets hurt the boss';
+      if (this.hearts <= 0) { this.fail('Out of hearts. The gauntlet wins this one.'); return; }
 
       // Near misses: close to an open set of jaws without being bitten.
       const kx = k.pos.x, kz = k.pos.z;
@@ -340,6 +378,10 @@ export class BonusRun {
   }
 
   private finishGauntlet(time: number): void {
+    if (this.bossHp > 0) {
+      this.fail(`Reached the dock with Kilnbane still standing (${this.bossHp}/6). Comets from the chests bring it down.`);
+      return;
+    }
     const penalty = this.resets * 6;
     const bonus = Math.min(6, this.nearMiss);
     const score = Math.max(0, time + penalty - bonus);
@@ -350,6 +392,8 @@ export class BonusRun {
       medal: medalFor(this.def, score),
       lines: [
         { label: 'Raw time', value: `${time.toFixed(2)} s` },
+        { label: 'Kilnbane', value: `Down — ${this.bossHits} comet hits, ${this.itemsUsed} items used`, good: true },
+        { label: 'Hearts left', value: `${this.hearts}/5`, good: this.hearts === 5 },
         { label: 'Leaps cleared', value: `${this.gapsCleared}/${this.view.track.gaps.length}`, good: this.gapsCleared >= this.view.track.gaps.length },
         { label: 'Resets', value: this.resets > 0 ? `${this.resets} (+${penalty.toFixed(0)} s)` : 'None', good: this.resets === 0 },
         { label: 'Near misses', value: bonus > 0 ? `-${bonus.toFixed(1)} s` : 'None', good: bonus > 0 },

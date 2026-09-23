@@ -88,6 +88,8 @@ export const SAVANNAH: TrackDefinition = {
     { s: at(M.plain, 0.30), lat: -3.5, len: 14, w: 5 },
     { s: at(M.plain, 0.70), lat: 3.5, len: 14, w: 5 },
     { s: at(M.finalArc, 0.5), lat: 0, len: 12, w: 6 },
+    { s: at(M.t1, 0.85), lat: -3.0, len: 12, w: 5 },
+    { s: at(M.baobabBend, 0.9), lat: 0, len: 12, w: 5 },
   ],
   branches: [
     {
@@ -117,6 +119,10 @@ export const SAVANNAH: TrackDefinition = {
     { kind: 'stack', s: at(M.canyonA, 0.55), lat: -2.0, w: 1.8, h: 1.5, len: 2.6, style: 'boulders' },
     { kind: 'stack', s: at(M.canyonB, 0.55), lat: 2.0, w: 1.8, h: 1.5, len: 2.6, style: 'boulders' },
     { kind: 'roller', s: at(M.plain, 0.50), lat: 0, period: 4.0, phase: 0.3, travel: 6.0, r: 2.0 },
+    // A second Chimera on the final arc, and boulders on the exit of the dune.
+    { kind: 'boss', s: at(M.finalArc, 0.5), lat: 16, period: 6.0, phase: 0.5, slamLat: 2.5, reach: 2.8, style: 'chimera' },
+    { kind: 'stack', s: at(M.duneB, 0.8), lat: 4.5, w: 1.8, h: 1.4, len: 2.6, style: 'boulders' },
+    { kind: 'stack', s: at(M.finalArc, 0.2), lat: -4.5, w: 1.8, h: 1.4, len: 2.6, style: 'boulders' },
   ],
   theme: {
     // Goldenwind, the savannah: gold grass, ochre rock, a big warm sky.

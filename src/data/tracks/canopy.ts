@@ -49,7 +49,11 @@ const SEGS: RouteSeg[] = [
   { t: 'straight', len: 20 },
   { t: 'turn', angle: -45, radius: 28, w: 10, mark: 'chicaneA' },
   { t: 'turn', angle: 45, radius: 28, w: 10, mark: 'chicaneB' },
-  { t: 'straight', len: 45, w: 12 },
+  // The fern hop: a second, smaller jump before the long right.
+  { t: 'straight', len: 16, dy: 4.5, w: 12, mark: 'fernRamp' },
+  { t: 'straight', len: 6, dy: 1.6, w: 12, mark: 'fernGapA' },
+  { t: 'straight', len: 8, dy: -4.8, w: 12, mark: 'fernGapB' },
+  { t: 'straight', len: 24, dy: -1.3, w: 12, mark: 'fernLanding' },
   { t: 'turn', angle: 70, radius: 66, dy: -9, mark: 'longRight' },
   { t: 'straight', len: 130, dy: -5, w: 11, mark: 'rootTunnel' },
   { t: 'turn', angle: -40, radius: 55, dy: 4 },
@@ -88,7 +92,7 @@ export const CANOPY_SEGS = SEGS;
 export const CANOPY: TrackDefinition = {
   id: 'canopy',
   name: 'Forest Canopy Run',
-  subtitle: 'Evergreen forest • 1.5 km • 18 turns • 2 jumps',
+  subtitle: 'Evergreen forest • 1.5 km • 18 turns • 3 jumps',
   setPiece: 'The gator pit — a 30 metre leap over open water and moving jaws.',
   difficulty: 2,
   laps: 3,
@@ -107,6 +111,10 @@ export const CANOPY: TrackDefinition = {
     { ...span(M.logRamp, 0, 1), surface: 'dirt', wall: 'none', shoulder: 4.0, label: 'Log Jump' },
     { ...span(M.logGapA, 0, 1), gap: true, wall: 'none', shoulder: 4.0, label: 'Log Jump' },
     { ...span(M.logGapB, 0, 1), gap: true, wall: 'none', shoulder: 4.0, label: 'Log Jump' },
+    { ...span(M.fernRamp, 0, 1), surface: 'road', wall: 'both', shoulder: 2.0, label: 'Fern Hop' },
+    { ...span(M.fernGapA, 0, 1), gap: true, wall: 'none', shoulder: 4.0, label: 'Fern Hop' },
+    { ...span(M.fernGapB, 0, 1), gap: true, wall: 'none', shoulder: 4.0, label: 'Fern Hop' },
+    { ...span(M.fernLanding, 0, 1), surface: 'road', wall: 'both', shoulder: 2.0, label: 'Fern Hop' },
     { ...span(M.logLanding, 0, 1), surface: 'dirt', wall: 'none', shoulder: 4.0, label: 'Log Jump' },
     { ...span(M.gatorApproach, 0, 1), surface: 'road', wall: 'none', shoulder: 6.0, label: 'Gator Pit' },
     { ...span(M.gatorRamp, 0, 1), surface: 'road', wall: 'none', shoulder: 3.0, label: 'Gator Pit' },
@@ -132,6 +140,8 @@ export const CANOPY: TrackDefinition = {
     { s: at(M.rootTunnel, 0.35), lat: 0, len: 14, w: 6 },
     { s: at(M.rootTunnel, 0.78), lat: 0, len: 14, w: 6 },
     { s: at(M.t6, 0.5), lat: 3.0, len: 12, w: 5 },
+    { s: at(M.hairpin, 0.85), lat: -2.5, len: 12, w: 5 },
+    { s: at(M.finalSweep, 0.45), lat: 0, len: 14, w: 6 },
   ],
   branches: [
     {
@@ -166,6 +176,13 @@ export const CANOPY: TrackDefinition = {
     { kind: 'chest', s: at(M.rootTunnel, 0.55), lat: 0 },
     // The tree golem stands over the long right and slams the inside line.
     { kind: 'boss', s: at(M.longRight, 0.5), lat: -16, period: 6.0, phase: 0.1, slamLat: -2.5, reach: 2.6, style: 'ent' },
+    // A second encounter: the Chimera has wandered into the forest and
+    // works the final sweep from the outside.
+    { kind: 'boss', s: at(M.finalSweep, 0.55), lat: 15, period: 6.5, phase: 0.5, slamLat: 2.5, reach: 2.8, style: 'chimera' },
+    // A gator under the fern hop, and log piles on the exit of the esses.
+    { kind: 'gator', s: at(M.fernGapB, 0.4), lat: 0, period: 3.0, phase: 0.2, reach: 3.2, scale: 1.4 },
+    { kind: 'stack', s: at(M.t3, 0.5), lat: 4.6, w: 2.2, h: 1.5, len: 3.0, style: 'logs' },
+    { kind: 'roller', s: at(M.finalSweep, 0.20), lat: 0, period: 3.8, phase: 0.4, travel: 6.0, r: 2.0 },
     // Log piles on the outside of the double, and one on the inside of the
     // second corner so the lazy line clips it. Solid.
     { kind: 'stack', s: at(M.doubleA, 0.55), lat: -4.8, w: 2.2, h: 1.5, len: 3.2, style: 'logs' },

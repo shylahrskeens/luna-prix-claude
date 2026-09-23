@@ -91,7 +91,12 @@ export function buildRouteFull(segs: RouteSeg[], opts: RouteOptions): BuiltRoute
 
   /** Running arc length, used to turn segment boundaries into lap fractions. */
   let dist = 0;
-  const bounds: { mark?: string; from: number; to: number }[] = [];
+  //  Segment boundaries are recorded as control-point INDICES, not polyline
+  //  distances: a six-metre gap segment is a single node, and mapping a
+  //  distance back to a node by proportion (round(d / total * n)) was off by
+  //  a node on hilly tracks — which put the lip of a jump inside its own hole
+  //  and made the validator read a climbing ramp as a descent.
+  const bounds: { mark?: string; from: number; to: number; fromIdx: number; toIdx: number }[] = [];
   const push = () => pts.push([x, y, z, width, bank]);
   push();
 
@@ -99,6 +104,7 @@ export function buildRouteFull(segs: RouteSeg[], opts: RouteOptions): BuiltRoute
     if (seg.w !== undefined) width = seg.w;
     const segBank = seg.bank ?? 0;
     const startDist = dist;
+    const startIdx = pts.length - 1;
     if (seg.t === 'straight') {
       const steps = Math.max(1, Math.round(seg.len / spacing));
       const step = seg.len / steps;
@@ -131,7 +137,7 @@ export function buildRouteFull(segs: RouteSeg[], opts: RouteOptions): BuiltRoute
         push();
       }
     }
-    bounds.push({ mark: seg.mark, from: startDist, to: dist });
+    bounds.push({ mark: seg.mark, from: startDist, to: dist, fromIdx: startIdx, toIdx: pts.length - 1 });
   }
 
   if (closed) {
@@ -164,25 +170,19 @@ export function buildRouteFull(segs: RouteSeg[], opts: RouteOptions): BuiltRoute
   }));
   const spline = new Spline(sn, closed);
   const splineLength = spline.length;
-  const total = dist || 1;
+  void dist;
 
-  // Control-point index at a given polyline distance. `bounds` were recorded
-  // in the same order the points were pushed, one push per step.
-  const idxForDist = (d: number): number => {
-    const approx = Math.round((d / total) * (pts.length - 1));
-    return Math.max(0, Math.min(pts.length - 1, approx));
-  };
-  const uAt = (d: number): number => {
-    const i = idxForDist(d);
-    const p = pts[i];
+  // Project the exact control point at each segment boundary onto the spline.
+  const uAt = (i: number): number => {
+    const p = pts[Math.max(0, Math.min(pts.length - 1, i))];
     return spline.project(v3(p[0], p[1], p[2])).s / splineLength;
   };
 
   const marks: RouteMarks = {};
   for (const b of bounds) {
     if (!b.mark) continue;
-    const from = uAt(b.from);
-    let to = uAt(b.to);
+    const from = uAt(b.fromIdx);
+    let to = uAt(b.toIdx);
     if (to < from) to += 1; // the segment wraps the start line
     marks[b.mark] = { from, to, mid: (from + to) / 2 };
   }
