@@ -31,6 +31,14 @@ import type { Profile } from '../persist/store';
 import type { InputManager } from '../ui/input';
 
 const STEP = 1 / 120;
+
+interface KartPose { x: number; y: number; z: number; yaw: number; pitch: number; roll: number }
+const lerpAngle = (a: number, b: number, t: number) => {
+  let d = (b - a) % (Math.PI * 2);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  return a + d * t;
+};
 /** Extra simulation steps per frame once the player is done, so the field
  *  finishes for real in about a second of wall time instead of being guessed. */
 const FINISH_FAST_FORWARD = 24;
@@ -77,6 +85,12 @@ export class RaceView {
   private speedLines: SpeedLines;
   private camera = new ChaseCamera();
   private accumulator = 0;
+  /** Each kart's pose before the most recent sim step. The renderer blends
+   *  from here to the live pose by the accumulator's remainder, so a 120 Hz
+   *  sim drawn at any display rate moves smoothly instead of aliasing by up
+   *  to a whole step (a third of a metre at speed) from frame to frame. */
+  private prevPose = new Map<string, KartPose>();
+  private viewPose = new Map<string, KartPose>();
   private inputs = new Map<string, KartInput>();
   private shake = 0;
   private lastInput: KartInput = { ...NEUTRAL_INPUT };
@@ -247,6 +261,7 @@ export class RaceView {
       this.accumulator += dt;
       let steps = 0;
       while (this.accumulator >= STEP && steps < 12) {
+        this.snapshotPoses();
         this.simulate(STEP);
         this.accumulator -= STEP;
         steps++;
@@ -257,6 +272,37 @@ export class RaceView {
     }
 
     this.render(dt);
+  }
+
+  private snapshotPoses(): void {
+    for (const r of this.core.racers) {
+      const k = r.kart;
+      let p = this.prevPose.get(r.id);
+      if (!p) { p = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0 }; this.prevPose.set(r.id, p); }
+      p.x = k.pos.x; p.y = k.pos.y; p.z = k.pos.z; p.yaw = k.yaw; p.pitch = k.pitch; p.roll = k.roll;
+    }
+  }
+
+  /** The pose to draw this frame: the previous and current sim poses blended
+   *  by how far into the next step the frame clock has run. A jump of more
+   *  than a few metres is a respawn, not motion, and is not blended. */
+  private view(r: Racer): KartPose {
+    const k = r.kart;
+    let v = this.viewPose.get(r.id);
+    if (!v) { v = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0 }; this.viewPose.set(r.id, v); }
+    const p = this.prevPose.get(r.id);
+    const a = this.paused || !p ? 1 : clamp01(this.accumulator / STEP);
+    if (!p || a >= 1 || Math.hypot(k.pos.x - p.x, k.pos.z - p.z) > 6) {
+      v.x = k.pos.x; v.y = k.pos.y; v.z = k.pos.z; v.yaw = k.yaw; v.pitch = k.pitch; v.roll = k.roll;
+      return v;
+    }
+    v.x = p.x + (k.pos.x - p.x) * a;
+    v.y = p.y + (k.pos.y - p.y) * a;
+    v.z = p.z + (k.pos.z - p.z) * a;
+    v.yaw = lerpAngle(p.yaw, k.yaw, a);
+    v.pitch = lerpAngle(p.pitch, k.pitch, a);
+    v.roll = lerpAngle(p.roll, k.roll, a);
+    return v;
   }
 
   private simulate(dt: number): void {
@@ -502,11 +548,12 @@ export class RaceView {
       const mood = k.mode === 'finished'
         ? (r.progress.position <= 3 ? 'win' : 'lose')
         : 'race';
+      const v = this.view(r);
 
       updateKart(rig, {
         dt,
-        x: k.pos.x, y: k.pos.y, z: k.pos.z,
-        yaw: k.yaw, pitch: k.pitch, roll: k.roll,
+        x: v.x, y: v.y, z: v.z,
+        yaw: v.yaw, pitch: v.pitch, roll: v.roll,
         groundY: r.ground.height,
         speed: k.speed,
         topSpeed: k.h.topSpeed,
@@ -528,9 +575,10 @@ export class RaceView {
 
     // ---- camera -----------------------------------------------------------
     this.shake = Math.max(0, this.shake - dt * 2.4);
+    const pv = this.view(player);
     this.camera.update(this.ctx.camera, {
       dt,
-      x: pk.pos.x, y: pk.pos.y, z: pk.pos.z, yaw: pk.yaw,
+      x: pv.x, y: pv.y, z: pv.z, yaw: pv.yaw,
       speed: pk.speed, topSpeed: pk.h.topSpeed,
       boosting: pk.boosting, drifting: pk.drifting, driftDir: pk.driftDir,
       grounded: pk.grounded, airTime: pk.airTime,
