@@ -91,6 +91,43 @@ export class RaceView {
   private particles: ParticleSystem;
   private speedLines: SpeedLines;
   private camera = new ChaseCamera();
+  /** Chests that have been broken open: hazard index → race time they return. */
+  private chestHidden = new Map<number, number>();
+
+  /** A chest breaks when it is taken: it bursts into sparks and wood chips
+   *  and is gone for a few seconds, so there is no doubt you got it. The sim
+   *  keeps handing items out on its own per-kart cooldown; this is the look. */
+  private breakChest(racerId: string): void {
+    const core = this.core;
+    const r = core.racers.find((x) => x.id === racerId);
+    if (!r) return;
+    let best = -1, bestD = 6;
+    for (let i = 0; i < core.hazards.length; i++) {
+      const h = core.hazards[i];
+      if (h.def.kind !== 'chest') continue;
+      const d = Math.hypot(h.pos.x - r.kart.pos.x, h.pos.z - r.kart.pos.z);
+      if (d < bestD) { best = i; bestD = d; }
+    }
+    if (best < 0) return;
+    const h = core.hazards[best];
+    const node = this.hazardVis.nodes[best];
+    if (node) node.root.visible = false;
+    this.chestHidden.set(best, core.time + 4.0);
+    this.particles.emit({
+      x: h.pos.x, y: h.pos.y + 0.4, z: h.pos.z,
+      color: '#ffd166', count: 26, speed: 5.5, life: 0.6, size: 0.30, spread: 1.6, gravity: -6, grow: 1.3,
+    });
+    this.particles.emit({
+      x: h.pos.x, y: h.pos.y + 0.3, z: h.pos.z,
+      color: '#8a5a2b', count: 16, speed: 4.2, life: 0.7, size: 0.22, spread: 1.4, gravity: -9,
+    });
+    this.particles.emit({
+      x: h.pos.x, y: h.pos.y + 0.8, z: h.pos.z,
+      color: '#ffffff', count: 10, speed: 2.0, life: 0.35, size: 0.4, spread: 0.8, grow: 2.0,
+    });
+    if (r.isPlayer) this.shake = Math.max(this.shake, 0.25);
+  }
+
   /** One glowing ball per live Moon Comet, keyed by the sim's comet id. */
   private cometMeshes = new Map<number, THREE.Mesh>();
   /** Scratch ground query for the camera. */
@@ -372,7 +409,23 @@ export class RaceView {
       this.applySnapshot(dt);
     }
 
-    for (const e of core.events) this.events.onRaceEvent?.(e);
+    for (const e of core.events) {
+      if (e.kind === 'chest') this.breakChest(e.racerId);
+      this.events.onRaceEvent?.(e);
+    }
+    // Broken chests grow back after a few seconds.
+    for (const [i, until] of this.chestHidden) {
+      if (core.time >= until) {
+        const node = this.hazardVis.nodes[i];
+        if (node) { node.root.visible = true; node.root.scale.setScalar(1); }
+        this.chestHidden.delete(i);
+      } else {
+        const node = this.hazardVis.nodes[i];
+        // Pop back in over the last half second, so it reads as a respawn.
+        const left = until - core.time;
+        if (node && left < 0.5) { node.root.visible = true; node.root.scale.setScalar(1 - left / 0.5); }
+      }
+    }
     for (const r of core.racers) {
       for (const e of r.kart.events) {
         this.onKartEvent(r, e);
