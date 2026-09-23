@@ -28,8 +28,13 @@ export interface KartInput {
   lookBack: boolean;
   /** The class special. Edge-triggered by the race, not the kart. */
   special: boolean;
+  /** Fire the charged boost. The meter fills as you race; this spends it. */
+  boost?: boolean;
 }
 export const NEUTRAL_INPUT: KartInput = { throttle: 0, brake: 0, steer: 0, drift: false, lookBack: false, special: false };
+/** Metres of driving that fill the boost meter from empty to tier three. A
+ *  drift, a pad or a chest fills it faster; racing alone always gets there. */
+export const RACE_CHARGE_METRES = 260;
 
 export type KartEventKind =
   | 'hop' | 'driftStart' | 'driftTier' | 'driftEnd' | 'boostStart' | 'boostEnd'
@@ -262,6 +267,14 @@ export class KartRuntime {
     this.sHint = g.s;
 
     const input: KartInput = { ...inputRaw };
+    // Spend the meter on the boost key. A drift in progress keeps its own
+    // release; this is for the charge you earned by racing.
+    if (input.boost && !this.drifting && this.driftTier > 0 && this.mode === 'driving') {
+      const tier = this.driftTier;
+      this.driftCharge = 0;
+      this.driftTier = 0;
+      this.startBoost(tier, 'drift');
+    }
     if (this.mode === 'frozen') {
       // Countdown: throttle held charges the launch window instead of moving.
       input.steer = 0;
@@ -572,18 +585,24 @@ export class KartRuntime {
       : Math.max(2.0, maxLat * 0.16);       // a scrub, not a slide
     vr = clamp(vr, -maxSlip, maxSlip);
 
-    // ---- drift charge -----------------------------------------------------
+    // ---- boost charge -----------------------------------------------------
+    // The meter fills as you race: distance driven on the road charges it,
+    // a drift charges it faster. It is spent by the boost key, or paid out
+    // at the end of a drift as before.
     if (this.drifting) {
       this.driftAngle = Math.atan2(Math.abs(vr), Math.max(1, Math.abs(vf)));
       const quality = 0.55 + 0.45 * clamp01(this.driftAngle / 0.42);
       this.driftCharge += h.driftCharge * quality * dt;
-      const tier = this.driftCharge >= DRIFT_TIERS[2] ? 3
-        : this.driftCharge >= DRIFT_TIERS[1] ? 2
-        : this.driftCharge >= DRIFT_TIERS[0] ? 1 : 0;
-      if (tier > this.driftTier) {
-        this.driftTier = tier;
-        this.emit('driftTier', tier);
-      }
+    } else if (this.mode === 'driving' && !g.outOfBounds) {
+      this.driftCharge += Math.abs(vf) * dt / RACE_CHARGE_METRES * DRIFT_TIERS[2];
+    }
+    this.driftCharge = Math.min(this.driftCharge, DRIFT_TIERS[2]);
+    const tier = this.driftCharge >= DRIFT_TIERS[2] ? 3
+      : this.driftCharge >= DRIFT_TIERS[1] ? 2
+      : this.driftCharge >= DRIFT_TIERS[0] ? 1 : 0;
+    if (tier > this.driftTier) {
+      this.driftTier = tier;
+      this.emit('driftTier', tier);
     }
 
     // ---- recombine --------------------------------------------------------

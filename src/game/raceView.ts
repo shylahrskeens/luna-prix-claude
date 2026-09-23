@@ -32,6 +32,12 @@ import type { InputManager } from '../ui/input';
 
 const STEP = 1 / 120;
 
+/** Which of the three scores a land plays: forests and the savannah share the
+ *  bright one, the mystic ruins the dark one, the arctic sky the airy one. */
+const AUDIO_THEME: Record<string, 'canopy' | 'ruin' | 'cloud'> = {
+  canopy: 'canopy', forest: 'canopy', savannah: 'canopy', ruin: 'ruin', mystic: 'ruin', cloud: 'cloud', arctic: 'cloud',
+};
+
 interface KartPose { x: number; y: number; z: number; yaw: number; pitch: number; roll: number }
 const lerpAngle = (a: number, b: number, t: number) => {
   let d = (b - a) % (Math.PI * 2);
@@ -234,7 +240,7 @@ export class RaceView {
     const p0 = this.core.player!;
     this.camera.reset(p0.kart.pos.x, p0.kart.pos.y, p0.kart.pos.z, p0.kart.yaw);
 
-    audio.startRace(def.theme.scenery);
+    audio.startRace(AUDIO_THEME[def.theme.scenery]);
   }
 
   private addRig(racer: Racer, loadout: ValidatedLoadout, livery: string | null, number = 1): void {
@@ -320,8 +326,11 @@ export class RaceView {
         : this.autopilot && this.autoDriver
           ? this.autoDriver.think(dt, core)
           : this.input.read();
-      this.lastInput = raw;
-      this.inputs.set(player.id, raw);
+      // On a touch screen the full meter fires itself: there is no spare thumb.
+      const fired = this.input.device === 'touch' && player.kart.driftTier === 3 && !player.kart.drifting
+        ? { ...raw, boost: true } : raw;
+      this.lastInput = fired;
+      this.inputs.set(player.id, fired);
       if (this.input.isDown(this.resetKey) && player.kart.mode === 'driving') {
         player.kart.triggerRespawn();
       }

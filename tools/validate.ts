@@ -105,7 +105,7 @@ for (const def of ALL) {
       const tAir = disc <= 0 ? 0 : (vy + Math.sqrt(disc)) / GRAVITY;
       const reach = vh * tAir;
       const verdict = reach >= gapLen ? 'clears' : 'FALLS SHORT';
-      console.log(`  gap at u=${z.from.toFixed(3)} (${gapLen.toFixed(0)} m, lip slope ${slope.toFixed(2)}, drop ${drop.toFixed(1)} m): ${label} kart @${v} m/s reaches ${reach.toFixed(0)} m — ${verdict}`);
+      console.log(`  gap at u=${z.from.toFixed(3)} (${gapLen.toFixed(0)} m, lip slope ${slope.toFixed(2)}, drop ${drop.toFixed(1)} m; lip y ${lip.pos.y.toFixed(1)} land y ${land.pos.y.toFixed(1)}): ${label} kart @${v} m/s reaches ${reach.toFixed(0)} m — ${verdict}`);
       if (label === 'fast' && reach < gapLen) warn(def.id, 'even a fast kart cannot clear this gap');
     }
   }

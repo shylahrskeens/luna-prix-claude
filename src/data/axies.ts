@@ -80,7 +80,9 @@ export interface AxieDefinition {
   /** How the Mixer character sits: metres scale, seat-socket offset, pitch. */
   mixerSeat: { scale: number; offset: [number, number, number]; pitch: number };
   /** The official starter model this driver IS (Sky Mavis starter assets).
-   *  Seated in preference to the Mixer build when present. */
+   *  Seated in preference to the Mixer build when present. Unset for now:
+   *  the published glb files carry no texture and their UV layout does not
+   *  match the PNG in the same repository, so they render grey or scrambled. */
   starter?: { id: 'buba' | 'puffy' | 'pomodoro'; scale: number; offset: [number, number, number]; pitch: number };
   /** Where this definition came from, for the asset/IP audit trail. */
   source: 'mock-local';
@@ -174,13 +176,15 @@ const PUFFY_PARTS: AxiePart[] = [
   mk('back', 'Hermit', 'Bug'),
   mk('tail', 'Nimo', 'Aquatic'),
 ];
+// Pomodoro is a Bug — an Origins starter unlocked by mission, "good at
+// granting Shields". Part names below are demo data; the class is the truth.
 const POMODORO_PARTS: AxiePart[] = [
-  mk('eyes', 'Papi', 'Plant'),
-  mk('ears', 'Leafy', 'Plant'),
-  mk('horn', 'Cactus', 'Plant'),
-  mk('mouth', 'Serious', 'Plant'),
-  mk('back', 'Turnip', 'Plant'),
-  mk('tail', 'Carrot', 'Plant'),
+  mk('eyes', 'Bookworm', 'Bug'),
+  mk('ears', 'Larva', 'Bug'),
+  mk('horn', 'Antenna', 'Bug'),
+  mk('mouth', 'Mosquito', 'Bug'),
+  mk('back', 'Sandal', 'Bug'),
+  mk('tail', 'Gravel Ant', 'Bug'),
 ];
 
 /** The three mock drivers.
@@ -196,13 +200,12 @@ export const AXIES: AxieDefinition[] = [
     name: 'Buba',
     class: 'Beast',
     parts: BUBA_PARTS,
-    palette: { body: '#f6a44a', accent: '#ffe08a', shade: '#b55f1c' },
+    palette: { body: '#8f8a80', accent: '#e9d84a', shade: '#4a4640' },
     tagline: 'All nerve, no brakes.',
     bio: 'Buba races the way Buba does everything: flat out and sideways. The highest Morale in the field turns every long drift into a bigger payoff, and the Beast temperament means the boost hits harder when it finally lets go.',
     rig: { scale: 0.92, seatOffset: [0, 0.34, -0.08], seatPitch: -0.06, bounds: [0.42, 0.40, 0.46] },
-    mixer: mixerFor(BUBA_PARTS, 'normal', 4 /* beast f5a037 */, { eyes: 4, mouth: 2, ears: 6, horn: 4, back: 8, tail: 2 }),
+    mixer: mixerFor(BUBA_PARTS, 'normal', 1 /* beast 544f44: Buba's grey */, { eyes: 4, mouth: 2, ears: 6, horn: 4, back: 8, tail: 2 }),
     mixerSeat: { scale: 0.62, offset: [0, 0.16, -0.10], pitch: 0 },
-    starter: { id: 'buba', scale: 0.60, offset: [0, 0.16, -0.06], pitch: 0 },
     source: 'mock-local',
     schemaVersion: 4,
   },
@@ -211,28 +214,26 @@ export const AXIES: AxieDefinition[] = [
     name: 'Puffy',
     class: 'Aquatic',
     parts: PUFFY_PARTS,
-    palette: { body: '#5fc8f0', accent: '#d8f6ff', shade: '#1d6f97' },
+    palette: { body: '#4fb8ff', accent: '#e0f4ff', shade: '#1d6f97' },
     tagline: 'Finds the fast water.',
     bio: 'Puffy has the highest raw Speed on the grid and does not lose a metre to the swamp shallows or the reactor coolant. Slipstream builds faster behind a rival, so Puffy is happiest sitting second until the last sector.',
     rig: { scale: 0.88, seatOffset: [0, 0.32, -0.06], seatPitch: -0.04, bounds: [0.40, 0.38, 0.44] },
     mixer: mixerFor(PUFFY_PARTS, 'normal', 15 /* aquatic 00b8ff */, { eyes: 2, mouth: 8, ears: 4, horn: 10, back: 6, tail: 12 }),
     mixerSeat: { scale: 0.60, offset: [0, 0.15, -0.08], pitch: 0 },
-    starter: { id: 'puffy', scale: 0.58, offset: [0, 0.15, -0.05], pitch: 0 },
     source: 'mock-local',
     schemaVersion: 4,
   },
   {
     id: 'mock-pomodoro',
     name: 'Pomodoro',
-    class: 'Plant',
+    class: 'Bug',
     parts: POMODORO_PARTS,
-    palette: { body: '#7fd46a', accent: '#e9ffd4', shade: '#2f7a2c' },
-    tagline: 'Nothing moves Pomodoro.',
-    bio: 'Six Plant parts stack the highest HP in the game into pure contact tolerance. Gator jaws, reactor gates and a rival diving up the inside all bounce off. Slowest to spin up, hardest to shift off the racing line.',
+    palette: { body: '#e8574f', accent: '#9fe07a', shade: '#8a2a2a' },
+    tagline: 'Shields up. Nothing moves Pomodoro.',
+    bio: 'A Bug through and through: six Bug parts pour their Morale into Skitter, so a respawn costs Pomodoro less than anyone, and the shielded temperament shrugs off gator jaws, gates and a rival diving up the inside.',
     rig: { scale: 0.95, seatOffset: [0, 0.35, -0.09], seatPitch: -0.05, bounds: [0.44, 0.41, 0.47] },
-    mixer: mixerFor(POMODORO_PARTS, 'sumo', 10 /* plant 99ff73 */, { eyes: 10, mouth: 4, ears: 12, horn: 6, back: 4, tail: 8 }),
+    mixer: mixerFor(POMODORO_PARTS, 'sumo', 19 /* bug ff606c */, { eyes: 10, mouth: 4, ears: 12, horn: 6, back: 4, tail: 8 }),
     mixerSeat: { scale: 0.64, offset: [0, 0.17, -0.11], pitch: 0 },
-    starter: { id: 'pomodoro', scale: 0.62, offset: [0, 0.17, -0.06], pitch: 0 },
     source: 'mock-local',
     schemaVersion: 4,
   },

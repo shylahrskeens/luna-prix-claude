@@ -9,6 +9,7 @@ import { clamp, clamp01, damp, loopDelta, Rng, v3, wrap, wrapAngle, type V3 } fr
 import type { KartInput } from './kart';
 import type { Racer, RaceCore } from './race';
 import type { TrackRuntime } from './track';
+import { SURFACE } from './trackTypes';
 
 export interface BotPersonality {
   name: string;
@@ -182,9 +183,14 @@ export class BotDriver {
     // plans a corner on full grip and then enters it sideways carries about a
     // quarter more speed than the slide can hold, and runs wide every time.
     const gripNow = k.drifting ? (k.h.driftGrip + k.h.grip) * 0.5 : k.h.grip;
+    // Plan on the grip the SURFACE ahead gives, not the kart's rated grip: a
+    // dirt corner offers a fifth less, and a bot that plans on tarmac numbers
+    // understeers straight off the outside of it at speed.
+    const zoneAhead = this.track.zoneAt(wrap((sNow + look) / this.track.lapLength, 1));
+    const surfaceGrip = SURFACE[zoneAhead?.surface ?? 'road'].grip;
     // Weak bots used to plan on 72% of their grip and still hit the wall; a
     // wall hit costs far more than the entry speed it was chasing.
-    const maxLat = gripNow * (0.60 + skill * 0.44);
+    const maxLat = gripNow * surfaceGrip * (0.60 + skill * 0.44);
     const corner = this.track.cornerSpeed(sNow, maxLat, k.h.brake * (0.75 + skill * 0.3));
     const targetSpeed = Math.min(corner, k.h.topSpeed * (0.82 + skill * 0.22));
     let throttle = 1;
@@ -281,7 +287,9 @@ export class BotDriver {
       return dx * dx + dz * dz < 55 * 55;
     });
     const special = near && this.racer.specialCooldown <= 0 && st.rng.next() < 0.03;   // per frame, so about twice a second once it is off cooldown
-    return { throttle, brake, steer, drift, lookBack: false, special };
+    // Spend a charged boost where it pays: on a straight, not into a corner.
+    const boost = k.driftTier >= 2 && !k.drifting && curveAhead < 0.006 && curveFar < 0.010 && speed > 12;
+    return { throttle, brake, steer, drift, lookBack: false, special, boost };
   }
 
   /** Pick a lateral lane through a gap that misses the jaws.
@@ -389,8 +397,13 @@ export class BotDriver {
     let lat = lateral;
     for (const h of this.track.initHazards()) {
       const d = h.def;
-      if (d.kind !== 'stack' && d.kind !== 'bumper' && d.kind !== 'roller') continue;
+      if (d.kind !== 'chest' && d.kind !== 'stack' && d.kind !== 'bumper' && d.kind !== 'roller' && d.kind !== 'boss') continue;
       const ds = wrap(d.s * L - sNow, L);
+      if (d.kind === 'chest') {
+        // Worth a small swerve: an item chest fills the meter a tier.
+        if (ds < 40 && ds > 0 && k.driftTier < 3) lat += (d.lat - (line + lat)) * 0.35 * (1 - ds / 40);
+        continue;
+      }
       if (ds > seeAhead || ds < -2) continue;
       const tArrive = ds / speed;
       const tAt = core.time + tArrive;
@@ -404,6 +417,9 @@ export class BotDriver {
         half = d.r;
       } else if (d.kind === 'bumper') {
         hazLat = d.lat; half = d.r;
+      } else if (d.kind === 'boss') {
+        // The fist lands in the same place every time; drive around the spot.
+        hazLat = d.slamLat; half = d.reach;
       } else {
         hazLat = d.lat; half = d.w * 0.5;
       }

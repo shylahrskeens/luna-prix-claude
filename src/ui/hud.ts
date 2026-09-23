@@ -5,6 +5,7 @@
  *  gets out of the way. The minimap is drawn to a canvas from the same spline
  *  the physics uses, so it cannot disagree with the track.
  */
+import { prettyKey } from './input';
 import { el, clear, mount } from './dom';
 import { formatTime, clamp01, wrap } from '../core/math';
 import { DRIFT_TIERS, TIER_COLOR } from '../sim/kart';
@@ -228,10 +229,11 @@ export class Hud {
       const frac = clamp01(k.driftCharge / DRIFT_TIERS[2]);
       this.boostFill.style.width = `${frac * 100}%`;
       this.boostFill.style.background = TIER_COLOR[Math.min(3, k.driftTier)];
+      const fire = device === 'touch' ? 'TAP BOOST' : device === 'gamepad' ? 'X' : prettyKey(binds.boost ?? 'ShiftLeft');
       this.boostLabel.textContent = k.drifting
         ? (k.driftTier === 0 ? 'CHARGING' : `TIER ${k.driftTier} — RELEASE`)
-        : 'DRIFT TO CHARGE';
-      this.boostLabel.style.color = k.driftTier > 0 ? TIER_COLOR[k.driftTier] : 'var(--muted)';
+        : (k.driftTier === 0 ? 'CHARGING' : `TIER ${k.driftTier} READY · ${fire}`);
+      this.boostLabel.style.color = k.driftTier > 0 ? TIER_COLOR[k.driftTier] : 'rgba(255,246,227,0.7)';
     }
 
     // The class special: what it is, and whether it is ready.

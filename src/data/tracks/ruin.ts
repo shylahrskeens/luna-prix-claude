@@ -80,17 +80,17 @@ export const RUIN_SEGS = SEGS;
 
 export const RUIN: TrackDefinition = {
   id: 'ruin',
-  name: 'Ruin Reactor Rally',
-  subtitle: 'Sunken temple • 1.4 km • 20 turns • 2 jumps',
+  name: 'Mystic Ruins Rally',
+  subtitle: 'Hazymoon mystic ruins • 1.4 km • 20 turns • 2 jumps',
   setPiece: 'The reactor spiral — thirty metres down into a timed bridge break.',
-  difficulty: 2,
+  difficulty: 4,
   laps: 3,
   nodes: route.nodes,
   checkpointCount: 14,
   start: { s: 0.02, rows: 4, colGap: 6.6, rowGap: 7.2 },
   killY: -140,
   shoulder: 2.6,
-  unlock: { kind: 'podium' },
+  unlock: { kind: 'rating', value: 1300 },
   zones: [
     { from: 0, to: 1, surface: 'road', wall: 'both', shoulder: 2.6 },
     { ...span(M.causeway, 0, 1), surface: 'metal', wall: 'both', shoulder: 1.4, covered: true, label: 'Temple Gate' },
@@ -152,6 +152,13 @@ export const RUIN: TrackDefinition = {
     },
   ],
   hazards: [
+    // Item chests: a row of three after the line, one more mid-lap.
+    { kind: 'chest', s: at(M.startStraight, 0.80), lat: -3.5 },
+    { kind: 'chest', s: at(M.startStraight, 0.80), lat: 0 },
+    { kind: 'chest', s: at(M.startStraight, 0.80), lat: 3.5 },
+    { kind: 'chest', s: at(M.chamberExit, 0.75), lat: 0 },
+    // Kilnbane, the pot golem, holds the power-surge straight.
+    { kind: 'boss', s: at(M.powerSurge, 0.62), lat: 15, period: 5.5, phase: 0.3, slamLat: 2.5, reach: 2.6, style: 'kilnbane' },
     // Fallen pillar drums along the edges of the surge straight. Solid: the
     // wide line through the last sector costs a moment of care.
     { kind: 'stack', s: at(M.powerSurge, 0.40), lat: 4.9, w: 1.8, h: 1.5, len: 3.0, style: 'drums' },
@@ -172,19 +179,20 @@ export const RUIN: TrackDefinition = {
     { kind: 'bumper', s: at(M.t6, 0.4), lat: 8.0, r: 2.0 },
   ],
   theme: {
-    sky: ['#241b38', '#7a3f63'],
-    fog: '#33264a',
-    fogNear: 40,
-    fogFar: 280,
-    sun: '#ffcf9a',
+    // Hazymoon, the mystic land: violet twilight, moonlight, teal glow.
+    sky: ['#2a1b4f', '#9a5fb8'],
+    fog: '#5a3f7d',
+    fogNear: 45,
+    fogFar: 300,
+    sun: '#e8d8ff',
     sunDir: [0.36, 0.62, -0.70],
-    ambient: '#4b3d63',
-    ground: '#2a2436',
-    roadTop: '#6a6577',
-    roadEdge: '#c79a54',
-    rail: '#463f55',
-    accent: '#5ef0d8',
-    scenery: 'ruin',
+    ambient: '#5a4a78',
+    ground: '#342a4c',
+    roadTop: '#5f5772',
+    roadEdge: '#c79bff',
+    rail: '#4e4466',
+    accent: '#66f0d8',
+    scenery: 'mystic',
   },
   schemaVersion: 3,
 };

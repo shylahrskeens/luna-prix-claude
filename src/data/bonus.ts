@@ -48,9 +48,16 @@ const RAMP_SEGS: RouteSeg[] = [
   { t: 'straight', len: 90, w: 16, mark: 'stage' },
   { t: 'straight', len: 320, w: 15, mark: 'runway' },
   { t: 'straight', len: 64, dy: 27, w: 13, mark: 'ramp' },
-  // The landing hill. It starts at the lip and drops steeply, so a kart that
-  // launches harder simply flies further down it.
-  { t: 'straight', len: 470, dy: -260, w: 30, mark: 'landing' },
+  // The lip continues the ramp's slope for a few metres of open air. There is
+  // no road here, but it is what keeps the spline tangent pointing UP at the
+  // lip: with the hill starting straight after the ramp the tangent averaged
+  // to nearly flat and a full-speed kart left at a three-metre apex.
+  { t: 'straight', len: 10, dy: 4, w: 13, mark: 'lip' },
+  // ...and then the ground falls away under it before the hill begins.
+  { t: 'straight', len: 14, dy: -12, w: 13, mark: 'lipDrop' },
+  // The landing hill. It drops steeply, so a kart that launches harder simply
+  // flies further down it.
+  { t: 'straight', len: 460, dy: -258, w: 30, mark: 'landing' },
   { t: 'straight', len: 150, dy: -22, w: 30, mark: 'runout' },
   { t: 'straight', len: 90, w: 26, mark: 'catch' },
 ];
@@ -77,6 +84,8 @@ export const MEGA_RAMP_TRACK: TrackDefinition = {
     { ...span(RM.stage, 0, 1), surface: 'metal', wall: 'both', shoulder: 3, label: 'Staging' },
     { ...span(RM.runway, 0, 1), surface: 'road', wall: 'both', shoulder: 4, label: 'Runway' },
     { ...span(RM.ramp, 0, 1), surface: 'metal', wall: 'both', shoulder: 2, label: 'Ramp' },
+    { ...span(RM.lip, 0, 1), gap: true, wall: 'none', shoulder: 2, label: 'Ramp' },
+    { ...span(RM.lipDrop, 0, 1), gap: true, wall: 'none', shoulder: 2, label: 'Ramp' },
     { ...span(RM.landing, 0, 1), surface: 'dirt', wall: 'none', shoulder: 9, label: 'Landing Hill' },
     { ...span(RM.runout, 0, 1), surface: 'dirt', wall: 'none', shoulder: 9, label: 'Run-out' },
     { ...span(RM.catch, 0, 1), surface: 'grass', wall: 'both', shoulder: 9, label: 'Catch' },
@@ -95,10 +104,12 @@ export const MEGA_RAMP_TRACK: TrackDefinition = {
     // Hoops down the flight path. They sit where the arc actually goes, rise
     // with it and then fall, and each is worth metres — so the line you pick
     // off the lip is a real decision rather than "hold accelerate".
-    { kind: 'ring', s: at(RM.landing, 0.10), lat: 0, h: 15, r: 7.5 },
-    { kind: 'ring', s: at(RM.landing, 0.24), lat: -4, h: 19, r: 7.0 },
-    { kind: 'ring', s: at(RM.landing, 0.40), lat: 4, h: 16, r: 6.5 },
-    { kind: 'ring', s: at(RM.landing, 0.58), lat: 0, h: 10, r: 6.0 },
+    // Heights are above the hill under each ring, set from tools/rampprobe.ts
+    // so the hoops sit ON the flight arc of a kart that used the pads.
+    { kind: 'ring', s: at(RM.landing, 0.10), lat: 0, h: 34, r: 7.5 },
+    { kind: 'ring', s: at(RM.landing, 0.20), lat: -4, h: 46, r: 7.0 },
+    { kind: 'ring', s: at(RM.landing, 0.30), lat: 4, h: 42, r: 6.5 },
+    { kind: 'ring', s: at(RM.landing, 0.40), lat: 0, h: 26, r: 6.0 },
   ],
   theme: {
     sky: ['#4f8fd6', '#ffd2a0'],

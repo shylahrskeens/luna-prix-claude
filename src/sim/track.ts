@@ -497,6 +497,29 @@ export class TrackRuntime {
           h.telegraph = 1;
           break;
         }
+        case 'chest': {
+          h.phase = wrap(time * 0.4, 1);
+          h.pos.y = h.anchor.y + 0.9 + Math.sin(time * 2.2) * 0.12;
+          h.active = true;
+          h.radius = 1.4;
+          h.telegraph = 0;
+          break;
+        }
+        case 'boss': {
+          // Wind-up, slam, hold, lift. The fist is dangerous only while it is
+          // down; the telegraph is the wind-up you can see from a long way out.
+          const t = wrap(time / d.period + d.phase, 1);
+          h.phase = t;
+          const down = t > 0.62 && t < 0.74;
+          const sm = this.main.sample(d.s * this.lapLength);
+          h.pos.x = sm.pos.x + sm.right.x * d.slamLat;
+          h.pos.y = sm.pos.y + (down ? 0.6 : 6 - Math.min(1, Math.max(0, (t - 0.45) / 0.17)) * 5.4);
+          h.pos.z = sm.pos.z + sm.right.z * d.slamLat;
+          h.active = down;
+          h.radius = d.reach;
+          h.telegraph = t > 0.40 && t < 0.62 ? (t - 0.40) / 0.22 : 0;
+          break;
+        }
         case 'stack': {
           // Static. The only thing that changes is whether it has been hit,
           // which the scoring layer owns rather than the track.

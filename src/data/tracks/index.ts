@@ -1,11 +1,13 @@
 import type { TrackDefinition } from '../../sim/trackTypes';
+import { SAVANNAH } from './savannah';
 import { CANOPY } from './canopy';
 import { RUIN } from './ruin';
 import { CLOUDFORGE } from './cloudforge';
 import { BONUS_EVENTS } from '../bonus';
 
-/** The three race circuits, in the order they unlock. */
-export const TRACKS: TrackDefinition[] = [CANOPY, RUIN, CLOUDFORGE];
+/** The four Lunacia circuits, in the order they unlock: Goldenwind savannah,
+ *  Evergreen forest, Hazymoon mystic ruins, Winterblue arctic sky. */
+export const TRACKS: TrackDefinition[] = [SAVANNAH, CANOPY, CLOUDFORGE, RUIN];
 
 /** Every course the runtime can load.
  *
@@ -20,4 +22,4 @@ export function trackById(id: string): TrackDefinition {
   if (!t) throw new Error(`Unknown track: ${id}`);
   return t;
 }
-export { CANOPY, RUIN, CLOUDFORGE };
+export { SAVANNAH, CANOPY, RUIN, CLOUDFORGE };

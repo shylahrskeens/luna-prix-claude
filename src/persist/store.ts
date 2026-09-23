@@ -83,6 +83,7 @@ export const DEFAULT_KEYBINDS: Record<string, string> = {
   left: 'KeyA',
   right: 'KeyD',
   drift: 'Space',
+  boost: 'ShiftLeft',
   special: 'KeyE',
   lookBack: 'KeyQ',
   reset: 'KeyR',

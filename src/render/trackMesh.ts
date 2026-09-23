@@ -548,10 +548,51 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
     group.add(tower);
   }
   const beamLen = (sl.w + 2) * 2;
-  const beam = new THREE.Mesh(new THREE.BoxGeometry(beamLen, 1.5, 0.7), mats.toon(theme.accent));
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(beamLen, 2.2, 0.7), mats.toon('#f3e7d0'));
   beam.position.set(sl.pos.x, sl.pos.y + bannerY, sl.pos.z);
   beam.quaternion.setFromEuler(new THREE.Euler(0, Math.atan2(sl.right.x, sl.right.z) - Math.PI / 2, 0));
   group.add(beam);
+  // START on the face you cross first, FINISH on the back, painted in the
+  // interface's rounded display face; a chequered flag on one tower, a white
+  // flag on the other. (The beam used to be a bare bar in the accent colour.)
+  const wordTex = (word: string): THREE.CanvasTexture => {
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 128;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#f3e7d0'; g.fillRect(0, 0, c.width, c.height);
+    const cell = 32;
+    for (let x = 0; x < c.width; x += cell) for (let y = 0; y < c.height; y += cell) {
+      if (((x / cell + y / cell) & 1) === 0 && (x < cell * 3 || x > c.width - cell * 4)) { g.fillStyle = '#2a1a10'; g.fillRect(x, y, cell, cell); }
+    }
+    g.font = '96px "Lilita One", "Nunito", sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 12; g.strokeStyle = '#4a2f18'; g.strokeText(word, c.width / 2, c.height / 2 + 6);
+    g.fillStyle = '#fff6e3'; g.fillText(word, c.width / 2, c.height / 2 + 6);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    return t;
+  };
+  for (const [word, sign] of [['FINISH', 1], ['START', -1]] as const) {
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(beamLen * 0.96, 2.0), new THREE.MeshBasicMaterial({ map: wordTex(word), toneMapped: false }));
+    face.position.set(0, 0, sign * 0.36);
+    if (sign < 0) face.rotation.y = Math.PI;
+    beam.add(face);
+  }
+  const flagTex = (checker: boolean): THREE.CanvasTexture => {
+    const c = document.createElement('canvas'); c.width = 96; c.height = 64;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, 96, 64);
+    if (checker) { g.fillStyle = '#1e1410'; for (let x = 0; x < 6; x++) for (let y = 0; y < 4; y++) if ((x + y) & 1) g.fillRect(x * 16, y * 16, 16, 16); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  };
+  [-1, 1].forEach((side, i) => {
+    const lat = side * (sl.w + 1.6);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.4, 6), mats.toon('#e8d8b8'));
+    pole.position.set(sl.pos.x + sl.right.x * lat, sl.pos.y + bannerY + 1.7, sl.pos.z + sl.right.z * lat);
+    group.add(pole);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.6), new THREE.MeshBasicMaterial({ map: flagTex(i === 0), side: THREE.DoubleSide, toneMapped: false }));
+    flag.position.set(sl.pos.x + sl.right.x * lat + sl.right.x * 1.25, sl.pos.y + bannerY + 2.6, sl.pos.z + sl.right.z * lat + sl.right.z * 1.25);
+    flag.quaternion.copy(beam.quaternion);
+    group.add(flag);
+  });
   for (let i = 0; i < 5; i++) {
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.46, 10, 8), mats.glow('#3a1616'));
     const lat = (i - 2) * 1.9;

@@ -87,17 +87,17 @@ export const CANOPY_SEGS = SEGS;
 
 export const CANOPY: TrackDefinition = {
   id: 'canopy',
-  name: 'Lunacia Canopy Run',
-  subtitle: 'Jungle • 1.5 km • 18 turns • 2 jumps',
+  name: 'Forest Canopy Run',
+  subtitle: 'Evergreen forest • 1.5 km • 18 turns • 2 jumps',
   setPiece: 'The gator pit — a 30 metre leap over open water and moving jaws.',
-  difficulty: 1,
+  difficulty: 2,
   laps: 3,
   nodes: route.nodes,
   checkpointCount: 12,
   start: { s: 0.02, rows: 4, colGap: 7.0, rowGap: 7.5 },
   killY: -70,
   shoulder: 4.0,
-  unlock: null,
+  unlock: { kind: 'podium' },
   zones: [
     { from: 0, to: 1, surface: 'road', wall: 'none', shoulder: 4.5 },
     { ...span(M.hairpin, 0, 1), surface: 'road', wall: 'both', shoulder: 2.4, label: 'Carved Hairpin' },
@@ -158,6 +158,13 @@ export const CANOPY: TrackDefinition = {
     },
   ],
   hazards: [
+    // Item chests: a row of three after the line, one more mid-lap.
+    { kind: 'chest', s: at(M.startStraight, 0.80), lat: -3.5 },
+    { kind: 'chest', s: at(M.startStraight, 0.80), lat: 0 },
+    { kind: 'chest', s: at(M.startStraight, 0.80), lat: 3.5 },
+    { kind: 'chest', s: at(M.rootTunnel, 0.55), lat: 0 },
+    // The tree golem stands over the long right and slams the inside line.
+    { kind: 'boss', s: at(M.longRight, 0.5), lat: -16, period: 6.0, phase: 0.1, slamLat: -2.5, reach: 2.6, style: 'ent' },
     // Log piles on the outside of the double, and one on the inside of the
     // second corner so the lazy line clips it. Solid.
     { kind: 'stack', s: at(M.doubleA, 0.55), lat: -4.8, w: 2.2, h: 1.5, len: 3.2, style: 'logs' },
@@ -175,19 +182,20 @@ export const CANOPY: TrackDefinition = {
     { kind: 'bumper', s: at(M.t1, 0.6), lat: 9.5, r: 2.2 },
   ],
   theme: {
-    sky: ['#79c8ff', '#dff4c8'],
-    fog: '#a8d9a4',
+    // Evergreen, the forest land: deep greens, a warm low sun, mossy edges.
+    sky: ['#6fb7ff', '#d9f2c9'],
+    fog: '#9fcf9c',
     fogNear: 70,
-    fogFar: 420,
-    sun: '#fff3cf',
+    fogFar: 440,
+    sun: '#fff1c8',
     sunDir: [-0.45, 0.78, 0.44],
-    ambient: '#7fa87a',
-    ground: '#2f5d34',
-    roadTop: '#6d6353',
-    roadEdge: '#d6bb84',
-    rail: '#8b6a3e',
-    accent: '#7fe08a',
-    scenery: 'canopy',
+    ambient: '#6f9a6a',
+    ground: '#3b7a3a',
+    roadTop: '#7a6a54',
+    roadEdge: '#c9b27c',
+    rail: '#7a5f3d',
+    accent: '#9bf58f',
+    scenery: 'forest',
   },
   schemaVersion: 3,
 };

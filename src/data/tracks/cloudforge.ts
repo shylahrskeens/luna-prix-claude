@@ -79,8 +79,8 @@ export const CLOUDFORGE_SEGS = SEGS;
 
 export const CLOUDFORGE: TrackDefinition = {
   id: 'cloudforge',
-  name: 'Cloudforge Circuit',
-  subtitle: 'Sky forge • 1.75 km • 17 turns • 2 jumps',
+  name: 'Arctic Skyway',
+  subtitle: 'Winterblue arctic sky • 1.7 km • 17 turns • 2 jumps',
   setPiece: 'The hangar launch — over a moored airship and through a boost ring.',
   difficulty: 3,
   laps: 3,
@@ -150,6 +150,13 @@ export const CLOUDFORGE: TrackDefinition = {
     },
   ],
   hazards: [
+    // Item chests: a row of three after the line, one more mid-lap.
+    { kind: 'chest', s: at(M.forgeStraight, 0.55), lat: -3.5 },
+    { kind: 'chest', s: at(M.forgeStraight, 0.55), lat: 0 },
+    { kind: 'chest', s: at(M.forgeStraight, 0.55), lat: 3.5 },
+    { kind: 'chest', s: at(M.dockStraight, 0.15), lat: 0 },
+    // A frost Kilnbane guards the dock straight from an ice floe.
+    { kind: 'boss', s: at(M.dockStraight, 0.50), lat: 15, period: 6.0, phase: 0.5, slamLat: 2.5, reach: 2.6, style: 'kilnbane' },
     // Cargo crates on the dock straight and between the cranes. Solid.
     { kind: 'stack', s: at(M.dockStraight, 0.30), lat: 4.6, w: 2.4, h: 1.6, len: 3.0, style: 'cargo' },
     { kind: 'stack', s: at(M.dockStraight, 0.62), lat: -4.6, w: 2.4, h: 1.6, len: 3.0, style: 'cargo' },
@@ -169,19 +176,20 @@ export const CLOUDFORGE: TrackDefinition = {
     { kind: 'roller', s: at(M.t9, 0.5), lat: 0, period: 4.4, phase: 0.3, travel: 6.0, r: 2.0 },
   ],
   theme: {
-    sky: ['#6fb6ff', '#ffd9a8'],
-    fog: '#cfe2f7',
+    // Winterblue, the arctic land: ice-blue sky, snow, a cold bright sun.
+    sky: ['#7fc4ff', '#eaf6ff'],
+    fog: '#dbeeff',
     fogNear: 90,
-    fogFar: 520,
-    sun: '#fff7e2',
+    fogFar: 540,
+    sun: '#ffffff',
     sunDir: [0.52, 0.66, 0.54],
-    ambient: '#a8c4e6',
-    ground: '#e4edf8',
-    roadTop: '#787f8f',
-    roadEdge: '#ffb23f',
-    rail: '#ced6e4',
-    accent: '#ffb23f',
-    scenery: 'cloud',
+    ambient: '#b8d4ee',
+    ground: '#eef5fb',
+    roadTop: '#6f7f92',
+    roadEdge: '#9fd8ff',
+    rail: '#cfe5f5',
+    accent: '#7fe0ff',
+    scenery: 'arctic',
   },
   schemaVersion: 3,
 };

@@ -50,9 +50,16 @@ export class StarterModelService {
   }
 
   private async fetch(id: StarterId): Promise<StarterAsset> {
-    const files = await Promise.all(
-      STARTER_CLIPS.map((c) => this.loader.loadAsync(`${BASE}${id}/${c}.glb`) as Promise<GLTF>),
-    );
+    // The glb files carry the mesh, rig and one clip each, with plain grey
+    // materials; the painted texture is a separate PNG in the same official
+    // repository (fbx/<name>/textures). glTF UVs run top-down, so no flip.
+    const [files, texture] = await Promise.all([
+      Promise.all(STARTER_CLIPS.map((c) => this.loader.loadAsync(`${BASE}${id}/${c}.glb`) as Promise<GLTF>)),
+      new THREE.TextureLoader().loadAsync(`${BASE}${id}/texture.png`),
+    ]);
+    texture.flipY = false;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 4;
     const clips = {} as Record<StarterClip, THREE.AnimationClip>;
     STARTER_CLIPS.forEach((c, i) => {
       const clip = files[i].animations[0];
@@ -70,10 +77,9 @@ export class StarterModelService {
         // instead of a grey version of itself under the track's dim sun.
         const swap = (mat: THREE.Material): THREE.Material => {
           const src = mat as THREE.MeshStandardMaterial;
-          const map = src.map ?? null;
-          if (map) map.colorSpace = THREE.SRGBColorSpace;
+          const map = texture;
           const out = new THREE.MeshBasicMaterial({
-            map, color: map ? 0xffffff : src.color, vertexColors: src.vertexColors,
+            map, color: 0xffffff, vertexColors: src.vertexColors,
             transparent: src.transparent, opacity: src.opacity, alphaTest: src.alphaTest, side: src.side,
             fog: false, toneMapped: false,
           });

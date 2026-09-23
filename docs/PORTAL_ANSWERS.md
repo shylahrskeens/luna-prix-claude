@@ -23,7 +23,7 @@ One build, installed through the browser. Same link everywhere.
 https://github.com/shylahrskeens/luna-prix-claude — public. The account `jaatster` has been invited.
 
 ## Controls and supported devices
-Keyboard: W or ↑ accelerate · S or ↓ brake and reverse · A/D or ←/→ steer · Space or Shift hop, hold to drift · Space in the air trick · E class special · Q look back · R reset to the track · Esc pause. All rebindable in Settings.
+Keyboard: W or ↑ accelerate · S or ↓ brake and reverse · A/D or ←/→ steer · Space hop, hold to drift · Shift fire the boost (the meter fills as you race) · Space in the air trick · E class special · Q look back · R reset to the track · Esc pause. All rebindable in Settings.
 Gamepad: left stick or d-pad steer, RT or A accelerate, LT or B brake, RB/LB/X drift, LB class special, Y look back.
 Touch: a thumb stick, pedals, a drift button and a special button appear on a touch screen.
 Runs in any browser with WebGL2. No install, no wallet, no backend. Quality steps itself down once if the frame time will not hold.

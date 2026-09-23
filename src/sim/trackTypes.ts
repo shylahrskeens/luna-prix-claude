@@ -81,7 +81,15 @@ export type HazardDef =
   | { kind: 'bumper';  s: number; lat: number; r: number }
   | { kind: 'ring';    s: number; lat: number; h: number; r: number }
   /** Something to jump OVER. Solid: clip it and the run is over. */
-  | { kind: 'stack';   s: number; lat: number; w: number; h: number; len: number; style?: 'crates' | 'bus' | 'gator' | 'logs' | 'drums' | 'cargo'; points?: number }
+  | { kind: 'stack';   s: number; lat: number; w: number; h: number; len: number; style?: 'crates' | 'bus' | 'gator' | 'logs' | 'drums' | 'cargo' | 'boulders'; points?: number }
+  /** A land boss beside the road: it winds up, then slams a fist or a foot
+   *  down on the road at `slamLat`. `reach` is the slam's radius. The look
+   *  is the land's boss — the Chimera, the tree golem, Kilnbane the pot golem. */
+  | { kind: 'boss';    s: number; lat: number; period: number; phase: number; slamLat: number; reach: number; style: 'chimera' | 'ent' | 'kilnbane' }
+  /** An item chest: drive through it and the boost meter fills a tier. It is
+   *  always there (hazards are pure functions of the clock); each kart may
+   *  take it once every few seconds. */
+  | { kind: 'chest';   s: number; lat: number }
   /** A landing target painted on the ground. Scores by which ring you land in;
    *  no collision, because the target is the reward, not the obstacle. */
   | { kind: 'target';  s: number; lat: number; rings: number[]; points?: number[] };
@@ -131,7 +139,9 @@ export interface TrackTheme {
   rail: string;
   accent: string;
   /** Procedural scenery generator key. */
-  scenery: 'canopy' | 'ruin' | 'cloud';
+  /** Lunacia's land types (Homeland: Goldenwind, Evergreen, Winterblue,
+   *  Hazymoon). The three original keys remain for the bonus courses. */
+  scenery: 'canopy' | 'ruin' | 'cloud' | 'savannah' | 'forest' | 'arctic' | 'mystic';
   /** Multiplier on scenery density, and on how far out it starts. A course
    *  you fly through needs its sightlines kept clear. */
   sceneryScale?: number;
@@ -143,7 +153,8 @@ export interface TrackDefinition {
   subtitle: string;
   /** One-line description of the signature moment, shown on track select. */
   setPiece: string;
-  difficulty: 1 | 2 | 3;
+  /** One to four stars: savannah, forest, arctic, mystic. */
+  difficulty: 1 | 2 | 3 | 4;
   laps: number;
   /** Centreline control points: [x, y, z, halfWidth, bankDegrees]. */
   nodes: [number, number, number, number, number][];

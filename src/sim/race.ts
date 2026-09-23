@@ -12,6 +12,7 @@
 import { clamp, clamp01, loopDelta, v3, wrap, type V3 } from '../core/math';
 import { TrackRuntime, type HazardState } from './track';
 import { KartRuntime, resolveKartContact, type KartEvent, type KartInput, NEUTRAL_INPUT } from './kart';
+import { DRIFT_TIERS } from './kart';
 import type { GroundInfo } from './trackTypes';
 import type { ValidatedLoadout } from './loadout';
 import { MODE_RULES, RULES_VERSION, type Mode } from '../data/rules';
@@ -115,7 +116,7 @@ export interface RaceResult {
 }
 
 export interface RaceEvent {
-  kind: 'lap' | 'finish' | 'overtake' | 'checkpoint' | 'countdown' | 'go' | 'lastLap' | 'integrity' | 'special';
+  kind: 'lap' | 'finish' | 'overtake' | 'checkpoint' | 'countdown' | 'go' | 'lastLap' | 'integrity' | 'special' | 'chest';
   racerId: string;
   value: number;
   text?: string;
@@ -673,6 +674,27 @@ export class RaceCore {
             const push = d.strength * (1 - Math.abs(along) / (d.len * 0.5));
             k.vel.x += h.right.x * push * dt;
             k.vel.z += h.right.z * push * dt;
+            break;
+          }
+          case 'chest': {
+            // A tier of boost charge, once per kart every five seconds.
+            const dist = Math.hypot(dx, dz);
+            if (dist < h.radius + k.h.radius * 0.6 && Math.abs(dy) < 2.5 && k.mode === 'driving'
+                && this.canHit(hazardIndex, r.id, 5.0)) {
+              k.driftCharge = Math.min(DRIFT_TIERS[2], Math.max(k.driftCharge, DRIFT_TIERS[Math.min(2, k.driftTier)]));
+              k.events.push({ kind: 'padHit', value: 1, pos: { ...k.pos } });
+              this.events.push({ kind: 'chest', racerId: r.id, value: k.driftTier });
+            }
+            break;
+          }
+          case 'boss': {
+            // The slam: a hard hit and a spin if the fist lands on you.
+            if (!h.active) break;
+            const dist = Math.hypot(dx, dz);
+            if (dist < h.radius + k.h.radius && Math.abs(dy) < 3.0 && this.canHit(hazardIndex, r.id, 1.0)) {
+              k.hit(1.0, dx / (dist || 1), dz / (dist || 1));
+              k.events.push({ kind: 'hazardHit', value: 1, pos: { ...k.pos } });
+            }
             break;
           }
           case 'stack': {

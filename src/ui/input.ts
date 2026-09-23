@@ -112,8 +112,9 @@ export class InputManager {
     if (this.keys.has(this.bind('brake')) || this.keys.has('ArrowDown')) brake = 1;
     if (this.keys.has(this.bind('left')) || this.keys.has('ArrowLeft')) steer -= 1;
     if (this.keys.has(this.bind('right')) || this.keys.has('ArrowRight')) steer += 1;
-    if (this.keys.has(this.bind('drift')) || this.keys.has('ShiftLeft')) driftRaw = true;
+    if (this.keys.has(this.bind('drift'))) driftRaw = true;
     if (this.keys.has(this.bind('lookBack'))) lookBack = true;
+    let boost = this.keys.has(this.bind('boost'));
 
     // --- gamepad ---
     const pad = this.gamepad();
@@ -126,7 +127,8 @@ export class InputManager {
       const lt = pad.buttons[6]?.value ?? 0;
       throttle = Math.max(throttle, rt > dz ? rt : 0, pad.buttons[0]?.pressed ? 1 : 0);
       brake = Math.max(brake, lt > dz ? lt : 0, pad.buttons[1]?.pressed ? 1 : 0);
-      if (pad.buttons[5]?.pressed || pad.buttons[4]?.pressed || pad.buttons[2]?.pressed) driftRaw = true;
+      if (pad.buttons[5]?.pressed || pad.buttons[4]?.pressed) driftRaw = true;
+      if (pad.buttons[2]?.pressed) boost = true;
       if (pad.buttons[3]?.pressed) lookBack = true;
       if (pad.buttons[12]?.pressed) throttle = 1;
       if (pad.buttons[13]?.pressed) brake = 1;
@@ -171,7 +173,7 @@ export class InputManager {
     //  caught this. Only a human looking at a screen could.
     steer = clamp(-steer * s.steerSensitivity * (s.invertSteering ? -1 : 1), -1, 1);
     const special = this.keys.has(this.bind('special')) || this.keys.has('KeyE') || this.touch.special || !!pad?.buttons[4]?.pressed;
-    return { throttle: clamp01(throttle), brake: clamp01(brake), steer, drift, lookBack, special };
+    return { throttle: clamp01(throttle), brake: clamp01(brake), steer, drift, lookBack, special, boost };
   }
 
   /** Release a held drift toggle, e.g. on respawn. */
@@ -186,12 +188,17 @@ export class InputManager {
 }
 
 /** Control card copy per device — shown before the first race and in settings. */
+/** A key code as a player reads it: KeyE → E, ShiftLeft → Shift. */
+export function prettyKey(code: string): string {
+  return code.startsWith('Key') ? code.slice(3)
+    : code.startsWith('Arrow') ? code.slice(5)
+    : code === 'ShiftLeft' || code === 'ShiftRight' ? 'Shift'
+    : code === 'Space' ? 'Space'
+    : code;
+}
+
 export function controlCard(device: Device, binds: Record<string, string>): { key: string; label: string }[] {
-  const pretty = (code: string) =>
-    code.startsWith('Key') ? code.slice(3)
-      : code.startsWith('Arrow') ? code.slice(5)
-      : code === 'Space' ? 'Space'
-      : code;
+  const pretty = prettyKey;
   if (device === 'gamepad') {
     return [
       { key: 'RT / A', label: 'Accelerate' },
@@ -217,7 +224,7 @@ export function controlCard(device: Device, binds: Record<string, string>): { ke
   //  card has to say so: a player who reaches for the arrows and sees only
   //  "W" on screen assumes they do not work, and they do.
   const alt: Record<string, string> = {
-    accelerate: '↑', brake: '↓', left: '←', right: '→', drift: 'Shift',
+    accelerate: '↑', brake: '↓', left: '←', right: '→',
   };
   const both = (action: string) => {
     const bound = pretty(binds[action]);
@@ -229,6 +236,7 @@ export function controlCard(device: Device, binds: Record<string, string>): { ke
     { key: both('brake'), label: 'Brake and reverse' },
     { key: `${both('left')} / ${both('right')}`, label: 'Steer' },
     { key: both('drift'), label: 'Hop, then hold to drift' },
+    { key: pretty(binds.boost ?? 'ShiftLeft'), label: 'Fire the boost (it charges as you race)' },
     { key: `${pretty(binds.drift)} in the air`, label: 'Trick' },
     { key: pretty(binds.special ?? 'KeyE'), label: 'Your class special' },
     { key: pretty(binds.lookBack), label: 'Look back' },

@@ -106,6 +106,118 @@ export function buildHazards(track: TrackRuntime, mats: MaterialLibrary): Hazard
         warn.push(core);
         break;
       }
+      case 'chest': {
+        // A wooden loot chest with gold bands and a glowing keyhole, floating
+        // and turning so it reads as a pickup from a long way off.
+        const wood = mats.toon('#a5673f');
+        const gold = mats.toon('#f0c24a');
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.9, 1.0), wood);
+        root.add(body);
+        const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.5, 10, 1, false, 0, Math.PI), wood);
+        lid.rotation.z = Math.PI / 2; lid.position.y = 0.45;
+        root.add(lid);
+        for (const x of [-0.5, 0.5]) {
+          const band = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.94, 1.04), gold);
+          band.position.x = x; root.add(band);
+          const bandLid = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.08, 6, 12, Math.PI), gold);
+          bandLid.position.set(x, 0.45, 0); bandLid.rotation.y = Math.PI / 2; root.add(bandLid);
+        }
+        const lock = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.12), mats.glow('#ffe58a', 1));
+        lock.position.set(0, 0.1, 0.52); root.add(lock);
+        warn.push(lock);
+        break;
+      }
+      case 'boss': {
+        // The land's boss stands off the road; the fist is a child group that
+        // the animator raises and slams. Built from chunky primitives in the
+        // Origins manner, with the key colours of each boss.
+        const S = 1.0;
+        const figure = new THREE.Group();
+        figure.name = 'boss-figure';
+        const fist = new THREE.Group();
+        fist.name = 'boss-fist';
+        // The figure stands at the anchor (lat), the fist comes down at slamLat.
+        const towardRoad = d.slamLat - d.lat;
+        if (d.style === 'chimera') {
+          // Pink hooded beast: green body, wide toothy mouth, pink hood with ears.
+          const body = new THREE.Mesh(new THREE.SphereGeometry(3.2 * S, 10, 8), mats.toon('#7fa63a'));
+          body.position.y = 4.2; body.scale.set(1, 1.1, 0.9); figure.add(body);
+          const hood = new THREE.Mesh(new THREE.SphereGeometry(3.6 * S, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.62), mats.toon('#f26a9a'));
+          hood.position.y = 5.2; figure.add(hood);
+          for (const side of [-1, 1] as const) {
+            const ear = new THREE.Mesh(new THREE.ConeGeometry(0.8, 2.4, 5), mats.toon('#f26a9a'));
+            ear.position.set(side * 2.2, 8.6, 0); ear.rotation.z = -side * 0.25; figure.add(ear);
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 2.4, 6), mats.toon('#5a6a2a'));
+            leg.position.set(side * 1.4, 1.2, 0); figure.add(leg);
+          }
+          const mouth = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.6, 1.2), mats.toon('#2a1a1a'));
+          mouth.position.set(0, 3.6, 2.6); figure.add(mouth);
+          for (let i = 0; i < 6; i++) {
+            const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.7, 4), mats.toon('#fff6e3'));
+            tooth.position.set(-1.8 + i * 0.72, 4.3, 3.1); tooth.rotation.x = Math.PI; figure.add(tooth);
+          }
+          const nose = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), mats.toon('#3f6fd0'));
+          nose.position.set(0, 5.4, 3.3); figure.add(nose);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 5.5, 6), mats.toon('#7fa63a'));
+          arm.rotation.z = Math.PI / 2; arm.position.set(towardRoad * 0.45, 0.8, 0); fist.add(arm);
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(d.reach * 0.9, 8, 6), mats.toon('#6a4a2a'));
+          hand.position.set(towardRoad, 0.6, 0); fist.add(hand);
+        } else if (d.style === 'ent') {
+          // Tree golem: bark body, long arms, a crown of leaves.
+          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.0, 8, 7), mats.toon('#7a5236'));
+          trunk.position.y = 4; figure.add(trunk);
+          const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(3.2, 1), mats.toon('#8fd06c'));
+          crown.position.y = 9.4; figure.add(crown);
+          const crown2 = new THREE.Mesh(new THREE.IcosahedronGeometry(2.2, 1), mats.toon('#b4e07a'));
+          crown2.position.set(0.8, 11.2, 0.4); figure.add(crown2);
+          for (const side of [-1, 1] as const) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), mats.glow('#ffd23f'));
+            eye.position.set(side * 0.7, 6.8, 1.7); figure.add(eye);
+            const root2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.7, 2.0, 5), mats.toon('#6a4a30'));
+            root2.position.set(side * 1.6, 0.9, 0.4); root2.rotation.z = side * 0.4; figure.add(root2);
+          }
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.7, 7, 6), mats.toon('#7a5236'));
+          arm.rotation.z = Math.PI / 2; arm.position.set(towardRoad * 0.5, 0.9, 0); fist.add(arm);
+          const hand = new THREE.Mesh(new THREE.DodecahedronGeometry(d.reach * 0.85, 0), mats.toon('#8a5a36'));
+          hand.position.set(towardRoad, 0.7, 0); fist.add(hand);
+        } else {
+          // Kilnbane: a golden pot golem with a blue-crystal finial, mossy
+          // shoulders, a fanged clay grin, and blue clay arms.
+          const pot = new THREE.Mesh(new THREE.CylinderGeometry(3.0, 3.6, 6.5, 10), mats.toon('#d9b56a'));
+          pot.position.y = 3.6; figure.add(pot);
+          const lid = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 3.0, 1.4, 10), mats.toon('#e6c886'));
+          lid.position.y = 7.4; figure.add(lid);
+          const finial = new THREE.Mesh(new THREE.OctahedronGeometry(0.9, 0), mats.glow('#3f8fe0', 1));
+          finial.position.y = 9.0; figure.add(finial);
+          const moss = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 0), mats.toon('#7fb84a'));
+          moss.position.set(-2.2, 6.6, 0.8); figure.add(moss);
+          const grin = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.2, 0.6), mats.toon('#3a2a1a'));
+          grin.position.set(0, 3.2, 3.4); figure.add(grin);
+          for (let i = 0; i < 4; i++) {
+            const fang = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.6, 4), mats.toon('#fff6e3'));
+            fang.position.set(-1.2 + i * 0.8, 2.8, 3.6); figure.add(fang);
+          }
+          for (const side of [-1, 1] as const) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 6), mats.glow('#ff8a3f'));
+            eye.position.set(side * 1.1, 4.8, 3.3); figure.add(eye);
+            const foot = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 2.2), mats.toon('#7fa0c8'));
+            foot.position.set(side * 2.0, 0.5, 0.4); figure.add(foot);
+          }
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 5.5, 8), mats.toon('#7fa0c8'));
+          arm.rotation.z = Math.PI / 2; arm.position.set(towardRoad * 0.45, 0.9, 0); fist.add(arm);
+          const hand = new THREE.Mesh(new THREE.BoxGeometry(d.reach * 1.6, d.reach * 1.2, d.reach * 1.6), mats.toon('#6f8fb8'));
+          hand.position.set(towardRoad, 0.6, 0); fist.add(hand);
+        }
+        // A slam mark on the road where the fist lands, which pulses as a warning.
+        const mark = new THREE.Mesh(new THREE.RingGeometry(d.reach * 0.6, d.reach * 1.05, 20), mats.glow('#ff5a3f', 0.8));
+        mark.rotation.x = -Math.PI / 2; mark.position.set(towardRoad, 0.08, 0);
+        warn.push(mark);
+        figure.add(fist);
+        figure.add(mark);
+        figure.rotation.y = Math.atan2(h.right.x, h.right.z) + (towardRoad < 0 ? Math.PI : 0) + Math.PI / 2;
+        root.add(figure);
+        break;
+      }
       case 'turbine': {
         // Housing plus blades; the blades tell you which way the wind blows.
         const ring = new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.55, 6, 12), mats.toon(theme.rail));
@@ -131,13 +243,34 @@ export function buildHazards(track: TrackRuntime, mats: MaterialLibrary): Hazard
         break;
       }
       case 'bumper': {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(d.r * 0.8, d.r, 1.6, 8), mats.toon('#c2472f'));
-        post.position.y = 0.8;
-        root.add(post);
-        const cap = new THREE.Mesh(new THREE.SphereGeometry(d.r * 0.85, 8, 6), mats.glow('#ffd166', 0.9));
-        cap.position.y = 1.7;
-        root.add(cap);
-        warn.push(cap);
+        // A round thing you bounce off, drawn as the land would have it: an
+        // ochre boulder on the savannah, a mossy rock in the forest, a snow
+        // boulder in the arctic, a crystal cluster in the mystic ruins. (It
+        // used to be a red post with a glowing dome — a light bulb, in effect.)
+        const land = theme.scenery;
+        const rockColor = land === 'savannah' ? '#c9955f' : land === 'arctic' ? '#e8f2fb' : land === 'mystic' ? '#8a6ab8' : '#7f8a72';
+        const rockMat = mats.toon(rockColor);
+        const big = new THREE.Mesh(new THREE.DodecahedronGeometry(d.r * 0.95, 0), rockMat);
+        big.position.y = d.r * 0.75; big.rotation.set(0.3, 0.6, 0.1);
+        root.add(big);
+        const small = new THREE.Mesh(new THREE.DodecahedronGeometry(d.r * 0.55, 0), mats.toon(land === 'arctic' ? '#cfe3f5' : land === 'mystic' ? '#a98be0' : '#a07f56'));
+        small.position.set(d.r * 0.7, d.r * 0.4, d.r * 0.3); small.rotation.set(0.8, 0.2, 0.5);
+        root.add(small);
+        if (land === 'mystic') {
+          for (let i = 0; i < 3; i++) {
+            const shard = new THREE.Mesh(new THREE.OctahedronGeometry(d.r * 0.45, 0), mats.glow(theme.accent, 0.9));
+            shard.position.set((i - 1) * d.r * 0.5, d.r * 1.5 + (i % 2) * 0.3, 0); shard.rotation.z = (i - 1) * 0.35;
+            root.add(shard);
+          }
+        } else if (land === 'forest' || land === 'canopy') {
+          const moss = new THREE.Mesh(new THREE.SphereGeometry(d.r * 0.6, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), mats.toon('#6fb85a'));
+          moss.position.set(-d.r * 0.2, d.r * 1.3, 0.1);
+          root.add(moss);
+        } else if (land === 'arctic') {
+          const snow = new THREE.Mesh(new THREE.SphereGeometry(d.r * 0.7, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), mats.toon('#ffffff'));
+          snow.position.set(0, d.r * 1.25, 0);
+          root.add(snow);
+        }
         break;
       }
       case 'ring': {
@@ -237,6 +370,18 @@ export function buildHazards(track: TrackRuntime, mats: MaterialLibrary): Hazard
           top.rotation.x = Math.PI / 2;
           top.position.set(0, Math.min(d.h - 0.5, 1.55), 0);
           root.add(top);
+        } else if (style === 'boulders') {
+          // Ochre boulders in a heap.
+          const rock = mats.toon('#b98a5a');
+          const dark = mats.toon('#8f6a42');
+          const n = Math.max(2, Math.round(d.w / 0.9));
+          for (let i = 0; i < n + 1; i++) {
+            const R = Math.min(0.75, d.h * 0.5) * (i === n ? 0.8 : 1);
+            const b = new THREE.Mesh(new THREE.DodecahedronGeometry(R, 0), i % 2 ? dark : rock);
+            b.position.set(i === n ? 0 : (i - (n - 1) / 2) * R * 1.7, i === n ? R * 2.4 : R * 0.9, (i % 2) * 0.35 - 0.15);
+            b.rotation.set(i * 0.7, i * 1.3, 0);
+            root.add(b);
+          }
         } else if (style === 'cargo') {
           // Dock cargo: steel crates with rivet strips and a warning stripe.
           const steel = mats.toon('#5d6f88');
@@ -328,7 +473,8 @@ export function updateHazards(v: HazardVisual, states: HazardState[], time: numb
     const n = v.nodes[i];
     const h = states[i];
     if (!h) continue;
-    n.root.position.set(h.pos.x, h.pos.y, h.pos.z);
+    if (n.kind === 'boss') n.root.position.set(h.anchor.x, h.anchor.y, h.anchor.z);
+    else n.root.position.set(h.pos.x, h.pos.y, h.pos.z);
 
     // The telegraph: warning parts pulse harder the closer the strike is.
     const flash = h.telegraph > 0
@@ -341,6 +487,23 @@ export function updateHazards(v: HazardVisual, states: HazardState[], time: numb
     }
 
     switch (n.kind) {
+      case 'chest': {
+        n.root.rotation.y = h.phase * Math.PI * 2;
+        break;
+      }
+      case 'boss': {
+        // Wind up (rise, lean back), slam (drop), hold, lift.
+        const t = h.phase;
+        const fist = n.root.getObjectByName('boss-fist');
+        if (fist) {
+          const lift = t < 0.45 ? 0.3 + t * 2 : t < 0.62 ? 1.2 + (t - 0.45) / 0.17 * 6.0 : t < 0.74 ? 0 : (t - 0.74) / 0.26 * 0.3;
+          fist.position.y = lift;
+          fist.rotation.x = t >= 0.45 && t < 0.62 ? -(t - 0.45) / 0.17 * 0.5 : 0;
+        }
+        const fig = n.root.getObjectByName('boss-figure');
+        if (fig) fig.position.y = h.active ? -0.25 : 0;
+        break;
+      }
       case 'gator': {
         // Rise, open the jaws at the top of the arc, sink back.
         const open = clamp01(h.active ? 1 : h.telegraph * 0.35);
