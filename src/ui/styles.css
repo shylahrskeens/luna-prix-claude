@@ -471,6 +471,13 @@ label.toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
   .hud-tl, .hud-tr { --hud-scale: 0.82; }
 }
 
+/* The meters box docked under the left column on an upright phone. */
+.hud-box.meters.compact { text-align: left; margin-top: 8px; padding: 6px 9px; }
+.hud-box.meters.compact .speed-big { font-size: 22px; }
+.hud-box.meters.compact .boost-meter, .hud-box.meters.compact .special-meter { width: 118px; }
+.hud-box.meters.compact .item-slot { padding: 3px 6px; margin-top: 6px; }
+.hud-box.meters.compact .hint { font-size: 11px; }
+
 /* Class special: a second, thinner meter under the boost one. */
 .special-meter {
   height: 6px;

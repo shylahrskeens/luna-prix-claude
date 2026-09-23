@@ -35,6 +35,11 @@ export class Hud {
   private itemSlot: HTMLElement;
   private itemGlyph: HTMLElement;
   private itemLabel: HTMLElement;
+  private metersBox: HTMLElement;
+  private tlHost: HTMLElement;
+  private brHost: HTMLElement;
+  private portrait: MediaQueryList;
+  private touchLayout = false;
   private centre: HTMLElement;
   private warnEl: HTMLElement;
   private sectorEl: HTMLElement;
@@ -79,32 +84,38 @@ export class Hud {
     );
     const special = el('div', { class: 'special-meter' }, this.specialFill);
 
-    this.root = el('div', { id: 'hud', class: 'layer' },
-      el('div', { class: 'hud-tl' },
-        el('div', { class: 'hud-box' },
-          this.posEl,
-          el('div', { style: 'margin-top:6px' }, this.lapEl),
-        ),
-        el('div', { class: 'hud-box', style: 'margin-top:8px' }, this.sectorEl),
-        this.routeEl,
-        this.promptEl,
+    this.metersBox = el('div', { class: 'hud-box meters' },
+      this.speedEl,
+      el('div', { style: 'margin-top:8px' }, boost),
+      this.boostLabel,
+      el('div', { style: 'margin-top:8px' }, special),
+      this.specialLabel,
+      this.itemSlot,
+    );
+    this.tlHost = el('div', { class: 'hud-tl' },
+      el('div', { class: 'hud-box' },
+        this.posEl,
+        el('div', { style: 'margin-top:6px' }, this.lapEl),
       ),
+      el('div', { class: 'hud-box', style: 'margin-top:8px' }, this.sectorEl),
+      this.routeEl,
+      this.promptEl,
+    );
+    this.brHost = el('div', { class: 'hud-br' }, this.metersBox);
+    this.root = el('div', { id: 'hud', class: 'layer' },
+      this.tlHost,
       el('div', { class: 'hud-tr' },
         el('div', { class: 'hud-box' }, this.timeEl, this.splitEl),
         el('div', { style: 'margin-top:8px' }, this.minimap),
       ),
-      el('div', { class: 'hud-br' },
-        el('div', { class: 'hud-box' },
-          this.speedEl,
-          el('div', { style: 'margin-top:8px' }, boost),
-          this.boostLabel,
-          el('div', { style: 'margin-top:8px' }, special),
-          this.specialLabel,
-          this.itemSlot,
-        ),
-      ),
+      this.brHost,
       el('div', { class: 'hud-c' }, this.centre, this.warnEl),
     );
+    // A phone held upright has no spare corner: the meters box in the bottom
+    // right sat on the kart and the road. There it docks under the left column
+    // instead, over the sky.
+    this.portrait = window.matchMedia('(orientation: portrait)');
+    this.portrait.addEventListener('change', () => this.placeMeters());
     this.setScale(opts.hudScale);
   }
 
@@ -354,6 +365,16 @@ export class Hud {
    *  their way rather than sitting underneath a thumb. */
   setTouchLayout(on: boolean): void {
     this.root.classList.toggle('with-touch', on);
+    this.touchLayout = on;
+    this.placeMeters();
+  }
+
+  /** Bottom-right on a wide screen; under the left column on an upright phone. */
+  private placeMeters(): void {
+    const dock = this.touchLayout && this.portrait.matches;
+    const want = dock ? this.tlHost : this.brHost;
+    if (this.metersBox.parentElement !== want) want.appendChild(this.metersBox);
+    this.metersBox.classList.toggle('compact', dock);
   }
 
   /** The control card, shown before the first race. */
