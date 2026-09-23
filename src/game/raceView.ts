@@ -194,7 +194,7 @@ export class RaceView {
           bot.difficulty = setup.difficulty;
           this.bots.set(racer.id, bot);
         }
-        this.addRig(racer, lo, LIVERY[color % LIVERY.length]);
+        this.addRig(racer, lo, LIVERY[color % LIVERY.length], color + 1);
         color++;
       }
     } else if (!setup.soloGhost) {
@@ -219,7 +219,7 @@ export class RaceView {
         const bot = new BotDriver(racer, p, this.track, hashString(`${setup.seed}:${i}`));
         bot.difficulty = setup.difficulty;
         this.bots.set(racer.id, bot);
-        this.addRig(racer, lo, LIVERY[i % LIVERY.length]);
+        this.addRig(racer, lo, LIVERY[i % LIVERY.length], i + 1);
       }
     }
 
@@ -237,11 +237,12 @@ export class RaceView {
     audio.startRace(def.theme.scenery);
   }
 
-  private addRig(racer: Racer, loadout: ValidatedLoadout, livery: string | null): void {
+  private addRig(racer: Racer, loadout: ValidatedLoadout, livery: string | null, number = 1): void {
     const kart = kartById(loadout.kartId);
     const rig = buildKart(kart, this.ctx.materials, {
       parts: loadout.parts,
       livery: livery ?? undefined,
+      number,
     });
     seatAxie(rig, axieById(loadout.axieId), this.ctx);
     this.root.add(rig.root);

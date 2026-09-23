@@ -5,6 +5,7 @@
  *  that a hazard never hides in a gradient.
  */
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { AxieMixerService } from './axieMixer';
 import type { TrackTheme } from '../sim/trackTypes';
 
@@ -44,6 +45,34 @@ export class MaterialLibrary {
     // three renders flat shading for any material whose `flatShading` is true;
     // MeshToonMaterialParameters just does not declare it in the typings.
     (m as unknown as { flatShading: boolean }).flatShading = opts.flat !== false;
+    this.cache.set(key, m);
+    return m;
+  }
+
+  /** Painted bodywork: physically shaded, lit by the environment map, so a
+   *  kart carries highlights and a soft reflection instead of a flat fill. */
+  paint(color: THREE.ColorRepresentation, opts: { roughness?: number; metalness?: number } = {}): THREE.MeshStandardMaterial {
+    const key = `p|${new THREE.Color(color).getHexString()}|${opts.roughness ?? 0.38}|${opts.metalness ?? 0.18}`;
+    const hit = this.cache.get(key);
+    if (hit) return hit as THREE.MeshStandardMaterial;
+    const m = new THREE.MeshStandardMaterial({
+      color, roughness: opts.roughness ?? 0.38, metalness: opts.metalness ?? 0.18, envMapIntensity: 0.9,
+    });
+    this.cache.set(key, m);
+    return m;
+  }
+
+  /** Bright metal: exhaust tips, spokes, bumper bars, rails. */
+  chrome(color: THREE.ColorRepresentation = '#cfd6e0'): THREE.MeshStandardMaterial {
+    return this.paint(color, { roughness: 0.22, metalness: 0.92 });
+  }
+
+  /** A painted decal — number roundels, plates. One material per texture. */
+  decal(map: THREE.Texture): THREE.MeshStandardMaterial {
+    const key = `d|${map.uuid}`;
+    const hit = this.cache.get(key);
+    if (hit) return hit as THREE.MeshStandardMaterial;
+    const m = new THREE.MeshStandardMaterial({ map, roughness: 0.5, metalness: 0.05, transparent: true, polygonOffset: true, polygonOffsetFactor: -1 });
     this.cache.set(key, m);
     return m;
   }
@@ -174,6 +203,14 @@ export class RenderContext {
 
     this.ambient = new THREE.HemisphereLight(0xffffff, 0x404050, 0.42);
     this.scene.add(this.ambient);
+
+    // A neutral studio environment for the physically shaded kart materials.
+    // Toon materials ignore it, so the world's look is unchanged; the karts
+    // gain highlights and a soft reflection that read as finished bodywork.
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.55;
+    pmrem.dispose();
   }
 
   applyTheme(theme: TrackTheme): void {

@@ -38,18 +38,20 @@ export function proceduralDriver(rig: AxieRig, def: AxieDefinition): DriverRig {
   };
 }
 
-/** The Mixer character is authored facing -Z with its feet at y = 0, in
- *  metres, about 1.2 m tall. The kart drives down +Z, so the character is
- *  turned to face forward, scaled to the seat, and the same lean / crouch /
- *  cheer language the procedural rig speaks is applied to a group above it,
- *  on top of whatever the Axie's own animation is doing underneath. */
+/** The Mixer character stands with its feet at y = 0, in metres, about 1.2 m
+ *  tall, and in this scene it faces +Z as assembled — the same way the kart
+ *  drives — so it is not turned. (The first cut turned it a half-circle on
+ *  the strength of the pack's "forward -Z" note, and every driver rode
+ *  backwards, grinning at the chase camera.) It is scaled to the seat, and
+ *  the same lean / crouch / cheer language the procedural rig speaks is
+ *  applied to a group above it, on top of the Axie's own animation. */
 export function mixerDriver(character: AxiePlayableCharacter, def: AxieDefinition): DriverRig {
   const seat = def.mixerSeat;
   const root = new THREE.Group();
   root.name = `MixerDriver:${def.id}`;
   const pose = new THREE.Group();
   pose.position.set(...seat.offset);
-  pose.rotation.set(seat.pitch, Math.PI, 0);
+  pose.rotation.set(seat.pitch, 0, 0);
   pose.scale.setScalar(seat.scale);
   pose.add(character.wrapper);
   root.add(pose);
@@ -93,7 +95,7 @@ export function mixerDriver(character: AxiePlayableCharacter, def: AxieDefinitio
       );
       pose.rotation.set(
         seat.pitch + a.crouch * 0.35 - (s.grounded ? 0 : 0.16) + a.cheer * -0.10 + a.flinch * 0.25,
-        Math.PI + a.lean * 0.25,
+        a.lean * 0.25,
         -a.lean * 0.45,
       );
       const squash = 1 - s.compression * 0.10;

@@ -7,6 +7,7 @@
  *  costs one data entry each and no new code.
  */
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { KartDefinition } from '../data/karts';
 import type { AxieDefinition } from '../data/axies';
 import type { MaterialLibrary } from './scene';
@@ -24,6 +25,30 @@ const PAINT: Record<string, { body: string; trim: string }> = {
   mosswork: { body: '#5f8348', trim: '#d8c38a' },
   lunacian: { body: '#f2f0ff', trim: '#b9a0ff' },
 };
+
+/** A race number on a roundel, painted once per (number, colour) and cached. */
+const decalCache = new Map<string, THREE.CanvasTexture>();
+function numberDecal(n: number, ring: string): THREE.CanvasTexture {
+  const key = `${n}|${ring}`;
+  const hit = decalCache.get(key);
+  if (hit) return hit;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#f6f4ee';
+  g.beginPath(); g.arc(64, 64, 62, 0, Math.PI * 2); g.fill();
+  g.lineWidth = 8; g.strokeStyle = ring;
+  g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = '#15161c';
+  g.font = '800 64px Inter, system-ui, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(String(n), 64, 68);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  decalCache.set(key, tex);
+  return tex;
+}
 
 /** Livery tints applied to rival karts so eight karts are eight colours. */
 export const LIVERY = [
@@ -75,7 +100,7 @@ function socket(parent: THREE.Object3D, p: [number, number, number]): THREE.Grou
 export function buildKart(
   def: KartDefinition,
   mats: MaterialLibrary,
-  opts: { parts?: LoadoutParts; livery?: string } = {},
+  opts: { parts?: LoadoutParts; livery?: string; number?: number } = {},
 ): KartRig {
   const root = new THREE.Group();
   const chassis = new THREE.Group();
@@ -86,35 +111,88 @@ export function buildKart(
   const bodyColor = opts.livery ?? (paint.body || def.palette.body);
   const trimColor = paint.trim || def.palette.trim;
 
-  const bodyMat = mats.toon(bodyColor);
+  // bodyMat is gone: painted panels use mats.paint(bodyColor) below.
   const trimMat = mats.toon(trimColor);
   const metalMat = mats.toon(def.palette.metal);
   const tyreMat = mats.toon('#26282f');
 
   const { length, width, height, wheelRadius, wheelbase } = def.size;
 
+  // ---- materials ----------------------------------------------------------
+  // Painted panels and chrome are physically shaded and pick up the scene's
+  // environment map; the rest stays toon so the kart reads with the world.
+  const paintMat = mats.paint(bodyColor);
+  const trimPaint = mats.paint(trimColor);
+  const chrome = mats.chrome('#cfd6e0');
+  const dark = mats.toon('#1b1d24');
+  const glass = mats.paint('#2a3140', { roughness: 0.15, metalness: 0.6 });
+
+  const rbox = (w: number, h: number, d: number, r = 0.05, mat: THREE.Material = paintMat) =>
+    new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, Math.min(r, Math.min(w, h, d) * 0.45)), mat);
+  const cyl = (rt: number, rb: number, h: number, seg: number, mat: THREE.Material) =>
+    new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  const put = (m: THREE.Object3D, x: number, y: number, z: number, parent: THREE.Object3D = chassis) => {
+    m.position.set(x, y, z); parent.add(m); return m;
+  };
+
   // ---- main tub -----------------------------------------------------------
-  const tub = new THREE.Mesh(new THREE.BoxGeometry(width * 0.74, height * 0.62, length * 0.66), bodyMat);
-  tub.position.set(0, height * 0.42, -0.04);
-  chassis.add(tub);
+  const tub = put(rbox(width * 0.72, height * 0.58, length * 0.64, 0.09), 0, height * 0.40, -0.04);
+  // Floor pan and a lower sill line in trim colour.
+  put(rbox(width * 0.80, height * 0.10, length * 0.70, 0.03, dark), 0, height * 0.14, -0.04);
+  put(rbox(width * 0.76, height * 0.06, length * 0.60, 0.02, trimPaint), 0, height * 0.26, -0.04);
+  // Cockpit: a raised rim around the seat opening and a bucket seat inside.
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(width * 0.26, 0.035, 6, 20), trimPaint);
+  rim.rotation.x = Math.PI / 2; rim.scale.set(1, 1.35, 1);
+  put(rim, 0, height * 0.70, -0.10);
+  put(rbox(width * 0.34, height * 0.34, 0.10, 0.04, dark), 0, height * 0.72, -length * 0.20);
+  put(rbox(width * 0.34, 0.06, length * 0.16, 0.03, dark), 0, height * 0.56, -length * 0.12);
+  // Racing stripe down the centreline.
+  put(rbox(width * 0.10, 0.012, length * 0.60, 0.004, trimPaint), 0, height * 0.695, 0.02);
 
-  // Tapered nose.
-  const nose = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.10, width * 0.34, length * 0.40, 4), bodyMat);
-  nose.rotation.set(Math.PI / 2, Math.PI / 4, 0);
-  nose.position.set(0, height * 0.36, length * 0.40);
-  chassis.add(nose);
-
-  // Side pods.
+  // ---- nose -----------------------------------------------------------------
+  const nose = cyl(width * 0.12, width * 0.34, length * 0.42, 10, paintMat);
+  nose.rotation.x = Math.PI / 2;
+  put(nose, 0, height * 0.36, length * 0.42);
+  const noseCap = new THREE.Mesh(new THREE.SphereGeometry(width * 0.12, 10, 8), paintMat);
+  put(noseCap, 0, height * 0.36, length * 0.63);
+  // Headlights and a bumper bar.
   for (const side of [-1, 1] as const) {
-    const pod = new THREE.Mesh(new THREE.BoxGeometry(width * 0.20, height * 0.42, length * 0.44), trimMat);
-    pod.position.set(side * width * 0.42, height * 0.36, -0.02);
-    chassis.add(pod);
+    put(new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), mats.glow('#fff4d6')), side * width * 0.16, height * 0.38, length * 0.58);
+  }
+  put(rbox(width * 0.66, 0.06, 0.07, 0.03, chrome), 0, height * 0.24, length * 0.62);
+  // Number roundel on the nose.
+  const number = opts.number ?? 1;
+  const roundel = new THREE.Mesh(new THREE.CircleGeometry(width * 0.12, 24), mats.decal(numberDecal(number, bodyColor)));
+  roundel.rotation.x = -Math.PI / 2 + 0.55;
+  put(roundel, 0, height * 0.50, length * 0.36);
+
+  // ---- side pods ------------------------------------------------------------
+  for (const side of [-1, 1] as const) {
+    put(rbox(width * 0.20, height * 0.40, length * 0.46, 0.07, trimPaint), side * width * 0.43, height * 0.34, -0.02);
+    // Intake grille: three dark slats on the leading face.
+    for (let i = 0; i < 3; i++) {
+      put(rbox(width * 0.14, 0.035, 0.03, 0.01, dark), side * width * 0.43, height * 0.24 + i * 0.09, length * 0.215);
+    }
+    // Side number plate.
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.30, 0.30), mats.decal(numberDecal(number, trimColor)));
+    plate.rotation.y = side * Math.PI / 2;
+    put(plate, side * (width * 0.53 + 0.003), height * 0.36, 0.04);
+    // Mirror on a stalk.
+    put(cyl(0.012, 0.012, 0.16, 5, chrome), side * width * 0.40, height * 0.80, length * 0.18).rotation.z = side * 0.9;
+    put(rbox(0.08, 0.05, 0.03, 0.01, dark), side * width * 0.47, height * 0.84, length * 0.18);
   }
 
-  // Engine block behind the seat.
-  const engine = new THREE.Mesh(new THREE.BoxGeometry(width * 0.50, height * 0.52, length * 0.24), metalMat);
-  engine.position.set(0, height * 0.52, -length * 0.36);
-  chassis.add(engine);
+  // ---- engine ---------------------------------------------------------------
+  put(rbox(width * 0.50, height * 0.50, length * 0.24, 0.05, metalMat), 0, height * 0.50, -length * 0.36);
+  for (const side of [-1, 1] as const) {
+    put(cyl(0.07, 0.07, 0.14, 8, chrome), side * width * 0.13, height * 0.80, -length * 0.36);
+    // Tail lights.
+    put(rbox(0.10, 0.05, 0.03, 0.01, mats.glow('#ff3b3b')), side * width * 0.24, height * 0.44, -length * 0.485);
+  }
+  // Rear diffuser fins.
+  for (const i of [-1, 0, 1]) {
+    put(rbox(0.03, height * 0.18, 0.20, 0.01, dark), i * width * 0.16, height * 0.18, -length * 0.43);
+  }
 
   // ---- part visuals -------------------------------------------------------
   // Fitted parts change the silhouette, so a built kart looks built.
@@ -123,42 +201,35 @@ export function buildKart(
 
   const aero = partVisual('aero');
   if (aero === 'kitewing') {
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(width * 1.15, 0.07, 0.34), trimMat);
-    wing.position.set(0, height * 1.05, -length * 0.46);
-    chassis.add(wing);
+    put(rbox(width * 1.15, 0.05, 0.34, 0.02, trimPaint), 0, height * 1.05, -length * 0.46);
     for (const side of [-1, 1] as const) {
-      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.06, height * 0.38, 0.30), trimMat);
-      fin.position.set(side * width * 0.52, height * 0.86, -length * 0.46);
-      chassis.add(fin);
+      put(rbox(0.05, height * 0.38, 0.30, 0.02, trimPaint), side * width * 0.52, height * 0.86, -length * 0.46);
+      put(cyl(0.02, 0.02, height * 0.36, 5, chrome), side * width * 0.30, height * 0.86, -length * 0.46);
     }
   } else if (aero === 'slipcowl') {
-    const cowl = new THREE.Mesh(new THREE.SphereGeometry(width * 0.40, 7, 5), bodyMat);
+    const cowl = new THREE.Mesh(new THREE.SphereGeometry(width * 0.40, 14, 10), paintMat);
     cowl.scale.set(1, 0.62, 1.5);
-    cowl.position.set(0, height * 0.68, -length * 0.18);
-    chassis.add(cowl);
+    put(cowl, 0, height * 0.68, -length * 0.18);
+    put(new THREE.Mesh(new THREE.SphereGeometry(width * 0.22, 12, 8), glass), 0, height * 0.78, length * 0.02).scale.set(1, 0.5, 1.3);
   } else {
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(width * 0.80, 0.06, 0.22), trimMat);
-    wing.position.set(0, height * 0.92, -length * 0.45);
-    chassis.add(wing);
+    put(rbox(width * 0.80, 0.05, 0.22, 0.02, trimPaint), 0, height * 0.92, -length * 0.45);
+    for (const side of [-1, 1] as const) {
+      put(cyl(0.02, 0.02, height * 0.30, 5, chrome), side * width * 0.24, height * 0.78, -length * 0.45);
+    }
   }
 
   const chassisVisual = partVisual('chassis');
   if (chassisVisual === 'bulwark') {
     for (const side of [-1, 1] as const) {
-      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, height * 1.0, 5), metalMat);
-      bar.position.set(side * width * 0.36, height * 0.82, -length * 0.06);
+      const bar = put(cyl(0.05, 0.05, height * 1.0, 8, chrome), side * width * 0.36, height * 0.82, -length * 0.06);
       bar.rotation.z = side * 0.12;
-      chassis.add(bar);
     }
-    const hoop = new THREE.Mesh(new THREE.TorusGeometry(width * 0.34, 0.05, 4, 8, Math.PI), metalMat);
-    hoop.position.set(0, height * 1.20, -length * 0.06);
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(width * 0.34, 0.05, 6, 14, Math.PI), chrome);
     hoop.rotation.y = Math.PI / 2;
-    chassis.add(hoop);
+    put(hoop, 0, height * 1.20, -length * 0.06);
   } else if (chassisVisual === 'lattice') {
     for (let i = 0; i < 4; i++) {
-      const spar = new THREE.Mesh(new THREE.BoxGeometry(width * 0.80, 0.04, 0.04), metalMat);
-      spar.position.set(0, height * 0.18 + i * 0.09, length * 0.10 - i * 0.14);
-      chassis.add(spar);
+      put(rbox(width * 0.80, 0.035, 0.035, 0.01, chrome), 0, height * 0.18 + i * 0.09, length * 0.10 - i * 0.14);
     }
   }
 
@@ -171,10 +242,13 @@ export function buildKart(
   const exhaustL = socket(chassis, [-ex, ey, ez]);
   const exhaustR = socket(chassis, [ex, ey, ez]);
   for (const sock of [exhaustL, exhaustR]) {
-    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.30, 6), metalMat);
+    const pipe = cyl(0.085, 0.10, 0.34, 10, metalMat);
     pipe.rotation.x = Math.PI / 2;
     sock.add(pipe);
-    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.85, 6), mats.glow(boostGlow, 0.9));
+    const tip = new THREE.Mesh(new THREE.TorusGeometry(0.10, 0.022, 6, 14), chrome);
+    tip.position.z = -0.17;
+    sock.add(tip);
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.85, 8), mats.glow(boostGlow, 0.9));
     // Point it back down the road: a cone's axis is +Y, and -90 degrees about
     // X maps that to -Z. The opposite sign fires the flame through the kart.
     flame.rotation.x = -Math.PI / 2;
@@ -186,11 +260,16 @@ export function buildKart(
 
   // ---- wheels -------------------------------------------------------------
   const tiresVisual = partVisual('tires');
-  const tread = tiresVisual === 'cleat' ? 7 : tiresVisual === 'glasswing' ? 12 : 9;
-  const wheelGeo = new THREE.CylinderGeometry(wheelRadius, wheelRadius, width * 0.19, tread);
+  const tread = tiresVisual === 'cleat' ? 10 : tiresVisual === 'glasswing' ? 18 : 14;
+  const tyreW = width * 0.19;
+  const wheelGeo = new THREE.CylinderGeometry(wheelRadius, wheelRadius, tyreW, tread);
   wheelGeo.rotateZ(Math.PI / 2);
-  const hubGeo = new THREE.CylinderGeometry(wheelRadius * 0.45, wheelRadius * 0.45, width * 0.21, 6);
-  hubGeo.rotateZ(Math.PI / 2);
+  const grooveGeo = new THREE.TorusGeometry(wheelRadius * 0.98, wheelRadius * 0.06, 5, tread);
+  grooveGeo.rotateY(Math.PI / 2);
+  const rimGeo = new THREE.CylinderGeometry(wheelRadius * 0.58, wheelRadius * 0.58, tyreW * 1.04, 12);
+  rimGeo.rotateZ(Math.PI / 2);
+  const spokeGeo = new THREE.BoxGeometry(tyreW * 1.08, wheelRadius * 0.14, wheelRadius * 1.0);
+  const capGeo = new THREE.SphereGeometry(wheelRadius * 0.16, 8, 6);
   const wheels: WheelRig[] = [];
   const sparkAnchors: THREE.Group[] = [];
   for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]] as const) {
@@ -199,8 +278,28 @@ export function buildKart(
     chassis.add(holder);
     const w = new THREE.Mesh(wheelGeo, tyreMat);
     holder.add(w);
-    const hub = new THREE.Mesh(hubGeo, trimMat);
-    w.add(hub);
+    // Sidewall groove, rim, three spokes and a hub cap.
+    const groove = new THREE.Mesh(grooveGeo, dark);
+    groove.position.x = sx * tyreW * 0.30;
+    w.add(groove);
+    w.add(new THREE.Mesh(rimGeo, trimMat));
+    for (let i = 0; i < 3; i++) {
+      const spoke = new THREE.Mesh(spokeGeo, chrome);
+      spoke.rotation.x = (i / 3) * Math.PI;
+      w.add(spoke);
+    }
+    const cap = new THREE.Mesh(capGeo, chrome);
+    cap.position.x = sx * tyreW * 0.55;
+    w.add(cap);
+    // Suspension: two arms from the tub to the hub, with a small damper.
+    for (const dz of [-0.10, 0.10]) {
+      const arm = cyl(0.018, 0.018, width * 0.20, 5, chrome);
+      arm.rotation.z = Math.PI / 2;
+      put(arm, sx * width * 0.42, wheelRadius * 0.95, sz * wheelbase * 0.5 + dz);
+    }
+    const damper = cyl(0.03, 0.03, wheelRadius * 0.9, 6, dark);
+    damper.rotation.z = sx * 0.55;
+    put(damper, sx * width * 0.44, wheelRadius * 1.35, sz * wheelbase * 0.5);
     // The steering axis is the holder, so a wheel can spin and steer at once.
     wheels.push({ holder, mesh: w, front: sz > 0 });
     if (sz < 0) {
@@ -210,6 +309,7 @@ export function buildKart(
       sparkAnchors.push(anchor);
     }
   }
+  void tub;
 
   // ---- sockets ------------------------------------------------------------
   const sockets = {
@@ -220,9 +320,18 @@ export function buildKart(
   };
 
   // Steering wheel at the handle socket.
-  const wheelRim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.028, 4, 10), metalMat);
+  const wheelRim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.026, 8, 18), chrome);
   wheelRim.rotation.x = -0.9;
   sockets.handle.add(wheelRim);
+  for (let i = 0; i < 3; i++) {
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.30, 0.02), dark);
+    spoke.rotation.set(-0.9, 0, (i / 3) * Math.PI);
+    sockets.handle.add(spoke);
+  }
+  const column = cyl(0.02, 0.02, 0.26, 6, dark);
+  column.rotation.x = 0.6;
+  column.position.z = 0.10; column.position.y = -0.08;
+  sockets.handle.add(column);
 
   // ---- blob shadow --------------------------------------------------------
   const shadow = new THREE.Mesh(
