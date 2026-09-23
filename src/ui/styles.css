@@ -496,3 +496,32 @@ details.more > summary::-webkit-details-marker { display: none; }
 details.more > summary::before { content: '▸'; font-size: 11px; transition: transform 0.15s ease; }
 details.more[open] > summary::before { transform: rotate(90deg); }
 details.more > .more-body { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+
+/* ---------- garage: every slot on one screen ---------- */
+.slot-row { padding: 7px 0 6px; border-bottom: 1px solid var(--line); }
+.slot-row:last-of-type { border-bottom: none; }
+.slot-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 5px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 10px; min-height: 30px; font-size: 12.5px; border-radius: 999px;
+}
+.pill .pill-action { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+.pill.upgrade { font-size: 11.5px; }
+
+/* ---------- phones: one column, nothing side by side ---------- */
+@media (max-width: 760px) {
+  .body, .showcase .body { flex-direction: column; overflow-y: auto; gap: 12px; }
+  .body > .col, .showcase .body > .col { width: 100% !important; flex: 0 0 auto !important; max-height: none; overflow: visible; }
+  .showcase .stage-gap { display: none; }
+  .topbar { gap: 8px; }
+  .topbar .brand .mark { font-size: 22px; }
+  .topbar .brand .sub { display: none; }
+  .grid.tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile .tile-label { font-size: 13.5px; }
+  .race-cta { font-size: 20px; padding: 14px 18px; }
+  .row > button { flex: 1 1 auto; }
+  .card > .art { margin: -6px -6px 0; }
+  .screen > .row:last-child { position: sticky; bottom: 0; padding-top: 8px; background: linear-gradient(180deg, transparent, rgba(10,12,18,0.9) 40%); }
+  /* The live kart behind a stacked menu is noise, not a preview. */
+  .screen.showcase { background: linear-gradient(180deg, rgba(10, 12, 18, 0.90), rgba(10, 12, 18, 0.97)); }
+}

@@ -15,8 +15,13 @@ import type { TrackDefinition } from '../../sim/trackTypes';
 const SEGS: RouteSeg[] = [
   { t: 'straight', len: 120, w: 12, mark: 'startStraight' },
   { t: 'turn', angle: -80, radius: 60, bank: 6, mark: 't1' },
+  // The colonnade esses, through the fallen pillars.
+  { t: 'turn', angle: 30, radius: 62, w: 13, mark: 'ruinEssA' },
+  { t: 'turn', angle: -30, radius: 62, w: 13, mark: 'ruinEssB' },
+  // The full forty metres the original had before the descent: the bots (and
+  // you) need the sight line to brake for a tightening downhill left.
   { t: 'straight', len: 40 },
-  { t: 'turn', angle: -80, radius: 36, dy: -6, w: 11, mark: 'gateTurn' },
+  { t: 'turn', angle: -80, radius: 40, dy: -6, w: 11, mark: 'gateTurn' },
   { t: 'straight', len: 70, dy: -8, w: 10, mark: 'causeway' },
   { t: 'turn', angle: 50, radius: 45, mark: 't3' },
   { t: 'straight', len: 50, w: 11 },
@@ -24,6 +29,10 @@ const SEGS: RouteSeg[] = [
   { t: 'turn', angle: -60, radius: 32, dy: -9, bank: 12, w: 10, mark: 'spiralB' },
   { t: 'straight', len: 55, dy: -4, w: 11, mark: 'chamberExit' },
   { t: 'turn', angle: 60, radius: 50, mark: 't5' },
+  // The crypt kink: a narrow left-right under the vault, right before the bridge.
+  { t: 'turn', angle: -25, radius: 48, w: 12, mark: 'cryptA' },
+  { t: 'straight', len: 20, w: 12 },
+  { t: 'turn', angle: 25, radius: 48, w: 12, mark: 'cryptB' },
   // The bridge break: a short ramp, a 14 m gap, and a flat landing. Small
   // enough that any kart clears it at racing speed, big enough that a kart
   // slowed by the panels ahead of it will not.
@@ -33,12 +42,20 @@ const SEGS: RouteSeg[] = [
   { t: 'straight', len: 6, dy: -4, w: 12, mark: 'bridgeGapB' },
   { t: 'straight', len: 24, dy: 0, w: 12, mark: 'brokenBridge' },
   { t: 'turn', angle: -70, radius: 55, dy: 8, mark: 't6' },
-  { t: 'straight', len: 60 },
+  { t: 'straight', len: 20 },
+  // The altar leap: a second, smaller break in the causeway.
+  { t: 'straight', len: 12, dy: 3.0, w: 12, mark: 'altarRamp' },
+  { t: 'straight', len: 6, dy: 0.7, w: 12, mark: 'altarGapA' },
+  { t: 'straight', len: 6, dy: -2.4, w: 12, mark: 'altarGapB' },
+  { t: 'straight', len: 20, dy: -1.0, w: 12, mark: 'altarLanding' },
+  { t: 'straight', len: 10 },
   { t: 'turn', angle: -45, radius: 70, dy: 7, mark: 't7' },
   { t: 'straight', len: 75, w: 12 },
   { t: 'turn', angle: 45, radius: 36, w: 10, mark: 'crystalA' },
   { t: 'turn', angle: -45, radius: 36, w: 10, mark: 'crystalB' },
-  { t: 'straight', len: 50 },
+  { t: 'turn', angle: 45, radius: 48, w: 11, mark: 'crystalC' },
+  { t: 'turn', angle: -45, radius: 48, w: 11, mark: 'crystalD' },
+  { t: 'straight', len: 20 },
   { t: 'turn', angle: -55, radius: 62, mark: 'surgeTurn' },
   { t: 'straight', len: 95, dy: 10, w: 12, mark: 'powerSurge' },
 ];
@@ -53,10 +70,18 @@ const tunnelOut = at(M.crystalB, 0.98);
 const tunnelNodes = chordBranch(route.nodes, tunnelIn, tunnelOut, 0.95,
   (t) => -1.4 * Math.sin(t * Math.PI), 12);
 
+/** The altar steps: a dirt cut across the inside of the climbing left after
+ *  the bridge. Shorter, steeper, and it rejoins right at the altar ramp. */
+const stepsIn = at(M.t6, 0.06);
+const stepsOut = at(M.t6, 0.94);
+const stepsNodes = chordBranch(route.nodes, stepsIn, stepsOut, 0.85, () => 0, 10);
+
+export const RUIN_SEGS = SEGS;
+
 export const RUIN: TrackDefinition = {
   id: 'ruin',
   name: 'Ruin Reactor Rally',
-  subtitle: 'Sunken temple • 1.23 km • 14 turns',
+  subtitle: 'Sunken temple • 1.4 km • 20 turns • 2 jumps',
   setPiece: 'The reactor spiral — thirty metres down into a timed bridge break.',
   difficulty: 2,
   laps: 3,
@@ -80,6 +105,16 @@ export const RUIN: TrackDefinition = {
     { ...span(M.brokenBridge, 0, 1), surface: 'metal', wall: 'none', shoulder: 1.0, label: 'Bridge Break' },
     { ...span(M.crystalA, 0, 1), surface: 'road', wall: 'both', shoulder: 1.8, label: 'Crystal Chicane' },
     { ...span(M.crystalB, 0, 1), surface: 'road', wall: 'both', shoulder: 1.8, label: 'Crystal Chicane' },
+    { ...span(M.crystalC, 0, 1), surface: 'road', wall: 'both', shoulder: 1.8, label: 'Crystal Chicane' },
+    { ...span(M.crystalD, 0, 1), surface: 'road', wall: 'both', shoulder: 1.8, label: 'Crystal Chicane' },
+    { ...span(M.ruinEssA, 0, 1), surface: 'road', wall: 'both', shoulder: 2.0, label: 'Colonnade' },
+    { ...span(M.ruinEssB, 0, 1), surface: 'road', wall: 'both', shoulder: 2.0, label: 'Colonnade' },
+    { ...span(M.cryptA, 0, 1), surface: 'metal', wall: 'both', shoulder: 1.2, covered: true, label: 'Crypt' },
+    { ...span(M.cryptB, 0, 1), surface: 'metal', wall: 'both', shoulder: 1.2, covered: true, label: 'Crypt' },
+    { ...span(M.altarRamp, 0, 1), surface: 'metal', wall: 'none', shoulder: 1.2, label: 'Altar Leap' },
+    { ...span(M.altarGapA, 0, 1), gap: true, wall: 'none', shoulder: 1.0, label: 'Altar Leap' },
+    { ...span(M.altarGapB, 0, 1), gap: true, wall: 'none', shoulder: 1.0, label: 'Altar Leap' },
+    { ...span(M.altarLanding, 0, 1), surface: 'metal', wall: 'none', shoulder: 1.2, label: 'Altar Leap' },
     { ...span(M.powerSurge, 0, 1), surface: 'road', wall: 'both', shoulder: 3.0, label: 'Power Surge' },
     { ...span(M.gateTurn, 0, 1), surface: 'road', wall: 'both', shoulder: 2.0, label: 'Temple Descent' },
   ],
@@ -104,8 +139,25 @@ export const RUIN: TrackDefinition = {
       sign: 'PRECISION TUNNEL — shorter, and it does not forgive',
       flavor: 'shorter-risky',
     },
+    {
+      id: 'altar-steps',
+      name: 'Altar Steps',
+      inS: stepsIn,
+      outS: stepsOut,
+      nodes: stepsNodes,
+      w: 4.6,
+      surface: 'dirt',
+      sign: 'ALTAR STEPS — cuts the climb, lands you on the ramp',
+      flavor: 'shorter-risky',
+    },
   ],
   hazards: [
+    // Fallen pillar drums along the edges of the surge straight. Solid: the
+    // wide line through the last sector costs a moment of care.
+    { kind: 'stack', s: at(M.powerSurge, 0.40), lat: 4.9, w: 1.8, h: 1.5, len: 3.0, style: 'drums' },
+    { kind: 'stack', s: at(M.powerSurge, 0.80), lat: -4.9, w: 1.8, h: 1.5, len: 3.0, style: 'drums' },
+    { kind: 'bumper', s: at(M.ruinEssA, 0.5), lat: -8.5, r: 2.0 },
+    { kind: 'bumper', s: at(M.ruinEssB, 0.5), lat: 8.5, r: 2.0 },
     // Rotating temple gates. The opening sweeps across the road, so the line
     // through the gate is different every lap but never random.
     { kind: 'gate', s: at(M.causeway, 0.55), lat: 0, period: 5.2, phase: 0.0, span: 7.5 },

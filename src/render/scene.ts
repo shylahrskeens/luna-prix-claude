@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { AxieMixerService } from './axieMixer';
+import { StarterModelService } from './starterModel';
 import type { TrackTheme } from '../sim/trackTypes';
 
 /** Three-step ramp. Sampling it as a 1D texture is what turns a smooth Lambert
@@ -28,6 +29,8 @@ function toonGradient(steps = 3): THREE.DataTexture {
 
 export class MaterialLibrary {
   readonly gradient = toonGradient();
+  /** Studio reflection for painted and chrome parts; set by the RenderContext. */
+  envMap: THREE.Texture | null = null;
   private cache = new Map<string, THREE.Material>();
 
   /** Flat-shaded toon material. Cached by colour so the whole scene shares a
@@ -56,7 +59,8 @@ export class MaterialLibrary {
     const hit = this.cache.get(key);
     if (hit) return hit as THREE.MeshStandardMaterial;
     const m = new THREE.MeshStandardMaterial({
-      color, roughness: opts.roughness ?? 0.38, metalness: opts.metalness ?? 0.18, envMapIntensity: 0.9,
+      color, roughness: opts.roughness ?? 0.38, metalness: opts.metalness ?? 0.18,
+      envMap: this.envMap, envMapIntensity: 0.55,
     });
     this.cache.set(key, m);
     return m;
@@ -72,7 +76,7 @@ export class MaterialLibrary {
     const key = `d|${map.uuid}`;
     const hit = this.cache.get(key);
     if (hit) return hit as THREE.MeshStandardMaterial;
-    const m = new THREE.MeshStandardMaterial({ map, roughness: 0.5, metalness: 0.05, transparent: true, polygonOffset: true, polygonOffsetFactor: -1 });
+    const m = new THREE.MeshStandardMaterial({ map, roughness: 0.5, metalness: 0.05, transparent: true, polygonOffset: true, polygonOffsetFactor: -1, envMap: this.envMap, envMapIntensity: 0.3 });
     this.cache.set(key, m);
     return m;
   }
@@ -168,6 +172,8 @@ export class RenderContext {
   readonly materials = new MaterialLibrary();
   /** Sky Mavis Mixer 3D, booted on the first seat that asks for it. */
   readonly mixer: AxieMixerService;
+  /** The three official starter Axies, loaded on first seat. */
+  readonly starters = new StarterModelService();
   readonly sun: THREE.DirectionalLight;
   readonly ambient: THREE.HemisphereLight;
   quality: SceneQuality;
@@ -205,11 +211,11 @@ export class RenderContext {
     this.scene.add(this.ambient);
 
     // A neutral studio environment for the physically shaded kart materials.
-    // Toon materials ignore it, so the world's look is unchanged; the karts
-    // gain highlights and a soft reflection that read as finished bodywork.
+    // It goes on those materials directly, never on scene.environment: three
+    // multiplies every MeshBasicMaterial by a scene environment too, and that
+    // turned the boost pads, the start line and every glow into dark slabs.
     const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.55;
+    this.materials.envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     pmrem.dispose();
   }
 

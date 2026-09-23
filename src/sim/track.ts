@@ -504,7 +504,8 @@ export class TrackRuntime {
           h.pos.y = h.anchor.y + d.h * 0.5;
           h.active = true;
           h.radius = Math.max(d.w, d.len) * 0.5;
-          h.telegraph = 1;
+          // Static and solid: nothing to warn about, so nothing pulses.
+          h.telegraph = 0;
           break;
         }
         case 'target': {

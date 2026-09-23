@@ -481,42 +481,40 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
     group.add(mesh);
     pads.push(mesh);
 
-    //  Chevrons. These are the clearest thing on the track — a player reads
-    //  them from a long way out and aims at them — so they are built to be
-    //  read: wide, white, thick-edged, and they run forward in sequence so the
-    //  pad points somewhere rather than just sitting there.
+    //  Chevrons: flat arrow decals painted on the pad, lit in sequence so the
+    //  pad points somewhere. They used to be three-sided cones lying on the
+    //  road with a bigger dark cone underneath for an outline — which from
+    //  the chase camera was a row of dark three-metre pyramids that hid the
+    //  white arrows entirely. Painted flat, the outline is a thin dark rim.
     const chevCount = 4;
+    const half = pad.w * 0.42;
+    const arrow = (scale: number): THREE.ShapeGeometry => {
+      // A V pointing +Y (which becomes +forward once laid flat).
+      const s = new THREE.Shape();
+      const w = half * scale, d = half * 0.55 * scale, t = half * 0.34 * scale;
+      s.moveTo(-w, -d); s.lineTo(0, 0); s.lineTo(w, -d);
+      s.lineTo(w, -d + t); s.lineTo(0, t); s.lineTo(-w, -d + t); s.closePath();
+      return new THREE.ShapeGeometry(s);
+    };
     for (let c = 0; c < chevCount; c++) {
-      const scale = 0.44;
-      //  Opaque, with its own material instance so each chevron can be lit
-      //  independently. Transparent chevrons sort into the blended pass and
-      //  draw over the kart that is standing on them.
-      const chev = new THREE.Mesh(
-        new THREE.ConeGeometry(pad.w * scale, pad.w * 0.40, 3),
-        new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
-      );
-      const off = (c - (chevCount - 1) / 2) * pad.len * 0.26;
+      const chev = new THREE.Mesh(arrow(1), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }));
+      const off = (c - (chevCount - 1) / 2) * pad.len * 0.22;
       const pos = new THREE.Vector3(
         sm.pos.x + sm.right.x * pad.lat + sm.fwd.x * off,
-        sm.pos.y + sm.right.y * pad.lat + 0.12,
+        sm.pos.y + sm.right.y * pad.lat + 0.075,
         sm.pos.z + sm.right.z * pad.lat + sm.fwd.z * off,
       );
+      const yaw = Math.atan2(sm.fwd.x, sm.fwd.z);
       chev.position.copy(pos);
-      chev.rotation.set(Math.PI / 2, 0, -Math.atan2(sm.fwd.x, sm.fwd.z));
-      chev.renderOrder = 0;
+      chev.rotation.set(-Math.PI / 2, 0, -yaw + Math.PI);
+      chev.renderOrder = 3;
       chev.name = `chev${c}`;
       group.add(chev);
       chevrons.push({ mesh: chev, index: c });
-
-      // A darker outline behind each one, so a white chevron still reads on a
-      // pale surface like the Cloudforge decking or the Mega Ramp runway.
-      const edge = new THREE.Mesh(
-        new THREE.ConeGeometry(pad.w * scale * 1.30, pad.w * 0.52, 3),
-        new THREE.MeshBasicMaterial({ color: 0x1b1f2b, toneMapped: false }),
-      );
-      edge.position.copy(pos).setY(pos.y - 0.02);
+      const edge = new THREE.Mesh(arrow(1.22), new THREE.MeshBasicMaterial({ color: 0x1b1f2b, toneMapped: false }));
+      edge.position.copy(pos).setY(pos.y - 0.008);
       edge.rotation.copy(chev.rotation);
-      edge.renderOrder = 0;
+      edge.renderOrder = 3;
       group.add(edge);
     }
   }

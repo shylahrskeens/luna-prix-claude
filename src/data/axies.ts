@@ -79,6 +79,9 @@ export interface AxieDefinition {
   mixer: MixerDescriptor;
   /** How the Mixer character sits: metres scale, seat-socket offset, pitch. */
   mixerSeat: { scale: number; offset: [number, number, number]; pitch: number };
+  /** The official starter model this driver IS (Sky Mavis starter assets).
+   *  Seated in preference to the Mixer build when present. */
+  starter?: { id: 'buba' | 'puffy' | 'pomodoro'; scale: number; offset: [number, number, number]; pitch: number };
   /** Where this definition came from, for the asset/IP audit trail. */
   source: 'mock-local';
   schemaVersion: number;
@@ -199,6 +202,7 @@ export const AXIES: AxieDefinition[] = [
     rig: { scale: 0.92, seatOffset: [0, 0.34, -0.08], seatPitch: -0.06, bounds: [0.42, 0.40, 0.46] },
     mixer: mixerFor(BUBA_PARTS, 'normal', 4 /* beast f5a037 */, { eyes: 4, mouth: 2, ears: 6, horn: 4, back: 8, tail: 2 }),
     mixerSeat: { scale: 0.62, offset: [0, 0.16, -0.10], pitch: 0 },
+    starter: { id: 'buba', scale: 0.60, offset: [0, 0.16, -0.06], pitch: 0 },
     source: 'mock-local',
     schemaVersion: 4,
   },
@@ -213,6 +217,7 @@ export const AXIES: AxieDefinition[] = [
     rig: { scale: 0.88, seatOffset: [0, 0.32, -0.06], seatPitch: -0.04, bounds: [0.40, 0.38, 0.44] },
     mixer: mixerFor(PUFFY_PARTS, 'normal', 15 /* aquatic 00b8ff */, { eyes: 2, mouth: 8, ears: 4, horn: 10, back: 6, tail: 12 }),
     mixerSeat: { scale: 0.60, offset: [0, 0.15, -0.08], pitch: 0 },
+    starter: { id: 'puffy', scale: 0.58, offset: [0, 0.15, -0.05], pitch: 0 },
     source: 'mock-local',
     schemaVersion: 4,
   },
@@ -227,6 +232,7 @@ export const AXIES: AxieDefinition[] = [
     rig: { scale: 0.95, seatOffset: [0, 0.35, -0.09], seatPitch: -0.05, bounds: [0.44, 0.41, 0.47] },
     mixer: mixerFor(POMODORO_PARTS, 'sumo', 10 /* plant 99ff73 */, { eyes: 10, mouth: 4, ears: 12, horn: 6, back: 4, tail: 8 }),
     mixerSeat: { scale: 0.64, offset: [0, 0.17, -0.11], pitch: 0 },
+    starter: { id: 'pomodoro', scale: 0.62, offset: [0, 0.17, -0.06], pitch: 0 },
     source: 'mock-local',
     schemaVersion: 4,
   },

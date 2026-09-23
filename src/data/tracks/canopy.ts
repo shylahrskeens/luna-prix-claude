@@ -16,9 +16,18 @@ import type { TrackDefinition } from '../../sim/trackTypes';
 const SEGS: RouteSeg[] = [
   { t: 'straight', len: 150, w: 13, mark: 'startStraight' },
   { t: 'turn', angle: 65, radius: 72, bank: 5, mark: 't1' },
-  { t: 'straight', len: 55 },
+  // The esses: a left-right flick that decides your entry speed for the hairpin.
+  { t: 'turn', angle: -30, radius: 62, w: 12, mark: 'essA' },
+  { t: 'turn', angle: 30, radius: 62, w: 12, mark: 'essB' },
+  { t: 'straight', len: 25 },
   { t: 'turn', angle: 105, radius: 34, dy: 5, w: 11.5, mark: 'hairpin' },
-  { t: 'straight', len: 80, dy: 7, w: 12, mark: 'climb' },
+  { t: 'straight', len: 40, dy: 4, w: 12, mark: 'climb' },
+  // The log jump: a short crest over a fallen trunk. Any kart that is still
+  // moving clears it; a kart that stalled on the climb does not.
+  { t: 'straight', len: 16, dy: 4.5, w: 12, mark: 'logRamp' },
+  { t: 'straight', len: 5, dy: 1.4, w: 12, mark: 'logGapA' },
+  { t: 'straight', len: 7, dy: -2.2, w: 12, mark: 'logGapB' },
+  { t: 'straight', len: 24, dy: -1.4, w: 12, mark: 'logLanding' },
   { t: 'turn', angle: -55, radius: 60, mark: 't3' },
   // The gator pit is authored as four segments so the jump is real geometry:
   // a descending approach, a 22 m ramp that climbs 7 m, the open pit, and a
@@ -33,14 +42,23 @@ const SEGS: RouteSeg[] = [
   { t: 'straight', len: 12, dy: -8, w: 14, mark: 'gatorPitB' },
   { t: 'straight', len: 34, dy: -2, w: 14, mark: 'gatorLanding' },
   { t: 'turn', angle: 90, radius: 44, bank: 14, w: 12, mark: 'bankedRight' },
-  { t: 'straight', len: 65 },
+  { t: 'straight', len: 30 },
+  // The vine kink: tightens just as the bridge sign appears.
+  { t: 'turn', angle: 40, radius: 30, w: 10, mark: 'kinkA' },
+  { t: 'turn', angle: -40, radius: 30, w: 10, mark: 'kinkB' },
+  { t: 'straight', len: 20 },
   { t: 'turn', angle: -45, radius: 28, w: 10, mark: 'chicaneA' },
   { t: 'turn', angle: 45, radius: 28, w: 10, mark: 'chicaneB' },
   { t: 'straight', len: 45, w: 12 },
   { t: 'turn', angle: 70, radius: 66, dy: -9, mark: 'longRight' },
   { t: 'straight', len: 130, dy: -5, w: 11, mark: 'rootTunnel' },
   { t: 'turn', angle: -40, radius: 55, dy: 4 },
-  { t: 'straight', len: 60 },
+  { t: 'straight', len: 20 },
+  // The double: two opposed corners with log piles on the outside of each.
+  { t: 'turn', angle: 60, radius: 30, w: 11, mark: 'doubleA' },
+  { t: 'straight', len: 18 },
+  { t: 'turn', angle: -60, radius: 32, w: 11, mark: 'doubleB' },
+  { t: 'straight', len: 20 },
   { t: 'turn', angle: 70, radius: 50, dy: 3, mark: 't6' },
   { t: 'straight', len: 70, w: 13 },
   { t: 'turn', angle: 55, radius: 85, mark: 'finalSweep' },
@@ -58,10 +76,19 @@ const bridgeOut = at(M.chicaneB, 0.98);
 const bridgeNodes = chordBranch(route.nodes, bridgeIn, bridgeOut, 0.92,
   (t) => 5.0 * Math.sin(t * Math.PI) ** 0.8, 12);
 
+/** The root cut: a mud track straight across the inside of the long right.
+ *  Shorter by a lot; mud grip and mud speed take most of it back unless you
+ *  hold the kart straight. */
+const cutIn = at(M.longRight, 0.06);
+const cutOut = at(M.longRight, 0.94);
+const cutNodes = chordBranch(route.nodes, cutIn, cutOut, 0.88, () => 0, 10);
+
+export const CANOPY_SEGS = SEGS;
+
 export const CANOPY: TrackDefinition = {
   id: 'canopy',
   name: 'Lunacia Canopy Run',
-  subtitle: 'Jungle • 1.35 km • 12 turns',
+  subtitle: 'Jungle • 1.5 km • 18 turns • 2 jumps',
   setPiece: 'The gator pit — a 30 metre leap over open water and moving jaws.',
   difficulty: 1,
   laps: 3,
@@ -74,7 +101,13 @@ export const CANOPY: TrackDefinition = {
   zones: [
     { from: 0, to: 1, surface: 'road', wall: 'none', shoulder: 4.5 },
     { ...span(M.hairpin, 0, 1), surface: 'road', wall: 'both', shoulder: 2.4, label: 'Carved Hairpin' },
+    { ...span(M.essA, 0, 1), surface: 'road', wall: 'both', shoulder: 3.0, label: 'The Esses' },
+    { ...span(M.essB, 0, 1), surface: 'road', wall: 'both', shoulder: 3.0, label: 'The Esses' },
     { ...span(M.climb, 0, 1), surface: 'dirt', wall: 'none', shoulder: 5.0, label: 'Root Climb' },
+    { ...span(M.logRamp, 0, 1), surface: 'dirt', wall: 'none', shoulder: 4.0, label: 'Log Jump' },
+    { ...span(M.logGapA, 0, 1), gap: true, wall: 'none', shoulder: 4.0, label: 'Log Jump' },
+    { ...span(M.logGapB, 0, 1), gap: true, wall: 'none', shoulder: 4.0, label: 'Log Jump' },
+    { ...span(M.logLanding, 0, 1), surface: 'dirt', wall: 'none', shoulder: 4.0, label: 'Log Jump' },
     { ...span(M.gatorApproach, 0, 1), surface: 'road', wall: 'none', shoulder: 6.0, label: 'Gator Pit' },
     { ...span(M.gatorRamp, 0, 1), surface: 'road', wall: 'none', shoulder: 3.0, label: 'Gator Pit' },
     // The pit itself: no road, just water and jaws.
@@ -82,6 +115,10 @@ export const CANOPY: TrackDefinition = {
     { ...span(M.gatorPitB, 0, 1), gap: true, wall: 'none', shoulder: 6.0, label: 'Gator Pit' },
     { ...span(M.gatorLanding, 0, 1), surface: 'road', wall: 'none', shoulder: 5.0, label: 'Gator Pit' },
     { ...span(M.bankedRight, 0, 1), surface: 'road', wall: 'both', shoulder: 3.0, label: 'Vine Banking' },
+    { ...span(M.kinkA, 0, 1), surface: 'road', wall: 'both', shoulder: 2.4, label: 'Vine Kink' },
+    { ...span(M.kinkB, 0, 1), surface: 'road', wall: 'both', shoulder: 2.4, label: 'Vine Kink' },
+    { ...span(M.doubleA, 0, 1), surface: 'road', wall: 'both', shoulder: 2.6, label: 'Log Piles' },
+    { ...span(M.doubleB, 0, 1), surface: 'road', wall: 'both', shoulder: 2.6, label: 'Log Piles' },
     { ...span(M.chicaneA, 0, 1), surface: 'road', wall: 'both', shoulder: 2.2, label: 'Twin Roots' },
     { ...span(M.chicaneB, 0, 1), surface: 'road', wall: 'both', shoulder: 2.2, label: 'Twin Roots' },
     { ...span(M.rootTunnel, 0, 1), surface: 'road', wall: 'both', shoulder: 1.8, covered: true, label: 'Root Tunnel' },
@@ -108,8 +145,23 @@ export const CANOPY: TrackDefinition = {
       sign: 'VINE BRIDGE — skips the chicane, lands hard',
       flavor: 'shorter-risky',
     },
+    {
+      id: 'root-cut',
+      name: 'Root Cut',
+      inS: cutIn,
+      outS: cutOut,
+      nodes: cutNodes,
+      w: 5.0,
+      surface: 'mud',
+      sign: 'ROOT CUT — straight through the mud, if you can hold it',
+      flavor: 'shorter-risky',
+    },
   ],
   hazards: [
+    // Log piles on the outside of the double, and one on the inside of the
+    // second corner so the lazy line clips it. Solid.
+    { kind: 'stack', s: at(M.doubleA, 0.55), lat: -4.8, w: 2.2, h: 1.5, len: 3.2, style: 'logs' },
+    { kind: 'stack', s: at(M.doubleB, 0.45), lat: 4.8, w: 2.2, h: 1.5, len: 3.2, style: 'logs' },
     // Four gators on staggered cycles, so the pit never reads the same twice
     // but is always learnable.
     { kind: 'gator', s: at(M.gatorPitB, 0.02), lat: -6.5, period: 3.2, phase: 0.00, reach: 12.5, scale: 2.1 },

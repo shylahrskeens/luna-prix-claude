@@ -38,9 +38,17 @@ function runRace(trackId: string, laps = 3, seed = 7, verbose = true) {
   const inputs = new Map<string, KartInput>();
   // Per-racer diagnostics: what is actually going wrong out there.
   const diag = new Map<string, Record<string, number>>();
+  /** Wall hits by lap position, twenty bins, so a corner that eats bots shows. */
+  const wallHist = new Array<number>(20).fill(0);
+  /** Seconds the whole field spends in each 5% of the lap: where a track is slow. */
+  const timeHist = new Array<number>(20).fill(0);
+  const trace = process.env.LUNA_TRACE === '1';
+  const lapSeen = new Map<string, number>();
+  const wrongSeen = new Map<string, boolean>();
   for (const r of core.racers) diag.set(r.id, { respawn: 0, wall: 0, hazard: 0, hardLand: 0, spin: 0, offroadSec: 0, airSec: 0, wrongSec: 0, boostSec: 0 });
   let t = 0;
-  const maxT = 60 * laps + 60;
+  // Sixty seconds a lap was set for a 1.2 km track; longer circuits get their share.
+  const maxT = laps * Math.max(60, track.lapLength / 18) + 60;
   while (core.phase !== 'complete' && t < maxT) {
     inputs.clear();
     for (const b of bots) inputs.set(b.racer.id, b.think(DT, core));
@@ -48,14 +56,29 @@ function runRace(trackId: string, laps = 3, seed = 7, verbose = true) {
     core.step(DT, inputs);
     for (const r of core.racers) {
       const d = diag.get(r.id)!;
+      if (trace && process.env.LUNA_TRACE_RACER === r.name && Math.abs((t * 2) % 1) < DT * 2) {
+        console.log(`    [path] ${t.toFixed(1)}s u=${r.ground.u.toFixed(3)} out=${r.ground.outside.toFixed(1)} v=${r.kart.speed.toFixed(1)} yawErr=${(r.kart.wrongWay ? 'WRONG' : 'ok')} pos=(${r.kart.pos.x.toFixed(0)},${r.kart.pos.z.toFixed(0)}) mode=${r.kart.mode}`);
+      }
+      if (trace) {
+        const laps = r.progress.lapTimes.length;
+        const prev = lapSeen.get(r.id) ?? 0;
+        if (laps > prev) { console.log(`    [trace] ${t.toFixed(1)}s ${r.name.padEnd(8)} LAP ${laps} done in ${r.progress.lapTimes[laps - 1].toFixed(1)}s at u=${r.ground.u.toFixed(3)}`); lapSeen.set(r.id, laps); }
+        const ww = r.kart.wrongWay;
+        if (ww && !wrongSeen.get(r.id)) console.log(`    [trace] ${t.toFixed(1)}s ${r.name.padEnd(8)} WRONG WAY starts at u=${r.ground.u.toFixed(3)} outside=${r.ground.outside.toFixed(1)} branch=${r.ground.onBranch}`);
+        wrongSeen.set(r.id, ww);
+        for (const e of r.kart.events) {
+          if (e.kind === 'respawnStart' || e.kind === 'respawnEnd') console.log(`    [trace] ${t.toFixed(1)}s ${r.name.padEnd(8)} ${e.kind} at u=${r.ground.u.toFixed(3)} pos=(${r.kart.pos.x.toFixed(0)},${r.kart.pos.y.toFixed(1)},${r.kart.pos.z.toFixed(0)})`);
+        }
+      }
       for (const e of r.kart.events) {
         if (e.kind === 'respawnStart') d.respawn++;
-        else if (e.kind === 'wallHit' && e.value > 0.3) d.wall++;
+        else if (e.kind === 'wallHit' && e.value > 0.3) { d.wall++; wallHist[Math.floor(r.ground.u * 20) % 20]++; }
         else if (e.kind === 'hazardHit' && e.value > 0.3) d.hazard++;
         else if (e.kind === 'hardLand') d.hardLand++;
         else if (e.kind === 'spin') d.spin++;
       }
       if (r.ground.outside > 0.2) d.offroadSec += DT;
+      if (r.kart.mode === 'driving') timeHist[Math.floor(r.ground.u * 20) % 20] += DT;
       if (!r.kart.grounded) d.airSec += DT;
       if (r.kart.wrongWay) d.wrongSec += DT;
       if (r.kart.boosting) d.boostSec += DT;
@@ -100,6 +123,8 @@ function runRace(trackId: string, laps = 3, seed = 7, verbose = true) {
         `boosts ${String(e.boosts).padStart(2)}${flags}`,
       );
     }
+    console.log(`  wall hits by lap position (5% bins): ${wallHist.map((n, i) => n > 0 ? `${(i * 5)}%:${n}` : '').filter(Boolean).join(' ')}`);
+    console.log(`  field seconds by lap position (5% bins): ${timeHist.map((n, i) => `${(i * 5)}%:${n.toFixed(0)}`).join(' ')}`);
     console.log('  diagnostics (per racer over the whole race):');
     for (const r of core.racers) {
       const d = diag.get(r.id)!;
@@ -117,7 +142,11 @@ function runRace(trackId: string, laps = 3, seed = 7, verbose = true) {
 const only = process.argv[2];
 const seeds = (process.argv[3] ?? '7').split(',').map(Number);
 let failures = 0;
-for (const def of TRACKS) {
+const dropBranch = process.env.LUNA_NO_BRANCH;
+for (const raw of TRACKS) {
+  // LUNA_NO_BRANCH=<id> runs a track without one of its branches, to tell a
+  // branch problem from a track problem without editing the data.
+  const def = dropBranch ? { ...raw, branches: raw.branches.filter((b) => b.id !== dropBranch) } : raw;
   if (only && def.id !== only) continue;
   for (const seed of seeds) {
   const { result, closure, core, simTime } = runRace(def.id, 3, seed, seeds.length === 1);

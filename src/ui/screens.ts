@@ -172,9 +172,11 @@ export function homeScreen(app: AppApi): HTMLElement {
           tile('Ranked', 'Normalised loadouts. Rating moves.', 'img/track-ruin.jpg', () => app.go('trackSelect', { mode: 'ranked' })),
           tile('Time Trial', 'Alone against the clock', 'img/track-cloudforge.jpg', () => app.go('trackSelect', { mode: 'timeTrial' })),
           tile('Bonus Events', 'Mega Ramp, Luna Launch, Gator Gauntlet', 'img/event-megaramp.jpg', () => app.go('bonusSelect')),
-          tile('Multiplayer', app.net.url ? `Server: ${app.net.status()}` : 'Offline — point it at a race server', 'img/track-canopy.jpg', () => app.go('multiplayer')),
+          // Multiplayer stays reachable from Settings until a race server is
+          // hosted; a tile that leads to "Offline" is not a mode.
+          tile('Garage', 'Kart, parts and paint', 'img/garage.jpg', () => app.go('garage')),
         ),
-        el('div', { class: 'row' }, ghost('Garage', 'garage'), ghost('Records', 'boards'), ghost('Settings', 'settings')),
+        el('div', { class: 'row' }, ghost('Records', 'boards'), ghost('Settings', 'settings')),
       ),
       el('div', { class: 'stage-gap' }, el('div', { class: 'caption', text: 'drag to turn' })),
       el('div', { class: 'col scroll', style: 'width:min(300px,100%);flex:0 0 auto' },
@@ -303,7 +305,7 @@ export function garageScreen(app: AppApi): HTMLElement {
     const slotCol = el('div', { class: 'col', style: 'flex:0 0 auto' });
     slotCol.appendChild(el('div', { class: 'row', style: 'justify-content:space-between;align-items:baseline' },
       el('h3', { text: 'Parts' }),
-      el('span', { class: 'hint', text: 'Click a part to fit it. Locked parts show their price.' }),
+      el('span', { class: 'hint', text: 'Tap to fit · hover for numbers' }),
     ));
     for (const slot of SLOTS) {
       const fitted = parts[slot.id];
@@ -326,10 +328,9 @@ export function garageScreen(app: AppApi): HTMLElement {
           : `${cand.price}c`;
 
         return el('button', {
-          class: isFitted ? 'primary' : ownedLvl > 0 ? '' : 'ghost',
-          style: 'flex:1 1 140px;min-width:132px;display:flex;flex-direction:column;align-items:flex-start;'
-               + 'gap:3px;padding:9px 11px;text-align:left;'
-               + (ownedLvl === 0 && !affordable ? 'opacity:0.45;' : ''),
+          class: `pill${isFitted ? ' primary' : ownedLvl > 0 ? '' : ' ghost'}`,
+          title: mods.length ? mods.join(' · ') : 'Cosmetic only',
+          style: ownedLvl === 0 && !affordable ? 'opacity:0.45' : undefined,
           disabled: ownedLvl === 0 && !affordable,
           onMouseenter: () => preview(cand, Math.max(1, ownedLvl)),
           onMouseleave: () => preview(null, 1),
@@ -357,36 +358,28 @@ export function garageScreen(app: AppApi): HTMLElement {
           // On the filled "fitted" background the rarity colour has no contrast,
           // so the name switches to the dark ink the primary button is built for.
           el('span', {
-            style: `font-weight:700;font-size:13.5px;color:${isFitted ? '#150d24' : RARITY_COLOR[cand.rarity]}`,
+            style: `font-weight:700;color:${isFitted ? '#150d24' : RARITY_COLOR[cand.rarity]}`,
             text: cand.name,
           }),
           el('span', {
-            class: isFitted ? '' : 'hint',
-            style: `font-size:11.5px;line-height:1.3${isFitted ? ';color:rgba(21,13,36,0.75)' : ''}`,
-            text: mods.length ? mods.join(' · ') : 'Cosmetic only',
-          }),
-          el('span', {
-            style: 'font-size:11px;font-weight:700;letter-spacing:0.08em;margin-top:2px;'
-                 + (isFitted ? 'color:#120c1f' : ownedLvl > 0 ? 'color:var(--accent-2)' : 'color:var(--warm)'),
+            class: 'pill-action',
+            style: isFitted ? 'color:#120c1f' : ownedLvl > 0 ? 'color:var(--accent-2)' : 'color:var(--warm)',
             text: action,
           }),
         );
       });
 
       const canUpgrade = def.maxLevel > 1 && fitted.level < def.maxLevel;
-      const row = el('div', { class: 'panel tight', style: 'margin-bottom:10px' },
-        el('div', { class: 'row', style: 'justify-content:space-between;align-items:baseline' },
-          el('div', null,
-            el('span', { style: 'font-weight:700', text: slot.label }),
-            el('span', { class: 'hint', style: 'margin-left:8px', text: slot.blurb }),
-          ),
-          el('span', { class: 'hint', text: def.maxLevel > 1 ? `Level ${fitted.level}/${def.maxLevel}` : '' }),
+      const row = el('div', { class: 'slot-row', title: slot.blurb },
+        el('div', { class: 'slot-head' },
+          el('span', { style: 'font-weight:700', text: slot.label }),
+          el('span', { class: 'hint', text: def.maxLevel > 1 ? `L${fitted.level}/${def.maxLevel}` : '' }),
         ),
-        el('div', { class: 'row', style: 'margin-top:9px;gap:8px' }, ...chips),
-        canUpgrade
-          ? el('div', { class: 'row', style: 'margin-top:8px' },
-              el('button', {
-                style: 'padding:7px 12px;min-height:36px;font-size:13px',
+        el('div', { class: 'row', style: 'gap:6px' }, ...chips,
+          canUpgrade
+            ? el('button', {
+                class: 'pill upgrade',
+                title: `Upgrade ${def.name} to level ${fitted.level + 1}`,
                 disabled: p.coins < def.upgradeCost,
                 onClick: () => {
                   if (p.coins < def.upgradeCost) { app.sfx('uiDenied'); return; }
@@ -399,9 +392,9 @@ export function garageScreen(app: AppApi): HTMLElement {
                   render();
                   refreshTopbar(app);
                 },
-              }, `Upgrade ${def.name} to level ${fitted.level + 1} — ${def.upgradeCost}c`),
-            )
-          : null,
+              }, `▲ L${fitted.level + 1} · ${def.upgradeCost}c`)
+            : null,
+        ),
       );
       slotCol.appendChild(row);
     }
@@ -454,7 +447,8 @@ export function garageScreen(app: AppApi): HTMLElement {
       kartCol,
       el('div', { class: 'stage-gap' }, el('div', { class: 'caption', text: 'drag to turn' })),
       el('div', { class: 'col scroll', style: 'width:min(430px,100%);flex:0 0 auto' },
-        slotCol, statCol,
+        slotCol,
+        el('div', { class: 'panel tight' }, more('Stats and rules', statCol)),
       ),
     );
   };

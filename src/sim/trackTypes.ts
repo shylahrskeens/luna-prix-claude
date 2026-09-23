@@ -81,7 +81,7 @@ export type HazardDef =
   | { kind: 'bumper';  s: number; lat: number; r: number }
   | { kind: 'ring';    s: number; lat: number; h: number; r: number }
   /** Something to jump OVER. Solid: clip it and the run is over. */
-  | { kind: 'stack';   s: number; lat: number; w: number; h: number; len: number; style?: 'crates' | 'bus' | 'gator'; points?: number }
+  | { kind: 'stack';   s: number; lat: number; w: number; h: number; len: number; style?: 'crates' | 'bus' | 'gator' | 'logs' | 'drums' | 'cargo'; points?: number }
   /** A landing target painted on the ground. Scores by which ring you land in;
    *  no collision, because the target is the reward, not the obstacle. */
   | { kind: 'target';  s: number; lat: number; rings: number[]; points?: number[] };

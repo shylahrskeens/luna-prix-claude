@@ -5,7 +5,7 @@
  *  number plus a personality, and in ranked the mode rules set catch-up to zero
  *  so what you beat is what it actually drove.
  */
-import { clamp, clamp01, damp, loopDelta, Rng, v3, wrapAngle, type V3 } from '../core/math';
+import { clamp, clamp01, damp, loopDelta, Rng, v3, wrap, wrapAngle, type V3 } from '../core/math';
 import type { KartInput } from './kart';
 import type { Racer, RaceCore } from './race';
 import type { TrackRuntime } from './track';
@@ -82,6 +82,8 @@ export class BotDriver {
 
   /** Last-frame debug view, for the authoring tools. Not read by the game. */
   debug = { aimX: 0, aimZ: 0, err: 0, look: 0, lat: 0, onBranch: false, jumping: false, target: 0 };
+  /** Seconds spent facing the wrong way. A human presses reset; so does a bot. */
+  private wrongFor = 0;
 
   think(dt: number, core: RaceCore): KartInput {
     const k = this.racer.kart;
@@ -102,6 +104,16 @@ export class BotDriver {
     }
 
     const speed = k.speed;
+
+    // Turned around against a wall or a gate and not recovering: reset, the
+    // way a player would, instead of grinding back and forth for ten seconds.
+    this.wrongFor = k.wrongWay ? this.wrongFor + dt : 0;
+    if (this.wrongFor > 1.2 && k.mode === 'driving') {
+      this.wrongFor = 0;
+      k.triggerRespawn();
+      return { throttle: 0, brake: 0, steer: 0, drift: false, lookBack: false, special: false };
+    }
+
     // Lookahead scales with speed: you steer at where you will be, not where
     // you are. Weak bots look less far ahead, which is exactly how they lose.
     const sNow = g.s;
@@ -137,6 +149,7 @@ export class BotDriver {
       // somewhere the kart can actually be.
       let lateralTarget = p.lineBias * sm.w;
       lateralTarget += this.avoid(core, look);
+      lateralTarget = this.avoidHazards(core, sNow, look, sm.w, lateralTarget);
       st.lateral = damp(st.lateral, lateralTarget, 3.0, dt);
       const lat = this.track.racingLineLat(sNow + look) + st.lateral;
       aim = this.track.pointOnRoad(sNow + look, lat, st.target);
@@ -169,7 +182,9 @@ export class BotDriver {
     // plans a corner on full grip and then enters it sideways carries about a
     // quarter more speed than the slide can hold, and runs wide every time.
     const gripNow = k.drifting ? (k.h.driftGrip + k.h.grip) * 0.5 : k.h.grip;
-    const maxLat = gripNow * (0.72 + skill * 0.34);
+    // Weak bots used to plan on 72% of their grip and still hit the wall; a
+    // wall hit costs far more than the entry speed it was chasing.
+    const maxLat = gripNow * (0.60 + skill * 0.44);
     const corner = this.track.cornerSpeed(sNow, maxLat, k.h.brake * (0.75 + skill * 0.3));
     const targetSpeed = Math.min(corner, k.h.topSpeed * (0.82 + skill * 0.22));
     let throttle = 1;
@@ -356,6 +371,58 @@ export class BotDriver {
       shift += (side > 0 ? -1 : 1) * urgency * 3.4;
     }
     return clamp(shift, -4.5, 4.5);
+  }
+
+  /** Steer the aim point around solid hazards, and through a gate's opening.
+   *
+   *  Stacks and bumpers sit still; rollers sweep; a gate turns. Each one is
+   *  read where it WILL be when the kart arrives, not where it is now, and the
+   *  aim lateral is pushed to whichever side of it has more road. Weak bots
+   *  see the obstacle later, which is where they lose the time. */
+  private avoidHazards(core: RaceCore, sNow: number, look: number, halfW: number, lateral: number): number {
+    const k = this.racer.kart;
+    const skill = clamp01(this.p.skill * this.difficulty);
+    const seeAhead = 28 + skill * 30;
+    const L = this.track.lapLength;
+    const speed = Math.max(8, k.speed);
+    const line = this.track.racingLineLat(sNow + look);
+    let lat = lateral;
+    for (const h of this.track.initHazards()) {
+      const d = h.def;
+      if (d.kind !== 'stack' && d.kind !== 'bumper' && d.kind !== 'roller') continue;
+      const ds = wrap(d.s * L - sNow, L);
+      if (ds > seeAhead || ds < -2) continue;
+      const tArrive = ds / speed;
+      const tAt = core.time + tArrive;
+      let hazLat: number;
+      let half: number;
+      // Gates are timed, not dodged: a bot that lined up for the opening from
+      // inside the corner before it drove into that corner's wall instead.
+      if (d.kind === 'roller') {
+        const t = wrap(tAt / d.period + d.phase, 1);
+        hazLat = Math.sin(t * Math.PI * 2) * d.travel;
+        half = d.r;
+      } else if (d.kind === 'bumper') {
+        hazLat = d.lat; half = d.r;
+      } else {
+        hazLat = d.lat; half = d.w * 0.5;
+      }
+      // A bumper planted past the road edge is a barrier, not an obstacle on
+      // the line; steering "around" it means steering off the road.
+      if (Math.abs(hazLat) - half >= halfW - 0.5) continue;
+      const aimLat = line + lat;
+      const clearance = half + k.h.radius + 0.9;
+      const gap = aimLat - hazLat;
+      if (Math.abs(gap) >= clearance) continue;
+      // Which side has more road? Prefer it, unless the other is where we are.
+      const leftRoom = (hazLat - clearance) - (-halfW + 1.0);
+      const rightRoom = (halfW - 1.0) - (hazLat + clearance);
+      const toRight = rightRoom > leftRoom ? true : leftRoom > rightRoom ? false : gap >= 0;
+      const target = clamp(hazLat + (toRight ? clearance : -clearance), -halfW + 1.0, halfW - 1.0);
+      const urgency = 1 - Math.min(1, ds / seeAhead);
+      lat += (target - aimLat) * (0.35 + 0.65 * urgency);
+    }
+    return lat;
   }
 
   /** Commit to the alternate line or the main line for this section.

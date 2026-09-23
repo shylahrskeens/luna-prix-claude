@@ -406,6 +406,12 @@ export class RaceCore {
       if (afterLap > beforeLap && this.phase !== 'countdown') {
         for (let l = beforeLap + 1; l <= afterLap; l++) {
           if (l <= 0) continue;
+          //  A respawn to the checkpoint before the line re-anchors progress
+          //  just under the lap boundary, and the kart then crosses the line
+          //  again. That crossing is not a new lap: the one it completed is
+          //  already in the book, and crediting it twice made an 18-second
+          //  lap out of a weak bot that kept falling at the first corner.
+          if (l <= p.lap) continue;
           const lapStart = p.lapTimes.reduce((a, b) => a + b, 0);
           const lapTime = this.time - lapStart;
           p.lapTimes.push(lapTime);
@@ -514,7 +520,11 @@ export class RaceCore {
       this.finishTimeout = Math.min(this.finishTimeout > 0 ? this.finishTimeout : Infinity, 60);
     } else if (this.phase === 'racing' && place === 1) {
       this.phase = 'finishing';
-      this.finishTimeout = 45;
+      // Forty-five seconds was set against fifty-second laps. The tail follows
+      // the winner's pace, so a longer circuit does not turn the back of the
+      // field into DNFs by arithmetic.
+      const avgLap = this.time / Math.max(1, this.cfg.laps);
+      this.finishTimeout = clamp(avgLap * 1.4, 45, 90);
     }
   }
 
@@ -630,13 +640,13 @@ export class RaceCore {
               // sideways pins it against the bar; spinning it turns a mistimed
               // gate into a ten-second recovery, which is not the lesson the
               // hazard is meant to teach.
-              const keep = 1 - 0.42 * (1 - k.h.knockResist * 0.5);
+              const keep = 1 - 0.34 * (1 - k.h.knockResist * 0.5);
               k.vel.x *= keep;
               k.vel.z *= keep;
               k.endDrift(false);
               const toOpen = Math.sign(openCentre - lat) || 1;
-              k.vel.x += h.right.x * toOpen * 3.0;
-              k.vel.z += h.right.z * toOpen * 3.0;
+              k.vel.x += h.right.x * toOpen * 1.6;
+              k.vel.z += h.right.z * toOpen * 1.6;
               k.events.push({ kind: 'hazardHit', value: 0.5, pos: { ...k.pos } });
             }
             break;

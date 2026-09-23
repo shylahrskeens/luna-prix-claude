@@ -192,6 +192,70 @@ export function buildHazards(track: TrackRuntime, mats: MaterialLibrary): Hazard
             t.position.set((i % 3 - 1) * d.w * 0.28, d.h * 0.5, d.len * (i < 3 ? 0.56 : 0.48));
             root.add(t);
           }
+        } else if (style === 'logs') {
+          // A pile of fallen trunks, stacked in a pyramid across the road.
+          const bark = mats.toon('#5a3d26');
+          const end = mats.toon('#c9a271');
+          const n = Math.max(2, Math.round(d.w / 0.7));
+          const r = Math.min(0.42, d.h / 3.2);
+          for (let row = 0; row < 3; row++) {
+            for (let i = 0; i < n - row; i++) {
+              const log = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.len + 0.6, 9), bark);
+              log.rotation.x = Math.PI / 2;
+              log.position.set((i - (n - row - 1) / 2) * r * 2.05, r + row * r * 1.75, (row % 2) * 0.2 - 0.1);
+              log.rotation.z = (i % 2 ? 1 : -1) * 0.04;
+              root.add(log);
+              for (const zz of [-1, 1] as const) {
+                const cap = new THREE.Mesh(new THREE.CircleGeometry(r * 0.92, 9), end);
+                cap.position.set(log.position.x, log.position.y, log.position.z + zz * (d.len * 0.5 + 0.31));
+                cap.rotation.y = zz > 0 ? 0 : Math.PI;
+                root.add(cap);
+              }
+            }
+          }
+        } else if (style === 'drums') {
+          // Fallen column drums: fluted stone cylinders on their sides.
+          const stone = mats.toon('#9b8f7c');
+          const dark = mats.toon('#6e6455');
+          const n = Math.max(1, Math.round(d.w / 1.1));
+          for (let i = 0; i < n; i++) {
+            const R = Math.min(0.55, d.h * 0.42);
+            const drum = new THREE.Mesh(new THREE.CylinderGeometry(R, R, d.len * 0.9, 12), stone);
+            drum.rotation.x = Math.PI / 2;
+            drum.rotation.z = (i % 2 ? 1 : -1) * 0.15;
+            drum.position.set((i - (n - 1) / 2) * R * 2.1, R, (i % 2) * 0.3 - 0.15);
+            root.add(drum);
+            for (let f = 0; f < 6; f++) {
+              const flute = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.10, d.len * 0.86), dark);
+              const a = (f / 6) * Math.PI * 2;
+              flute.position.set(drum.position.x + Math.cos(a) * R * 0.98, R + Math.sin(a) * R * 0.98, drum.position.z);
+              flute.rotation.z = a;
+              root.add(flute);
+            }
+          }
+          const top = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, d.len * 0.8, 12), stone);
+          top.rotation.x = Math.PI / 2;
+          top.position.set(0, Math.min(d.h - 0.5, 1.55), 0);
+          root.add(top);
+        } else if (style === 'cargo') {
+          // Dock cargo: steel crates with rivet strips and a warning stripe.
+          const steel = mats.toon('#5d6f88');
+          const strip = mats.toon('#2c3441');
+          const stripe = mats.glow('#ffb23f', 1);
+          const n = Math.max(1, Math.round(d.w / 1.2));
+          for (let i = 0; i < n; i++) {
+            const box = new THREE.Mesh(new THREE.BoxGeometry(d.w / n * 0.94, d.h * 0.95, d.len * 0.94), steel);
+            box.position.set((i - (n - 1) / 2) * (d.w / n), d.h * 0.48, 0);
+            root.add(box);
+            for (const y of [0.25, 0.75]) {
+              const band = new THREE.Mesh(new THREE.BoxGeometry(d.w / n * 0.96, 0.08, d.len * 0.96), strip);
+              band.position.set(box.position.x, d.h * y, 0);
+              root.add(band);
+            }
+            const tape = new THREE.Mesh(new THREE.BoxGeometry(d.w / n * 0.5, 0.12, 0.02), stripe);
+            tape.position.set(box.position.x, d.h * 0.5, d.len * 0.48);
+            root.add(tape);
+          }
         } else {
           const rows = Math.max(1, Math.round(d.h / 1.3));
           for (let r2 = 0; r2 < rows; r2++) {
@@ -206,12 +270,15 @@ export function buildHazards(track: TrackRuntime, mats: MaterialLibrary): Hazard
             }
           }
         }
-        // A striped board at the near face, so the thing you must clear has an
-        // edge you can actually judge from the air.
-        const face = new THREE.Mesh(new THREE.BoxGeometry(d.w, 0.6, 0.25), mats.glow('#ffd166', 0.9));
-        face.position.set(0, d.h + 0.4, d.len * 0.5);
-        root.add(face);
-        warn.push(face);
+        // A striped board at the near face of a jump obstacle, so the thing you
+        // must clear has an edge you can judge from the air. Race-track props
+        // (logs, drums, cargo) are driven around, not over, and carry none.
+        if (style === 'crates' || style === 'bus' || style === 'gator') {
+          const face = new THREE.Mesh(new THREE.BoxGeometry(d.w, 0.6, 0.25), mats.glow('#ffd166', 0.9));
+          face.position.set(0, d.h + 0.4, d.len * 0.5);
+          root.add(face);
+          warn.push(face);
+        }
         break;
       }
       case 'target': {

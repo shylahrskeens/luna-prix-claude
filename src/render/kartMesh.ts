@@ -14,8 +14,9 @@ import type { MaterialLibrary } from './scene';
 import type { LoadoutParts } from '../sim/loadout';
 import { partById } from '../data/parts';
 import { buildAxie, type AxieDriveState } from './axieMesh';
-import { proceduralDriver, mixerDriver, type DriverRig } from './axieDriver';
+import { proceduralDriver, mixerDriver, starterDriver, type DriverRig } from './axieDriver';
 import type { AxieMixerService } from './axieMixer';
+import type { StarterModelService } from './starterModel';
 import { clamp, clamp01, damp } from '../core/math';
 
 const PAINT: Record<string, { body: string; trim: string }> = {
@@ -353,6 +354,9 @@ export interface SeatContext {
   /** When present and enabled, the seat is upgraded to a Mixer character as
    *  soon as one loads. Absent (headless tools, tests) means procedural only. */
   mixer?: AxieMixerService;
+  /** The official starter models; preferred over the Mixer for the three
+   *  drivers that are those Axies. */
+  starters?: StarterModelService;
 }
 
 /** Seat an Axie in a kart. Uses the Axie's own offset on top of the socket, so
@@ -367,6 +371,19 @@ export function seatAxie(kart: KartRig, axie: AxieDefinition, ctx: SeatContext):
   const driver = proceduralDriver(buildAxie(axie, ctx.materials), axie);
   kart.sockets.seat.add(driver.root);
   kart.driver = driver;
+
+  const starters = ctx.starters;
+  if (starters && axie.starter) {
+    const starter = axie.starter;
+    void starters.load(starter.id).then((asset) => {
+      if (!asset || kart.seatToken !== token) return;
+      kart.driver?.dispose();
+      const upgraded = starterDriver(starters.instance(asset), axie);
+      kart.sockets.seat.add(upgraded.root);
+      kart.driver = upgraded;
+    });
+    return driver;
+  }
 
   const mixer = ctx.mixer;
   if (mixer?.enabled) {
