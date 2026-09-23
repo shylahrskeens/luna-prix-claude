@@ -5,6 +5,7 @@
  *  that a hazard never hides in a gradient.
  */
 import * as THREE from 'three';
+import { AxieMixerService } from './axieMixer';
 import type { TrackTheme } from '../sim/trackTypes';
 
 /** Three-step ramp. Sampling it as a 1D texture is what turns a smooth Lambert
@@ -136,6 +137,8 @@ export class RenderContext {
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
   readonly materials = new MaterialLibrary();
+  /** Sky Mavis Mixer 3D, booted on the first seat that asks for it. */
+  readonly mixer: AxieMixerService;
   readonly sun: THREE.DirectionalLight;
   readonly ambient: THREE.HemisphereLight;
   quality: SceneQuality;
@@ -151,6 +154,8 @@ export class RenderContext {
     });
     this.renderer.setClearColor(0x0b0d12, 1);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.mixer = new AxieMixerService(this.renderer);
+    this.mixer.quality = tier === 'low' ? 'performance' : 'balanced';
     this.quality = { ...QUALITY[tier], pixelRatio: Math.min(window.devicePixelRatio, tier === 'high' ? 2 : 1.25) };
     this.renderer.setPixelRatio(this.quality.pixelRatio);
 

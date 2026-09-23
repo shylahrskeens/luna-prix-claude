@@ -29,6 +29,29 @@ export interface AxieStats {
   morale: number;
 }
 
+/** The Sky Mavis Mixer 3D descriptor — the same shape the toolkit decodes
+ *  from a real Axie's genes (body, colour variant, six typed parts). The
+ *  content pack carries the six original classes only; a Mech, Dawn or Dusk
+ *  part has no mesh and tools/axiecheck.ts refuses it. */
+export type MixerBody = 'normal' | 'spiky' | 'fuzzy' | 'curly' | 'sumo' | 'wetdog' | 'bigyak' | 'frosty';
+export type MixerPartClass = 'Aquatic' | 'Beast' | 'Bird' | 'Bug' | 'Plant' | 'Reptile';
+export type MixerPartType = 'eye' | 'mouth' | 'ear' | 'horn' | 'back' | 'tail';
+export interface MixerPartDescriptor {
+  type: MixerPartType;
+  class: MixerPartClass;
+  /** Even numbers; eye and mouth offer 2/4/8/10, the rest 2–12. */
+  variant: number;
+  skin: number;
+  level: number;
+}
+export interface MixerDescriptor {
+  body: MixerBody;
+  /** Index into the pack's creator.colorVariants table (0–66); the planner
+   *  matches on that index, not on the per-class genes value. */
+  colorVariant: number;
+  parts: MixerPartDescriptor[];
+}
+
 export interface AxieDefinition {
   /** Axie token id in production; a stable mock id here. */
   id: string;
@@ -51,6 +74,11 @@ export interface AxieDefinition {
     /** Half-extents of the driver collision proxy. */
     bounds: [number, number, number];
   };
+  /** Real body and parts for the Mixer 3D character. Classes agree with
+   *  `parts` above, so the stat model and the model on screen are one Axie. */
+  mixer: MixerDescriptor;
+  /** How the Mixer character sits: metres scale, seat-socket offset, pitch. */
+  mixerSeat: { scale: number; offset: [number, number, number]; pitch: number };
   /** Where this definition came from, for the asset/IP audit trail. */
   source: 'mock-local';
   schemaVersion: number;
@@ -101,10 +129,56 @@ export const CLASS_TRAIT: Record<AxieClass, ClassTrait> = {
   Dusk:    { name: 'Long Shadow',   blurb: 'Boost lasts longer once lit.' },
 };
 
+const MIXER_TYPE: Record<PartType, MixerPartType> = {
+  eyes: 'eye', ears: 'ear', back: 'back', mouth: 'mouth', horn: 'horn', tail: 'tail',
+};
+
+/** Build the Mixer descriptor from the same six parts the stat model reads,
+ *  so a class can never disagree between the two. `variants` picks the mesh
+ *  for each part type. */
+function mixerFor(
+  parts: AxiePart[], body: MixerBody, colorVariant: number, variants: Record<PartType, number>,
+): MixerDescriptor {
+  const order: PartType[] = ['eyes', 'mouth', 'ears', 'horn', 'back', 'tail'];
+  return {
+    body, colorVariant,
+    parts: order.map((t) => {
+      const p = parts.find((x) => x.type === t);
+      if (!p) throw new Error(`Axie has no ${t} part`);
+      return { type: MIXER_TYPE[t], class: p.class as MixerPartClass, variant: variants[t], skin: 0, level: 1 };
+    }),
+  };
+}
+
 const mk = (type: PartType, name: string, cls: AxieClass, special: string | null = null): AxiePart => ({
   id: `${type}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
   name, class: cls, type, specialGenes: special,
 });
+
+const BUBA_PARTS: AxiePart[] = [
+  mk('eyes', 'Puppy', 'Beast'),
+  mk('ears', 'Nut Cracker', 'Beast'),
+  mk('horn', 'Little Branch', 'Plant'),
+  mk('mouth', 'Axie Kiss', 'Bird'),
+  mk('back', 'Ronin', 'Beast'),
+  mk('tail', 'Hare', 'Beast'),
+];
+const PUFFY_PARTS: AxiePart[] = [
+  mk('eyes', 'Gero', 'Aquatic'),
+  mk('ears', 'Nimo', 'Aquatic'),
+  mk('horn', 'Oranda', 'Aquatic'),
+  mk('mouth', 'Risky Fish', 'Aquatic'),
+  mk('back', 'Hermit', 'Bug'),
+  mk('tail', 'Nimo', 'Aquatic'),
+];
+const POMODORO_PARTS: AxiePart[] = [
+  mk('eyes', 'Papi', 'Plant'),
+  mk('ears', 'Leafy', 'Plant'),
+  mk('horn', 'Cactus', 'Plant'),
+  mk('mouth', 'Serious', 'Plant'),
+  mk('back', 'Turnip', 'Plant'),
+  mk('tail', 'Carrot', 'Plant'),
+];
 
 /** The three mock drivers.
  *
@@ -118,58 +192,43 @@ export const AXIES: AxieDefinition[] = [
     id: 'mock-buba',
     name: 'Buba',
     class: 'Beast',
-    parts: [
-      mk('eyes', 'Puppy', 'Beast'),
-      mk('ears', 'Nut Cracker', 'Beast'),
-      mk('horn', 'Little Branch', 'Plant'),
-      mk('mouth', 'Axie Kiss', 'Bird'),
-      mk('back', 'Ronin', 'Beast'),
-      mk('tail', 'Hare', 'Beast'),
-    ],
+    parts: BUBA_PARTS,
     palette: { body: '#f6a44a', accent: '#ffe08a', shade: '#b55f1c' },
     tagline: 'All nerve, no brakes.',
     bio: 'Buba races the way Buba does everything: flat out and sideways. The highest Morale in the field turns every long drift into a bigger payoff, and the Beast temperament means the boost hits harder when it finally lets go.',
     rig: { scale: 0.92, seatOffset: [0, 0.34, -0.08], seatPitch: -0.06, bounds: [0.42, 0.40, 0.46] },
+    mixer: mixerFor(BUBA_PARTS, 'normal', 4 /* beast f5a037 */, { eyes: 4, mouth: 2, ears: 6, horn: 4, back: 8, tail: 2 }),
+    mixerSeat: { scale: 0.62, offset: [0, 0.16, -0.10], pitch: 0 },
     source: 'mock-local',
-    schemaVersion: 3,
+    schemaVersion: 4,
   },
   {
     id: 'mock-puffy',
     name: 'Puffy',
     class: 'Aquatic',
-    parts: [
-      mk('eyes', 'Gero', 'Aquatic'),
-      mk('ears', 'Nimo', 'Aquatic'),
-      mk('horn', 'Oranda', 'Aquatic'),
-      mk('mouth', 'Risky Fish', 'Aquatic'),
-      mk('back', 'Hermit', 'Bug'),
-      mk('tail', 'Nimo', 'Aquatic'),
-    ],
+    parts: PUFFY_PARTS,
     palette: { body: '#5fc8f0', accent: '#d8f6ff', shade: '#1d6f97' },
     tagline: 'Finds the fast water.',
     bio: 'Puffy has the highest raw Speed on the grid and does not lose a metre to the swamp shallows or the reactor coolant. Slipstream builds faster behind a rival, so Puffy is happiest sitting second until the last sector.',
     rig: { scale: 0.88, seatOffset: [0, 0.32, -0.06], seatPitch: -0.04, bounds: [0.40, 0.38, 0.44] },
+    mixer: mixerFor(PUFFY_PARTS, 'normal', 15 /* aquatic 00b8ff */, { eyes: 2, mouth: 8, ears: 4, horn: 10, back: 6, tail: 12 }),
+    mixerSeat: { scale: 0.60, offset: [0, 0.15, -0.08], pitch: 0 },
     source: 'mock-local',
-    schemaVersion: 3,
+    schemaVersion: 4,
   },
   {
     id: 'mock-pomodoro',
     name: 'Pomodoro',
     class: 'Plant',
-    parts: [
-      mk('eyes', 'Papi', 'Plant'),
-      mk('ears', 'Leafy', 'Plant'),
-      mk('horn', 'Cactus', 'Plant'),
-      mk('mouth', 'Serious', 'Plant'),
-      mk('back', 'Turnip', 'Plant'),
-      mk('tail', 'Carrot', 'Plant'),
-    ],
+    parts: POMODORO_PARTS,
     palette: { body: '#7fd46a', accent: '#e9ffd4', shade: '#2f7a2c' },
     tagline: 'Nothing moves Pomodoro.',
     bio: 'Six Plant parts stack the highest HP in the game into pure contact tolerance. Gator jaws, reactor gates and a rival diving up the inside all bounce off. Slowest to spin up, hardest to shift off the racing line.',
     rig: { scale: 0.95, seatOffset: [0, 0.35, -0.09], seatPitch: -0.05, bounds: [0.44, 0.41, 0.47] },
+    mixer: mixerFor(POMODORO_PARTS, 'sumo', 10 /* plant 99ff73 */, { eyes: 10, mouth: 4, ears: 12, horn: 6, back: 4, tail: 8 }),
+    mixerSeat: { scale: 0.64, offset: [0, 0.17, -0.11], pitch: 0 },
     source: 'mock-local',
-    schemaVersion: 3,
+    schemaVersion: 4,
   },
 ];
 

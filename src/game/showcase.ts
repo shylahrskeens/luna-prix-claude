@@ -6,7 +6,7 @@
  */
 import * as THREE from 'three';
 import type { RenderContext } from '../render/scene';
-import { buildKart, seatAxie, updateKart, type KartRig } from '../render/kartMesh';
+import { buildKart, seatAxie, updateKart, disposeKart, type KartRig } from '../render/kartMesh';
 import { axieById } from '../data/axies';
 import { kartById } from '../data/karts';
 import type { LoadoutParts } from '../sim/loadout';
@@ -65,15 +65,9 @@ export class Showcase {
     const key = `${axieId}|${kartId}|${Object.values(parts).map((p) => `${p.partId}${p.level}`).join(',')}`;
     if (key !== this.key) {
       this.key = key;
-      if (this.rig) {
-        this.root.remove(this.rig.root);
-        this.rig.root.traverse((o) => {
-          const m = o as THREE.Mesh;
-          if (m.geometry) m.geometry.dispose();
-        });
-      }
+      if (this.rig) disposeKart(this.rig);
       this.rig = buildKart(kartById(kartId), this.ctx.materials, { parts });
-      seatAxie(this.rig, axieById(axieId), this.ctx.materials);
+      seatAxie(this.rig, axieById(axieId), this.ctx);
       this.root.add(this.rig.root);
     }
     this.active = true;

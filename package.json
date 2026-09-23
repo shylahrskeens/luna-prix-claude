@@ -14,14 +14,16 @@
     "build:server": "esbuild server/sim-entry.ts --bundle --platform=node --format=esm --outfile=server/sim.mjs --log-level=error",
     "check:geometry": "esbuild tools/validate.ts --bundle --platform=node --format=esm --outfile=.tmp/validate.mjs --log-level=error && node .tmp/validate.mjs",
     "check:races": "esbuild tools/headless.ts --bundle --platform=node --format=esm --outfile=.tmp/headless.mjs --log-level=error && node .tmp/headless.mjs \"\" 3,7,11,19,23,31,37",
-    "check": "npm run typecheck && npm run check:geometry && npm run check:races && npm run check:finish",
-    "check:finish": "esbuild tools/finishcheck.ts --bundle --platform=node --format=esm --outfile=.tmp/finishcheck.mjs --log-level=error && node .tmp/finishcheck.mjs"
+    "check": "npm run typecheck && npm run check:geometry && npm run check:axies && npm run check:races && npm run check:finish",
+    "check:finish": "esbuild tools/finishcheck.ts --bundle --platform=node --format=esm --outfile=.tmp/finishcheck.mjs --log-level=error && node .tmp/finishcheck.mjs",
+    "check:axies": "esbuild tools/axiecheck.ts --bundle --platform=node --format=esm --outfile=.tmp/axiecheck.mjs --log-level=error --external:three && node .tmp/axiecheck.mjs"
   },
   "dependencies": {
-    "three": "^0.169.0"
+    "@jaatster/threejs-axie-mixer3d-public": "github:jaatster/threejs-axie-mixer3d-public#812f0ee",
+    "three": "^0.178.0"
   },
   "devDependencies": {
-    "@types/three": "^0.169.0",
+    "@types/three": "^0.178.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.8",
     "ws": "^8.18.0"

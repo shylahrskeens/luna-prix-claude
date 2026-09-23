@@ -18,8 +18,16 @@
   <meta name="apple-mobile-web-app-title" content="Luna Prix" />
   <script>
     // Installable, and it starts without a network once it has been opened.
+    // Never on a dev host: a worker there caches Vite's module URLs and serves
+    // stale source for days. Any worker left over from before is removed.
     if ('serviceWorker' in navigator) {
+      const dev = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
       window.addEventListener('load', () => {
+        if (dev) {
+          navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister()));
+          if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k)));
+          return;
+        }
         navigator.serviceWorker.register('./sw.js').catch(() => { /* a plain browser tab is fine */ });
       });
     }

@@ -8,7 +8,7 @@ files or third-party art.
 
 | Asset | Source |
 |---|---|
-| Axie models | Procedural three.js geometry, built at runtime from the part list in `src/data/axies.ts` |
+| Axie models | **Sky Mavis Mixer 3D** characters (official toolkit, limited-use rights for Vibeathon projects — see `docs/MIXER.md`), assembled at runtime from the descriptor in `src/data/axies.ts`. Falls back to procedural three.js geometry built from the same part list when the content pack is not hosted. |
 | Karts | Procedural, built from `src/data/karts.ts` and the fitted parts |
 | Tracks | Generated from route descriptions in `src/data/tracks/` |
 | Scenery, hazards, VFX | Procedural, instanced, seeded from the track id |

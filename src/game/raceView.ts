@@ -20,7 +20,7 @@ import { RenderContext } from '../render/scene';
 import { buildTrackMesh, animateTrack, type TrackVisual } from '../render/trackMesh';
 import { buildScenery } from '../render/scenery';
 import { buildHazards, updateHazards, type HazardVisual } from '../render/hazardMesh';
-import { buildKart, seatAxie, updateKart, LIVERY, type KartRig } from '../render/kartMesh';
+import { buildKart, seatAxie, updateKart, disposeKart, LIVERY, type KartRig } from '../render/kartMesh';
 import { ParticleSystem, SpeedLines } from '../render/vfx';
 import { ChaseCamera, COMFORT_CAMERA, DEFAULT_CAMERA } from '../render/chaseCamera';
 import { audio } from '../audio/audio';
@@ -229,7 +229,7 @@ export class RaceView {
       parts: loadout.parts,
       livery: livery ?? undefined,
     });
-    seatAxie(rig, axieById(loadout.axieId), this.ctx.materials);
+    seatAxie(rig, axieById(loadout.axieId), this.ctx);
     this.root.add(rig.root);
     this.rigs.set(racer.id, rig);
   }
@@ -579,6 +579,7 @@ export class RaceView {
     audio.stopRace();
     this.ctx.scene.remove(this.root);
     this.ctx.camera.remove(this.speedLines.group);
+    for (const rig of this.rigs.values()) disposeKart(rig);
     this.root.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.geometry) m.geometry.dispose();

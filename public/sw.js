@@ -5,9 +5,15 @@
  *   - the page itself is fetched from the network first, so a new build is
  *     picked up immediately and a judge never sees a stale game;
  *   - the hashed bundles are immutable, so they are served from the cache;
- *   - everything else falls through to the network.
+ *   - everything else falls through to the network. That includes the Vite
+ *     dev server's /src and /node_modules modules and the Axie Mixer content
+ *     pack under /assets/axie/, none of which may be cached here: v1 cached
+ *     every same-origin GET and served five-day-old source in development.
  */
-const CACHE = 'luna-prix-v1';
+const CACHE = 'luna-prix-v2';
+/** Vite's build output: /assets/<name>-<8 hex>.<ext>. The Axie pack lives at
+ *  /assets/axie/ and never matches (no hash segment). */
+const HASHED = /\/assets\/(?!axie\/)[^/]+-[A-Za-z0-9_-]{8}\.[a-z0-9]+$/;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
@@ -38,6 +44,7 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
+  if (!HASHED.test(url.pathname)) return;   // dev modules, the Axie pack, everything else: network
   e.respondWith(
     caches.match(req).then((hit) => hit || fetch(req).then((res) => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }

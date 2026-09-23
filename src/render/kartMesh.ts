@@ -12,7 +12,9 @@ import type { AxieDefinition } from '../data/axies';
 import type { MaterialLibrary } from './scene';
 import type { LoadoutParts } from '../sim/loadout';
 import { partById } from '../data/parts';
-import { buildAxie, updateAxie, type AxieDriveState, type AxieRig } from './axieMesh';
+import { buildAxie, type AxieDriveState } from './axieMesh';
+import { proceduralDriver, mixerDriver, type DriverRig } from './axieDriver';
+import type { AxieMixerService } from './axieMixer';
 import { clamp, clamp01, damp } from '../core/math';
 
 const PAINT: Record<string, { body: string; trim: string }> = {
@@ -49,7 +51,10 @@ export interface KartRig {
     exhaustL: THREE.Group;
     exhaustR: THREE.Group;
   };
-  driver: AxieRig | null;
+  driver: DriverRig | null;
+  /** Bumped on every seat change and on dispose; a Mixer character that
+   *  arrives for an older token is thrown away. */
+  seatToken: number;
   /** Boost flame meshes, toggled by the effects layer. */
   flames: THREE.Mesh[];
   /** Drift spark emitters sit at the rear wheels. */
@@ -230,22 +235,55 @@ export function buildKart(
 
   return {
     root, chassis, wheels, sockets,
-    driver: null, flames, sparkAnchors, shadow, def, spin: 0,
+    driver: null, seatToken: 0, flames, sparkAnchors, shadow, def, spin: 0,
   };
 }
 
+export interface SeatContext {
+  materials: MaterialLibrary;
+  /** When present and enabled, the seat is upgraded to a Mixer character as
+   *  soon as one loads. Absent (headless tools, tests) means procedural only. */
+  mixer?: AxieMixerService;
+}
+
 /** Seat an Axie in a kart. Uses the Axie's own offset on top of the socket, so
- *  a taller Axie sits correctly in every kart without a per-pair tweak. */
-export function seatAxie(kart: KartRig, axie: AxieDefinition, mats: MaterialLibrary): AxieRig {
-  if (kart.driver) {
-    kart.sockets.seat.remove(kart.driver.root);
+ *  a taller Axie sits correctly in every kart without a per-pair tweak.
+ *
+ *  The procedural driver is seated synchronously, so the kart is never empty.
+ *  If the Mixer is available the real Axie is requested and swapped in when
+ *  it arrives — unless the seat has changed hands or been disposed since. */
+export function seatAxie(kart: KartRig, axie: AxieDefinition, ctx: SeatContext): DriverRig {
+  kart.driver?.dispose();
+  const token = ++kart.seatToken;
+  const driver = proceduralDriver(buildAxie(axie, ctx.materials), axie);
+  kart.sockets.seat.add(driver.root);
+  kart.driver = driver;
+
+  const mixer = ctx.mixer;
+  if (mixer?.enabled) {
+    void mixer.create(axie).then((character) => {
+      if (!character) return;
+      if (kart.seatToken !== token) { character.dispose(); return; }
+      kart.driver?.dispose();
+      const upgraded = mixerDriver(character, axie);
+      kart.sockets.seat.add(upgraded.root);
+      kart.driver = upgraded;
+    });
   }
-  const rig = buildAxie(axie, mats);
-  rig.root.position.set(...axie.rig.seatOffset);
-  rig.root.rotation.x = axie.rig.seatPitch;
-  kart.sockets.seat.add(rig.root);
-  kart.driver = rig;
-  return rig;
+  return driver;
+}
+
+/** Release the driver (a Mixer character holds GPU leases) and the kart's own
+ *  geometry. The seat token moves on so an in-flight character is dropped. */
+export function disposeKart(kart: KartRig): void {
+  kart.seatToken++;
+  kart.driver?.dispose();
+  kart.driver = null;
+  kart.root.removeFromParent();
+  kart.root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.geometry) m.geometry.dispose();
+  });
 }
 
 export interface KartDriveState extends AxieDriveState {
@@ -301,5 +339,5 @@ export function updateKart(rig: KartRig, s: KartDriveState): void {
   rig.root.visible = s.respawnFade > 0.02;
   rig.root.scale.setScalar(damp(rig.root.scale.x, s.respawnFade, 14, dt));
 
-  if (rig.driver) updateAxie(rig.driver, s);
+  rig.driver?.update(s);
 }
