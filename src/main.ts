@@ -219,7 +219,7 @@ class App implements AppApi {
     this.input.uiCaptured = true;
     audio.menuMusic(true);
 
-    const usesShowcase = screen === 'axie' || screen === 'garage' || screen === 'shop';
+    const usesShowcase = screen === 'home' || screen === 'axie' || screen === 'garage' || screen === 'shop';
     this.showcase(usesShowcase);
     if (!usesShowcase) this.ctx.renderer.setClearColor(0x0a0c12, 1);
 

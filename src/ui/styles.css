@@ -457,3 +457,42 @@ label.toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
   border-radius: 3px;
   transition: width .08s linear, background .2s ease;
 }
+
+/* ---------- pictures over prose ---------- */
+/* Card art is a real frame of the game, 16:9, and it comes first. */
+.art {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border-radius: calc(var(--radius) - 4px);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  flex: 0 0 auto;
+}
+.art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.card > .art { margin: -6px -6px 2px; width: calc(100% + 12px); }
+.card > .tag { top: 10px; right: 10px; background: rgba(10, 12, 18, 0.72); color: #fff; }
+
+.tile {
+  display: flex; flex-direction: column; gap: 8px; padding: 8px;
+  align-items: stretch; text-align: left;
+}
+.tile .tile-label { font-size: 15px; font-weight: 700; padding: 0 4px 2px; }
+.tile:hover .art img { transform: scale(1.04); }
+.art img { transition: transform 0.25s ease; }
+
+.race-cta {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  font-size: 24px; padding: 18px 22px;
+}
+
+/* Prose behind a tap. */
+details.more { margin-top: 2px; }
+details.more > summary {
+  cursor: pointer; list-style: none; font-size: 12.5px; color: var(--accent-2);
+  letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600;
+  display: flex; align-items: center; gap: 6px; user-select: none;
+}
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: '▸'; font-size: 11px; transition: transform 0.15s ease; }
+details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > .more-body { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }

@@ -12,7 +12,7 @@ import { KARTS, STAT_KEYS, STAT_LABEL, STAT_BLURB, type KartDefinition, type Sta
 import { PARTS, SLOTS, RARITY_COLOR, levelCurve, partById, partsForSlot, type PartDefinition } from '../data/parts';
 import { TRACKS } from '../data/tracks/index';
 import { BONUS_EVENTS, type BonusEventDefinition } from '../data/bonus';
-import { MODE_RULES, divisionFor, nextDivision, RULES_VERSION, type Mode } from '../data/rules';
+import { MODE_RULES, divisionFor, RULES_VERSION, type Mode } from '../data/rules';
 import { resolveLoadout, statTotal, type LoadoutParts } from '../sim/loadout';
 import { Hud } from './hud';
 import { controlCard, type Device } from './input';
@@ -55,6 +55,20 @@ export interface AppApi {
 // ---------------------------------------------------------------------------
 // shared pieces
 // ---------------------------------------------------------------------------
+
+/** A real frame of the game as card art (see captureSink in vite.config.ts). */
+function art(src: string): HTMLElement {
+  return el('div', { class: 'art' }, el('img', { src, alt: '', loading: 'lazy', draggable: false }));
+}
+
+/** Prose lives behind a tap. The player who wants it gets it; the one who
+ *  wants to race is not made to read past it. */
+function more(label: string, ...content: (Node | string | null)[]): HTMLElement {
+  return el('details', { class: 'more', onClick: (e: Event) => e.stopPropagation() },
+    el('summary', { text: label }),
+    el('div', { class: 'more-body' }, ...content),
+  );
+}
 
 function topbar(app: AppApi, title: string, backTo?: ScreenName): HTMLElement {
   const p = app.profile;
@@ -123,7 +137,7 @@ function kartCard(k: KartDefinition, selected: boolean, onPick: () => void): HTM
     el('div', { class: 'title', text: k.name }),
     el('div', { class: 'sub', text: k.tagline }),
     el('div', { style: `height:4px;border-radius:2px;margin:4px 0;background:linear-gradient(90deg,${k.palette.body},${k.palette.trim})` }),
-    el('div', { class: 'hint', text: k.bio }),
+    more('About', el('div', { class: 'hint', text: k.bio })),
   );
 }
 
@@ -134,57 +148,50 @@ function kartCard(k: KartDefinition, selected: boolean, onPick: () => void): HTM
 export function homeScreen(app: AppApi): HTMLElement {
   const p = app.profile;
   const div = divisionFor(p.rating);
-  const next = nextDivision(p.rating);
   const axie = AXIES.find((a) => a.id === p.axieId)!;
   const kart = KARTS.find((k) => k.id === p.kartId)!;
 
-  const bigButton = (label: string, sub: string, cls: string, fn: () => void) =>
-    el('button', { class: cls, onClick: () => { app.sfx('uiSelect'); fn(); }, style: 'flex-direction:column;align-items:flex-start;gap:2px;display:flex' },
-      el('span', { style: 'font-size:17px', text: label }),
-      el('span', { class: 'hint', style: 'font-weight:500', text: sub }),
+  // A mode is a picture of the thing you are about to do, with its name.
+  const tile = (label: string, sub: string, img: string, fn: () => void) =>
+    el('button', { class: 'tile', title: sub, onClick: () => { app.sfx('uiSelect'); fn(); } },
+      art(img),
+      el('span', { class: 'tile-label', text: label }),
     );
+  const ghost = (label: string, screen: ScreenName) =>
+    el('button', { class: 'ghost', onClick: () => { app.sfx('uiSelect'); app.go(screen); } }, label);
 
-  return el('div', { class: 'screen' },
+  return el('div', { class: 'screen showcase' },
     topbar(app, 'Axie kart racing'),
     el('div', { class: 'body' },
-      el('div', { class: 'col grow', style: 'max-width:420px' },
-        el('div', { class: 'panel' },
-          el('h1', { text: 'Race.' }),
-          el('p', { style: 'margin-top:8px' },
-            'Pick an Axie, fit it into a kart, and go. Three circuits, seven rivals, a rank to climb, and three bonus events that ask for something other than a lap time.'),
+      el('div', { class: 'col scroll', style: 'width:min(420px,100%);flex:0 0 auto' },
+        el('button', {
+          class: 'primary big race-cta',
+          onClick: () => { app.sfx('uiSelect'); app.go('trackSelect', { mode: 'quickRace' }); },
+        }, el('span', { text: 'Race' }), el('span', { class: 'hint', text: 'three laps · seven rivals' })),
+        el('div', { class: 'grid c2 tiles' },
+          tile('Ranked', 'Normalised loadouts. Rating moves.', 'img/track-ruin.jpg', () => app.go('trackSelect', { mode: 'ranked' })),
+          tile('Time Trial', 'Alone against the clock', 'img/track-cloudforge.jpg', () => app.go('trackSelect', { mode: 'timeTrial' })),
+          tile('Bonus Events', 'Mega Ramp, Luna Launch, Gator Gauntlet', 'img/event-megaramp.jpg', () => app.go('bonusSelect')),
+          tile('Multiplayer', app.net.url ? `Server: ${app.net.status()}` : 'Offline — point it at a race server', 'img/track-canopy.jpg', () => app.go('multiplayer')),
         ),
-        el('div', { class: 'grid', style: 'grid-template-columns:1fr' },
-          bigButton('Quick Race', 'Three laps, seven rivals, no rating at stake', 'primary big', () => app.go('trackSelect', { mode: 'quickRace' })),
-          bigButton('Ranked', 'Normalised loadouts. Rating moves.', '', () => app.go('trackSelect', { mode: 'ranked' })),
-          bigButton('Time Trial', 'Alone against the clock', '', () => app.go('trackSelect', { mode: 'timeTrial' })),
-          bigButton('Bonus Events', 'Mega Ramp and Gator Gauntlet', '', () => app.go('bonusSelect')),
-          bigButton('Multiplayer', app.net.url ? `Server: ${app.net.status()}` : 'Offline — point it at a race server', '', () => app.go('multiplayer')),
-        ),
-        el('div', { class: 'row' },
-          el('button', { class: 'ghost', onClick: () => { app.sfx('uiSelect'); app.go('garage'); } }, 'Garage'),
-          el('button', { class: 'ghost', onClick: () => { app.sfx('uiSelect'); app.go('boards'); } }, 'Records'),
-          el('button', { class: 'ghost', onClick: () => { app.sfx('uiSelect'); app.go('settings'); } }, 'Settings'),
-        ),
+        el('div', { class: 'row' }, ghost('Garage', 'garage'), ghost('Records', 'boards'), ghost('Settings', 'settings')),
       ),
-      el('div', { class: 'col', style: 'width:min(340px, 100%)' },
+      el('div', { class: 'stage-gap' }, el('div', { class: 'caption', text: 'drag to turn' })),
+      el('div', { class: 'col scroll', style: 'width:min(300px,100%);flex:0 0 auto' },
         el('div', { class: 'panel' },
           el('h3', { text: 'Your entry' }),
-          el('div', { style: 'margin-top:10px' },
+          el('div', { style: 'margin-top:8px' },
             kv('Driver', `${axie.name} · ${axie.class}`),
             kv('Kart', kart.name),
-            kv('Division', div.name),
-            kv('Rating', String(p.rating)),
-            next ? kv('Next division', `${next.minRating - p.rating} rating away`) : kv('Next division', 'Top of the ladder'),
-            kv('Races', String(p.races)),
-            kv('Wins', String(p.wins)),
-            kv('Podiums', String(p.podiums)),
+            kv('Division', `${div.name} · ${p.rating}`),
+            kv('Record', `${p.wins} wins · ${p.podiums} podiums · ${p.races} races`),
           ),
           el('div', { class: 'row', style: 'margin-top:12px' },
             el('button', { onClick: () => { app.sfx('uiSelect'); app.go('axie'); } }, 'Change Axie'),
             el('button', { onClick: () => { app.sfx('uiSelect'); app.go('garage'); } }, 'Change kart'),
           ),
         ),
-        Hud.controlCardPanel(app.device, p.settings.keybinds),
+        el('div', { class: 'panel tight' }, more('Controls', Hud.controlCardPanel(app.device, p.settings.keybinds))),
       ),
     ),
   );
@@ -224,7 +231,7 @@ export function axieScreen(app: AppApi): HTMLElement {
           chip('Parts', `${a.parts.length}`),
           chip('Stat total', String(s.hp + s.speed + s.skill + s.morale)),
         ),
-        el('p', { style: 'margin-top:12px', text: a.bio }),
+        more(`About ${a.name}`, el('p', { text: a.bio })),
       ),
       el('div', { class: 'panel' },
         el('h3', { text: 'Body parts' }),
@@ -237,8 +244,8 @@ export function axieScreen(app: AppApi): HTMLElement {
             ),
           )),
         ),
-        el('div', { class: 'hint', style: 'margin-top:10px' },
-          'Each part adds +3 to the stat its own class governs, exactly as an Axie does. Stats are recomputed from these parts, not stored.'),
+        more('How parts work', el('div', { class: 'hint' },
+          'Each part adds +3 to the stat its own class governs, exactly as an Axie does. Stats are recomputed from these parts, not stored.')),
       ),
       statsPanel('In the ' + kart.name, lo.stats),
     );
@@ -557,13 +564,16 @@ export function trackSelectScreen(app: AppApi, params: Record<string, unknown>):
           app.startRace(mode, t.id);
         },
       },
+        art(`img/track-${t.id}.jpg`),
         el('div', { class: 'tag', text: '★'.repeat(t.difficulty) }),
         el('div', { class: 'title', text: t.name }),
         el('div', { class: 'sub', text: t.subtitle }),
-        el('div', { class: 'hint', style: 'margin-top:4px', text: t.setPiece }),
-        el('div', { style: 'margin-top:8px' },
-          kv('Laps', String(MODE_RULES[mode].laps)),
-          kv('Best lap', rec && isFinite(rec.bestLap) ? formatTime(rec.bestLap) : '—'),
+        el('div', { class: 'row', style: 'gap:6px' },
+          chip('Best lap', rec && isFinite(rec.bestLap) ? formatTime(rec.bestLap) : '—'),
+          chip('Laps', String(MODE_RULES[mode].laps)),
+        ),
+        more('Details',
+          el('div', { class: 'hint', text: t.setPiece }),
           kv('Best race', rec && isFinite(rec.bestTotal) ? formatTime(rec.bestTotal) : '—'),
           t.branches.length ? kv('Alternate line', t.branches[0].name) : null,
         ),
@@ -585,7 +595,7 @@ export function trackSelectScreen(app: AppApi, params: Record<string, unknown>):
             chip('Rating', rules.ranked ? 'At stake' : 'Unaffected', rules.ranked),
           ),
           mode === 'ranked'
-            ? el('div', { class: 'hint', style: 'margin-top:8px', text: 'Ranked locks the rules version, normalises loadouts, turns off catch-up and disables assists. A result with an integrity flag is held back from the board rather than published.' })
+            ? more('What ranked changes', el('div', { class: 'hint', text: 'Ranked locks the rules version, normalises loadouts, turns off catch-up and disables assists. A result with an integrity flag is held back from the board rather than published.' }))
             : null,
         ),
         grid,
@@ -718,25 +728,25 @@ export function bonusSelectScreen(app: AppApi): HTMLElement {
       class: `card${u.ok ? '' : ' locked'}`,
       onClick: () => { if (!u.ok) { app.sfx('uiDenied'); return; } app.sfx('uiSelect'); app.startBonus(e.id); },
     },
+      art(`img/event-${e.id}.jpg`),
       rec && rec.medal !== 'none' ? el('div', { class: `tag badge ${rec.medal}`, text: rec.medal }) : null,
       el('div', { class: 'title', text: e.name }),
       el('div', { class: 'sub', text: e.tagline }),
-      el('p', { style: 'margin-top:8px;font-size:13px', text: e.brief }),
-      el('div', { style: 'margin-top:4px' },
-        kv('Your best', rec && isFinite(rec.best) ? `${rec.best.toFixed(1)} ${e.unit}` : '—'),
+      el('div', { class: 'row', style: 'gap:6px' },
+        chip('Your best', rec && isFinite(rec.best) ? `${rec.best.toFixed(1)} ${e.unit}` : '—'),
+        chip('Gold', `${e.medals.gold} ${e.unit}`, true),
+      ),
+      more('Details',
+        el('p', { style: 'font-size:13px', text: e.brief }),
         kv('Attempts', rec ? String(rec.attempts) : '0'),
         kv('Bronze', `${e.medals.bronze} ${e.unit}`),
         kv('Silver', `${e.medals.silver} ${e.unit}`),
-        kv('Gold', `${e.medals.gold} ${e.unit}`),
       ),
       u.ok ? null : el('div', { class: 'hint', style: 'color:var(--warm);margin-top:6px', text: `Locked — ${u.why}` }),
     ));
   }
   return el('div', { class: 'screen' },
     topbar(app, 'Bonus events', 'home'),
-    el('div', { class: 'panel tight' },
-      el('div', { class: 'hint', text: 'Same kart, same controls, a different question. Both events keep a personal best and a medal per rules version, and restart instantly.' }),
-    ),
     el('div', { class: 'body' }, el('div', { class: 'col grow scroll' }, grid)),
   );
 }
