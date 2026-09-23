@@ -98,6 +98,10 @@ export const MEGA_RAMP_TRACK: TrackDefinition = {
     { s: at(RM.runway, 0.56), lat: 0, len: 24, w: 7 },
     { s: at(RM.runway, 0.74), lat: 0, len: 22, w: 6 },
     { s: at(RM.runway, 0.90), lat: 0, len: 22, w: 5.5 },
+    // Two on the ramp itself, so the climb does not bleed the speed away and
+    // the lip is left at a real launch pace.
+    { s: at(RM.ramp, 0.30), lat: 0, len: 16, w: 9 },
+    { s: at(RM.ramp, 0.70), lat: 0, len: 16, w: 9 },
   ],
   branches: [],
   hazards: [
@@ -106,10 +110,12 @@ export const MEGA_RAMP_TRACK: TrackDefinition = {
     // off the lip is a real decision rather than "hold accelerate".
     // Heights are above the hill under each ring, set from tools/rampprobe.ts
     // so the hoops sit ON the flight arc of a kart that used the pads.
-    { kind: 'ring', s: at(RM.landing, 0.10), lat: 0, h: 34, r: 7.5 },
-    { kind: 'ring', s: at(RM.landing, 0.20), lat: -4, h: 46, r: 7.0 },
-    { kind: 'ring', s: at(RM.landing, 0.30), lat: 4, h: 42, r: 6.5 },
-    { kind: 'ring', s: at(RM.landing, 0.40), lat: 0, h: 26, r: 6.0 },
+    // A boosted launch leaves the lip at ~39 m/s and lands ~130 m out; the
+    // arc (metres along : height vs lip) is 30:+2.5, 60:-8.5, 90:-27, 115:-47.
+    { kind: 'ring', s: at(RM.landing, 0.013), lat: 0, h: 14, r: 7.5 },
+    { kind: 'ring', s: at(RM.landing, 0.078), lat: -4, h: 19.5, r: 7.0 },
+    { kind: 'ring', s: at(RM.landing, 0.143), lat: 4, h: 11, r: 6.5 },
+    { kind: 'ring', s: at(RM.landing, 0.198), lat: 0, h: 8, r: 6.0 },
   ],
   theme: {
     sky: ['#4f8fd6', '#ffd2a0'],

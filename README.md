@@ -1,6 +1,6 @@
 # Luna Prix
 
-An Axie kart racer. Three circuits, seven rivals, a rank to climb, and two
+An Axie kart racer. Four Lunacia circuits, seven rivals, a rank to climb, and two
 bonus events that ask for something other than a lap time.
 
 Built for the Ronin Vibeathon. It runs in a browser with no install and no
@@ -44,7 +44,8 @@ npm run server                            # ws://localhost:8787
 | `W` / `↑` | RT or A | **GO** | Accelerate |
 | `S` / `↓` | LT or B | **BRAKE** | Brake, then reverse |
 | `A` `D` / `← →` | Left stick | Stick | Steer |
-| `Space` | RB / LB / X | **DRIFT** | Hop, then hold to drift |
+| `Space` | RB / LB | **DRIFT** | Hop, then hold to drift |
+| `Shift` | X | **BOOST** | Fire the boost. The meter fills as you race; drifts, pads and item chests top it up |
 | `Space` in the air | RB in the air | **DRIFT** | Trick |
 | `Q` | Y | — | Look back |
 | `R` | — | — | Return to the track |
@@ -53,7 +54,7 @@ npm run server                            # ws://localhost:8787
 Every binding is remappable in Settings. The control card the game shows you
 matches whatever device you last touched.
 
-**The one thing worth knowing:** hold drift through a corner to fill the boost
+**The one thing worth knowing:** the boost meter fills as you race — hold drift through a corner to fill it faster, then fire it with Shift on the next straight. Hold drift through a corner to fill the boost
 meter, and release it on the exit. Three tiers — blue, orange, purple. That
 loop is most of the game.
 
@@ -74,13 +75,14 @@ data-driven, levelled, versioned, and resolved into a validated loadout before
 a race starts. Ranked normalises every loadout and caps the budget, so a build
 changes shape and never size.
 
-**Three circuits**
+**Four Lunacia circuits**
 
 | Track | Length | Signature moment |
 |---|---|---|
-| Lunacia Canopy Run | 1.35 km | The gator pit — a leap over open water and leaping jaws |
-| Ruin Reactor Rally | 1.24 km | The reactor spiral into a timed bridge break |
-| Cloudforge Circuit | 1.60 km | The hangar launch, over a moored airship and through a boost ring |
+| Savannah Sprint | 1.2 km | The river jump into the baobab bend, a boulder canyon, and the Chimera on the plain |
+| Forest Canopy Run | 1.5 km | The gator pit, the log jump, the vine bridge on planks, and the tree golem on the long right |
+| Arctic Skyway | 1.7 km | The hangar launch over a frozen airship, sheet ice on the sky bridge, snow falling |
+| Mystic Ruins Rally | 1.4 km | The reactor spiral, the bridge break, the altar leap, and Kilnbane on the surge straight |
 
 Each has an alternate line that is honestly labelled: two are genuinely
 shorter and narrower, one is longer but carries two boost pads and dodges a

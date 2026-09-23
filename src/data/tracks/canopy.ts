@@ -142,6 +142,7 @@ export const CANOPY: TrackDefinition = {
       nodes: bridgeNodes,
       w: 5.2,
       surface: 'dirt',
+      look: 'planks',
       sign: 'VINE BRIDGE — skips the chicane, lands hard',
       flavor: 'shorter-risky',
     },

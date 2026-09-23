@@ -101,7 +101,9 @@ export const CLOUDFORGE: TrackDefinition = {
     { ...span(M.hangarLaunch, 0, 1), gap: true, wall: 'none', shoulder: 2.0, label: 'Hangar Launch' },
     { ...span(M.hangarVoid, 0, 1), gap: true, wall: 'none', shoulder: 2.0, label: 'Hangar Launch' },
     { ...span(M.hangarLanding, 0, 1), surface: 'metal', wall: 'both', shoulder: 2.0, label: 'Hangar Launch' },
-    { ...span(M.skyBridge, 0, 1), surface: 'metal', wall: 'both', shoulder: 1.2, label: 'Sky Bridge' },
+    // Winterblue: the sky bridge and the dock sweeper are sheet ice.
+    { ...span(M.skyBridge, 0, 1), surface: 'ice', wall: 'both', shoulder: 1.2, label: 'Sky Bridge (ice)' },
+    { ...span(M.dockSweeper, 0.15, 0.85), surface: 'ice', wall: 'both', shoulder: 1.2, label: 'Dock Sweeper (ice)' },
     { ...span(M.gantryRamp, 0, 1), surface: 'metal', wall: 'both', shoulder: 1.2, label: 'Gantry Hop' },
     { ...span(M.gantryGapA, 0, 1), gap: true, wall: 'none', shoulder: 1.5, label: 'Gantry Hop' },
     { ...span(M.gantryGapB, 0, 1), gap: true, wall: 'none', shoulder: 1.5, label: 'Gantry Hop' },

@@ -104,6 +104,9 @@ export interface BranchDef {
   nodes: [number, number, number][];
   w: number;
   surface?: Surface;
+  /** How the branch is built: a rickety plank bridge with rope rails, or the
+   *  land's road. Planks are the forest's vine bridge. */
+  look?: 'planks' | 'road';
   /** Copy shown on the route sign before the split. */
   sign: string;
   /** How the branch is meant to play, for the route-choice HUD cue.

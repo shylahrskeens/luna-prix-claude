@@ -154,6 +154,54 @@ function multi(group: THREE.Group, matrices: THREE.Matrix4[], parts: [THREE.Buff
   addScatters(group, parts.map(([geo, mat]) => ({ geo, mat, matrices })));
 }
 
+/** A town along the road: cottages close on both sides, lantern posts on the
+ *  verge, hedges between them, cream paving under it all, the way Atia's
+ *  Legacy villages sit around a plaza. Two per land, away from the jumps. */
+function addTowns(group: THREE.Group, track: TrackRuntime, mats: MaterialLibrary, rng: Rng, roof: string, wall: string, paving: string): void {
+  const L = track.lapLength;
+  const h = houseGeo();
+  const lantern = new THREE.CylinderGeometry(0.08, 0.12, 3.2, 6); lantern.translate(0, 1.6, 0);
+  const lamp = new THREE.SphereGeometry(0.32, 8, 6); lamp.translate(0, 3.35, 0);
+  const hedge = new THREE.IcosahedronGeometry(1.1, 1); hedge.translate(0, 0.9, 0);
+  const bench = new THREE.BoxGeometry(1.8, 0.35, 0.6); bench.translate(0, 0.55, 0);
+  const houses: THREE.Matrix4[] = [], lanterns: THREE.Matrix4[] = [], hedges: THREE.Matrix4[] = [], benches: THREE.Matrix4[] = [];
+  const spots = [0.06, 0.52].map((u) => u * L);
+  for (const centre of spots) {
+    // Skip a town that would land on a gap or a branch join.
+    const zone = track.zoneAt(wrap(centre / L, 1));
+    if (zone?.gap) continue;
+    const sm0 = track.main.sample(centre);
+    const pave = new THREE.Mesh(new THREE.CircleGeometry(sm0.w + 26, 28), mats.toon(paving, { flat: false }));
+    pave.rotation.x = -Math.PI / 2;
+    pave.position.set(sm0.pos.x, sm0.pos.y - 0.35, sm0.pos.z);
+    group.add(pave);
+    for (let d = -44; d <= 44; d += 11) {
+      const sm = track.main.sample(centre + d);
+      const yaw = Math.atan2(sm.fwd.x, sm.fwd.z);
+      for (const side of [-1, 1] as const) {
+        // Houses face the road, set back past the verge; every third slot is a hedge instead.
+        const slot = Math.round((d + 44) / 11) + (side > 0 ? 1 : 0);
+        const lat = side * (sm.w + 9 + rng.range(0, 2));
+        const pos = new THREE.Vector3(sm.pos.x + sm.right.x * lat, sm.pos.y, sm.pos.z + sm.right.z * lat);
+        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw + (side > 0 ? -Math.PI / 2 : Math.PI / 2), 0));
+        if (slot % 3 === 2) {
+          for (let k = 0; k < 3; k++) hedges.push(new THREE.Matrix4().compose(pos.clone().addScaledVector(new THREE.Vector3(sm.fwd.x, 0, sm.fwd.z), (k - 1) * 2.2), new THREE.Quaternion(), new THREE.Vector3(1, rng.range(0.8, 1.1), 1)));
+          benches.push(new THREE.Matrix4().compose(pos.clone().addScaledVector(new THREE.Vector3(sm.right.x, 0, sm.right.z), -side * 3.5), q, new THREE.Vector3(1, 1, 1)));
+        } else {
+          houses.push(new THREE.Matrix4().compose(pos, q, new THREE.Vector3(rng.range(0.9, 1.15), rng.range(0.9, 1.2), rng.range(0.9, 1.15))));
+        }
+        if (d % 22 === 0) {
+          const ll = side * (sm.w + 2.2);
+          lanterns.push(new THREE.Matrix4().compose(new THREE.Vector3(sm.pos.x + sm.right.x * ll, sm.pos.y, sm.pos.z + sm.right.z * ll), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)));
+        }
+      }
+    }
+  }
+  multi(group, houses, [[h.body, mats.toon(wall)], [h.roof, mats.toon(roof)], [h.chimney, mats.toon('#8a6a55')], [h.door, mats.toon('#6a4a30')]]);
+  multi(group, lanterns, [[lantern, mats.toon('#5a4a3a')], [lamp, mats.glow('#ffe08a', 1)]]);
+  addScatters(group, [{ geo: hedge, mat: mats.toon('#5fb85a'), matrices: hedges }, { geo: bench, mat: mats.toon('#a07d52'), matrices: benches }]);
+}
+
 export function buildScenery(track: TrackRuntime, mats: MaterialLibrary, density: number): THREE.Group {
   const group = new THREE.Group();
   const theme = track.def.theme;
@@ -229,6 +277,7 @@ export function buildScenery(track: TrackRuntime, mats: MaterialLibrary, density
     multi(group, bandScatter(track, rng, d(120), 1.3, 22, 0.2, () => rng.range(0.7, 1.5)), [[SHROOM_STEM, mats.toon('#f1e6d2')], [SHROOM_CAP, mats.toon('#e8523f')]]);
     multi(group, bandScatter(track, rng, d(70), 1.4, 2.2, 0, () => 1), [[POST, mats.toon('#8a6a45')], [RAIL, mats.toon('#a07d52')]]);
     addScatters(group, [{ geo: ROCK, mat: mats.toon('#8f9a8a'), matrices: bandScatter(track, rng, d(90), 3, 40, 0.4, () => rng.range(0.6, 1.8), 0.5) }]);
+    addTowns(group, track, mats, rng, '#d9553f', '#f3e3c8', '#e6d3b0');
   } else if (theme.scenery === 'mystic') {
     // Hazymoon: pink, lavender and violet blob trees, purple mushrooms, blue-
     // roofed cottages, crystal shards, purple ponds, the old columns.
@@ -251,6 +300,7 @@ export function buildScenery(track: TrackRuntime, mats: MaterialLibrary, density
       { geo: floatShard, mat: mats.glow('#e0a8ff', 0.85), matrices: bandScatter(track, rng, d(50), 6, 50, 4, () => rng.range(0.6, 1.6)) },
       { geo: ROCK, mat: mats.toon('#7a6a90'), matrices: bandScatter(track, rng, d(80), 3, 40, 0.4, () => rng.range(0.6, 1.8), 0.5) },
     ]);
+    addTowns(group, track, mats, rng, '#4f8fe0', '#f3e3d8', '#d8b7e8');
   } else if (theme.scenery === 'savannah') {
     // Goldenwind: baobabs with fat trunks, palms, cacti with pink tops,
     // sandstone mesas, boulders, dry grass, crop plots and a watering hole.
@@ -279,6 +329,7 @@ export function buildScenery(track: TrackRuntime, mats: MaterialLibrary, density
     multi(group, bandScatter(track, rng, d(50), 1.4, 2.2, 0, () => 1), [[POST, mats.toon('#8a6a45')], [RAIL, mats.toon('#a07d52')]]);
     const pond = pondGeo(8);
     multi(group, bandScatter(track, rng, d(5), 20, 60, 0, () => rng.range(0.9, 1.5)), [[pond.water, mats.toon('#4fa8d9', { flat: false })], [pond.rim, mats.toon('#c9a860')], [pond.pad, mats.toon('#6fae3c')]]);
+    addTowns(group, track, mats, rng, '#3f8fd0', '#f3e3c8', '#e0c48a');
   } else if (theme.scenery === 'arctic') {
     // Winterblue: ice floes in the sky with snow-capped pines, teal and pink
     // blob trees, ice crystals, snow-roofed cottages and a frozen airship.

@@ -7,6 +7,7 @@
  *  solid, and a hole that looks open is open.
  */
 import * as THREE from 'three';
+import { Rng, hashString } from '../core/math';
 import type { TrackRuntime } from '../sim/track';
 import type { MaterialLibrary } from './scene';
 import { SURFACE, type Surface } from '../sim/trackTypes';
@@ -245,9 +246,56 @@ export function buildTrackMesh(track: TrackRuntime, mats: MaterialLibrary): Trac
       return bs;
     };
     const surf = () => ({ surface: (b.def.surface ?? 'road') as Surface, gap: false, shoulder: 1.0 });
-    const built = buildRibbon(sample, b.spline.length, false, surf, theme, { verge: 1.2, camber: 0.20, thickness: 0.8 });
-    group.add(new THREE.Mesh(built.road, vertexMat));
-    group.add(new THREE.Mesh(built.kerbs, vertexMat));
+    if (b.def.look === 'planks') {
+      // A rickety wooden bridge: planks laid across the line, a slight sag and
+      // wobble in their spacing, rope rails on posts each side.
+      const plankGeo = new THREE.BoxGeometry(b.def.w * 2 + 0.6, 0.14, 0.7);
+      const plankA: THREE.Matrix4[] = [], plankB: THREE.Matrix4[] = [];
+      const postGeo = new THREE.CylinderGeometry(0.07, 0.09, 1.1, 6);
+      const posts: THREE.Matrix4[] = [];
+      const ropePts: THREE.Vector3[][] = [[], []];
+      const rng = new Rng(hashString(b.def.id));
+      for (let s = 0.4; s < b.spline.length; s += 0.9 + rng.range(-0.08, 0.12)) {
+        const sm = b.spline.sample(s);
+        const yaw = Math.atan2(sm.fwd.x, sm.fwd.z);
+        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, rng.range(-0.05, 0.05)));
+        const m = new THREE.Matrix4().compose(new THREE.Vector3(sm.pos.x, sm.pos.y + 0.02 + rng.range(-0.03, 0.03), sm.pos.z), q, new THREE.Vector3(1, 1, 1));
+        (Math.round(s / 0.9) % 2 ? plankA : plankB).push(m);
+      }
+      for (let s = 1; s < b.spline.length - 1; s += 3.6) {
+        const sm = b.spline.sample(s);
+        for (const side of [-1, 1] as const) {
+          const px = sm.pos.x + sm.right.x * side * (b.def.w + 0.15), pz = sm.pos.z + sm.right.z * side * (b.def.w + 0.15);
+          posts.push(new THREE.Matrix4().compose(new THREE.Vector3(px, sm.pos.y + 0.55, pz), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)));
+          ropePts[side < 0 ? 0 : 1].push(new THREE.Vector3(px, sm.pos.y + 1.0, pz));
+        }
+      }
+      const put = (geo: THREE.BufferGeometry, mat: THREE.Material, ms: THREE.Matrix4[]) => {
+        if (!ms.length) return;
+        const inst = new THREE.InstancedMesh(geo, mat, ms.length);
+        ms.forEach((m, i) => inst.setMatrixAt(i, m));
+        inst.instanceMatrix.needsUpdate = true;
+        group.add(inst);
+      };
+      put(plankGeo, mats.toon('#9a6a3e'), plankA);
+      put(plankGeo, mats.toon('#b07d4a'), plankB);
+      put(postGeo, mats.toon('#6a4a30'), posts);
+      for (const pts of ropePts) {
+        if (pts.length < 2) continue;
+        // The rope sags a little between posts.
+        const sag: THREE.Vector3[] = [];
+        for (let i = 0; i < pts.length - 1; i++) {
+          sag.push(pts[i]); sag.push(pts[i].clone().lerp(pts[i + 1], 0.5).setY((pts[i].y + pts[i + 1].y) / 2 - 0.18));
+        }
+        sag.push(pts[pts.length - 1]);
+        const rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sag), sag.length * 4, 0.04, 5, false), mats.toon('#d9c29d'));
+        group.add(rope);
+      }
+    } else {
+      const built = buildRibbon(sample, b.spline.length, false, surf, theme, { verge: 1.2, camber: 0.20, thickness: 0.8 });
+      group.add(new THREE.Mesh(built.road, vertexMat));
+      group.add(new THREE.Mesh(built.kerbs, vertexMat));
+    }
 
     // Support pillars under an elevated branch, so a bridge reads as a bridge.
     const pillarGeo = new THREE.CylinderGeometry(0.42, 0.62, 1, 6);

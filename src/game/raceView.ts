@@ -597,6 +597,22 @@ export class RaceView {
       lookBack: this.lastInput.lookBack,
     });
 
+    // ---- weather ------------------------------------------------------------
+    // Winterblue: snow falls around the camera the whole race. The flakes are
+    // ordinary particles, spawned above and ahead of the camera every frame,
+    // so the budget the quality tier set still holds.
+    if (this.track.def.theme.scenery === 'arctic') {
+      const cam = this.ctx.camera.position;
+      const n = this.ctx.quality.tier === 'low' ? 1 : this.ctx.quality.tier === 'medium' ? 2 : 4;
+      for (let i = 0; i < n; i++) {
+        this.particles.emit({
+          x: cam.x + (Math.random() - 0.5) * 60, y: cam.y + 6 + Math.random() * 10, z: cam.z + (Math.random() - 0.5) * 60,
+          vx: (Math.random() - 0.5) * 1.5, vy: -2.4 - Math.random() * 1.2, vz: (Math.random() - 0.5) * 1.5,
+          color: '#ffffff', count: 1, life: 4.5, size: 0.14 + Math.random() * 0.1, spread: 0, gravity: 0, drag: 0,
+        });
+      }
+    }
+
     // ---- world ------------------------------------------------------------
     const countdown = core.phase === 'countdown' ? -core.time : null;
     animateTrack(this.trackVis, this.clock, countdown);
