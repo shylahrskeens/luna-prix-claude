@@ -72,7 +72,7 @@ export class Hud {
     this.centre = el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:9vh;text-align:center' });
     this.warnEl = el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:10px' });
     this.sectorEl = el('div', { class: 'hint', style: 'letter-spacing:0.12em;text-transform:uppercase' });
-    this.routeEl = el('div', { style: 'margin-top:8px' });
+    this.routeEl = el('div', { class: 'route-host', style: 'margin-top:8px' });
     this.promptEl = el('div', { class: 'hint', style: 'margin-top:6px;max-width:260px' });
 
     this.minimap = el('canvas', { id: 'minimap', width: 190, height: 190 });
@@ -97,7 +97,7 @@ export class Hud {
         this.posEl,
         el('div', { style: 'margin-top:6px' }, this.lapEl),
       ),
-      el('div', { class: 'hud-box', style: 'margin-top:8px' }, this.sectorEl),
+      el('div', { class: 'hud-box sector-box', style: 'margin-top:8px' }, this.sectorEl),
       this.routeEl,
       this.promptEl,
     );
@@ -375,6 +375,9 @@ export class Hud {
     const want = dock ? this.tlHost : this.brHost;
     if (this.metersBox.parentElement !== want) want.appendChild(this.metersBox);
     this.metersBox.classList.toggle('compact', dock);
+    // The whole top of the screen trims down with it: one line for position
+    // and lap, no sector label, no route card, a smaller map, no BEST line.
+    this.root.classList.toggle('portrait-dock', dock);
   }
 
   /** The control card, shown before the first race. */

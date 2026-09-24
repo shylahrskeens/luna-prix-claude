@@ -471,12 +471,30 @@ label.toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
   .hud-tl, .hud-tr { --hud-scale: 0.82; }
 }
 
-/* The meters box docked under the left column on an upright phone. */
-.hud-box.meters.compact { text-align: left; margin-top: 8px; padding: 6px 9px; }
-.hud-box.meters.compact .speed-big { font-size: 22px; }
-.hud-box.meters.compact .boost-meter, .hud-box.meters.compact .special-meter { width: 118px; }
-.hud-box.meters.compact .item-slot { padding: 3px 6px; margin-top: 6px; }
-.hud-box.meters.compact .hint { font-size: 11px; }
+/* An upright phone with touch controls: the HUD has to live in the top fifth
+   of the screen, because the road and the kart are the middle and the buttons
+   are the bottom. Position and lap on one line, no sector label, no route
+   card, a small map, no BEST line, and the meters as one compact row. */
+#hud.portrait-dock .hud-tl { max-width: 56vw; }
+#hud.portrait-dock .hud-tl > .hud-box:first-child { display: flex; align-items: baseline; gap: 8px; padding: 5px 9px; }
+#hud.portrait-dock .hud-tl > .hud-box:first-child > div { margin-top: 0 !important; }
+#hud.portrait-dock .pos-big { font-size: 22px; }
+#hud.portrait-dock .lap-big { font-size: 13px; }
+#hud.portrait-dock .sector-box, #hud.portrait-dock .route-host, #hud.portrait-dock .hud-tl > .hint { display: none; }
+#hud.portrait-dock #minimap { width: 88px; height: 88px; }
+#hud.portrait-dock .hud-tr .hud-box { padding: 4px 8px; }
+#hud.portrait-dock .hud-tr .mono { font-size: 14px !important; }
+#hud.portrait-dock .hud-tr .mono + .mono { display: none; }
+.hud-box.meters.compact { text-align: left; margin-top: 6px; padding: 5px 8px; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; }
+.hud-box.meters.compact .speed-big { font-size: 20px; grid-row: 1 / span 2; }
+.hud-box.meters.compact .speed-big .unit { font-size: 9px; }
+.hud-box.meters.compact > div { margin-top: 0 !important; }
+.hud-box.meters.compact .boost-meter, .hud-box.meters.compact .special-meter { width: 100px; }
+.hud-box.meters.compact .special-meter { margin-top: 4px; }
+.hud-box.meters.compact .hint { display: none; }
+.hud-box.meters.compact .item-slot { display: flex; grid-column: 1 / span 2; padding: 2px 6px; margin-top: 5px; }
+.hud-box.meters.compact .item-slot .hint { display: block; font-size: 10px; }
+.hud-box.meters.compact .item-glyph { font-size: 15px; width: 18px; }
 
 /* Class special: a second, thinner meter under the boost one. */
 .special-meter {
